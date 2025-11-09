@@ -1,0 +1,140 @@
+%% Dokumentenklasse (Koma Script) -----------------------------------------
+\documentclass[%
+   %draft,     % Entwurfsstadium
+   final,      % fertiges Dokument
+	 % --- Paper Settings ---
+   paper=a4,% [Todo: add alternatives]
+   paper=portrait, % landscape
+   pagesize=auto, % driver
+   % --- Base Font Size ---
+   fontsize=11pt,%
+	 % --- Koma Script Version ---
+   version=last, %
+ ]{scrreprt} % Classes: scrartcl, scrreprt, scrbook
+
+
+% Encoding der Dateien (sonst funktionieren Umlaute nicht)
+% Fuer Linux -> utf8
+% Fuer Windows, alte Linux Distributionen -> latin1
+
+% Empfohlen latin1, da einige Pakete mit utf8 Zeichen nicht
+% funktionieren, z.B: listings, soul.
+%\usepackage[latin1]{inputenc}
+%\usepackage[ansinew]{inputenc}
+\usepackage[utf8]{inputenc}
+%\usepackage{ucs}
+%\usepackage[utf8x]{inputenc}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%    SET LANGUAGE       %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\lang{ngerman} % Options: english or ngerman
+
+% The used tool and the reason; remove command if it does not apply
+\def\declareUseOfGenerativeAITool{ChatGPT~4}
+
+%%% Preambel
+\input{preambel/settings}
+\input{preambel/preambel}
+
+\author{Max Musterman}
+\thesis{Bachelor Thesis}
+%\thesis{Master Thesis}
+\title{Titel der Abschlussarbeit}
+\academicTitle{Bachelor of Science}
+%\academicTitle{Master of Science}
+\firstReferee{Prof. Dr. Tim Mustermann}
+\secondReferee{Prof. Dr. Max Häuser}
+
+%
+%%%% Neue Befehle
+\input{macros/newcommands}
+\input{macros/TableCommands}
+
+%%% Silbentrennung
+\input{preambel/Hyphenation}
+
+
+
+\usepackage{listings}
+\usepackage{tcolorbox}
+\usepackage{xcolor} % Für Farbdefinitionen
+
+% Globale Einstellungen für alle listings
+\lstset{
+  basicstyle=\ttfamily\small, % Nicht-proportionale Schrift, klein
+  breaklines=true,            % Automatischer Zeilenumbruch
+  breakatwhitespace=true,     % Bricht nur bei Leerzeichen um
+  postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space}, % Zeigt Umbruch an
+  showstringspaces=false,     % Zeigt keine speziellen Leerzeichen
+  frame=none                  % Kein eigener Rahmen von listings
+}
+
+% Eine neue tcolorbox definieren, die einen Titel haben kann
+\newtcolorbox{logbox}[1]{
+  title=#1,
+  colback=black!5,   % Leichte Hintergrundfarbe
+  colframe=black!60, % Rahmenfarbe
+  fonttitle=\bfseries,
+  boxrule=1pt,
+  left=4mm,
+  right=4mm,
+  top=2mm,
+  bottom=2mm
+}
+
+
+
+
+%% Dokument Beginn %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+% Deckblatt
+\input{content/00_Titel}
+
+% Nicht vergessen zu Entfernen wenn alles Fertig:
+%\listoftodos
+
+% Abstract - Kurzfassung der Arbeit ohne Wertung
+\input{content/00_Abstract}
+\cleardoublepage
+\frontmatter
+\cleardoublepage
+% Inhaltsverzeichnis in den PDF-Links eintragen
+\pdfbookmark[1]{Inhaltsverzeichnis}{toc}
+\tableofcontents
+\cleardoublepage
+
+% Hauptteil
+\mainmatter
+\input{content/01_Einfuehrung}
+\input{content/02_Hintergrund}
+\input{content/03_Konzept}
+\input{content/04_Realisierung}
+\input{content/05_Abschluss}
+
+% Anhang (Bibliographie darf im deutschen nicht in den Anhang!)
+\bibliography{bib/BibtexDatabase}
+\clearpage
+% Symbolverzeichnis (Begriffserklärung)
+% Damit die Begriffe hinzugefügt werden muss in Texmaker unter Optionen - Konfiguren 
+% Der Makeindex Befehl folgendermaßen geändert werden: "/usr/texbin/makeindex" %.nlo -s nomencl.ist -o %.nls
+\IfDefined{printindex}{\printindex}
+\IfDefined{printnomenclature}{\printnomenclature}
+% 'Symbolverzeichnis' ins Inhaltsverzeichnis
+\addcontentsline{toc}{chapter}{Abkürzungsverzeichnis}
+% Abbildungs- und Tabellenverzeichnis
+\listoffigures
+\listoftables
+\lstlistoflistings.
+% Anhang
+\appendix
+% 'Anhang' ins Inhaltsverzeichnis
+%\phantomsection
+%\addcontentsline{toc}{part}{Anhang}
+
+\input{content/Z-Anhang}
+
+%% Dokument ENDE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end{document}
+

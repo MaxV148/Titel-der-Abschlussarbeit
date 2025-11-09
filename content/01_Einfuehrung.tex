@@ -1,0 +1,54 @@
+\chapter{Einführung}
+Software-Systeme stellen einen essenziellen Bestandteil der Wirtschaft dar und sind somit auch für den Endkunden von signifikanter Relevanz. Ein Ausfall, der sich auf einen kleinen Teil eines komplexen Systems beschränkt, kann katastrophale Auswirkungen auf Firmen und Privatpersonen haben. Ein Ausfall im DNS-System des Cloudanbieters AWS \cite{Staff_2025} veranschaulicht, dass bereits eine geringfügige Störung zu einer globalen IT-Problematik werden kann. Dies ist darauf zurückzuführen, dass eine Vielzahl von IT-Produkten auf Cloudlösungen basiert, was einen Ausfall dieser Systeme zu einem signifikanten Schaden führen kann. 
+Die DevOps-Bewegung \cite{bass2015devops} ist ein Phänomen, das in den letzten Jahren entstanden ist und das Ziel verfolgt, die Stabilität von Software während der Produktionsphase zu gewährleisten und eine zeitnahe Reaktion auf auftretende Fehler zu ermöglichen. Die Entwicklung und der Betrieb von Software sollten nicht mehr getrennt voneinander betrachtet werden, da eine Symbiose der beiden Aspekte zunehmend an Bedeutung gewinnt. 
+Logs des Systems spielen dabei eine wichtige Rolle, da sie durch ihren Inhalt und ihre Häufigkeit den Zustand der Software abbilden. Dabei kann man Logs, die dem unterliegenden System, dem Server, entspringen, von Lognachrichten aus der Software unterscheiden. Lognachrichten aus einem Linux-System folgen beispielsweise oft einem klaren Nachrichtenformat aus dem Syslog-Protokoll \cite{rfc5424}, was eine einfache Verarbeitung ermöglicht. 
+
+Individuelle Lognachrichten aus einer selbst entwickelten Software folgen dagegen oft keinem festen Format, was die Weiterverarbeitung und Analyse erschwert. Um die große Menge an Log-Nachrichten verwalten und analysieren zu können, kann Open-Source-Software wie der sogenannte ELK-Stack genutzt werden. Dieser besteht aus drei Komponenten. Das „E“ steht für Elasticsearch, eine NoSQL-Datenbank, die Daten im JSON-Format speichert. „L“ steht für Logstash, eine Datenverarbeitungspipeline, die beispielsweise Lognachrichten aus verschiedenen Quellen an Elasticsearch sendet. „K“ steht für Kibana, eine Weboberfläche zur Visualisierung der Daten. 
+Kibana eignet sich zwar grundsätzlich gut, um nach dem Auftreten von Lognachrichten zu suchen, aber es bleibt ein Problem. Viele Logs unterscheiden sich lediglich durch unterschiedliche Metadaten wie Zeitstempel, IP-Adressen und variable Teile in der Nachricht selbst, sagen aber das Gleiche aus. Die Beispiele zeigen, dass beide Log-Nachrichten über ein Verbindungsproblem mit dem MySQL-Server berichten. Somit könnte man diese Logs einer Gruppe zuordnen. Das Gruppieren solcher Logs kann auf verschiedene Weise erfolgen. Eine Möglichkeit sind reguläre Ausdrücke (Regex), mit denen sich die variablen Teile herausfiltern lassen, um so Gruppen zu bilden. Der Vorteil dieses Verfahrens ist die Flexibilität, da man sehr individuell nach Log-Nachrichten suchen kann. Ein Nachteil dieser Arbeitsweise ist der große manuelle Aufwand, die Regex-Liste zu pflegen, wenn beispielsweise neue Logs im System auftreten. Eine andere Möglichkeit wäre, Algorithmen zu nutzen, um den Text der Log-Nachrichten zu gruppieren. Dies ist der Gegenstand dieser Arbeit: Es soll eine Möglichkeit gefunden werden, Log-Nachrichten kontinuierlich zu gruppieren bzw. zu clustern, und das mit möglichst wenig manuellem Aufwand.
+
+
+
+\section{Problembeschreibung/Motivation}
+
+Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. \cite{rfc5424}
+
+
+\begin{logbox}{Beispiel 1: Syslog Kernel Message}
+\begin{lstlisting}
+Nov  6 09:10:01 servername kernel: [ 1234.567890] usb 1-1: new high-speed USB device number 10 using ehci_hcd
+\end{lstlisting}
+\end{logbox}
+
+\begin{logbox}{Beispiel 2: SSH Login-Fehler}
+\begin{lstlisting}
+Nov  6 09:11:05 servername sshd[12345]: Failed password for invalid user admin from 192.168.1.100 port 22 ssh2
+\end{lstlisting}
+\end{logbox}
+
+
+
+
+Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore \cite{miller2017chapter}  veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut \cite{website2021example}  odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
+
+% Beispiel: Hinweisbox (kurze Tipps oder Zusammenfassungen)
+\begin{tcolorbox}[arc=3mm, boxrule=0pt, leftrule=4pt, left=10pt]
+Diese Art von Box eignet sich besonders gut, um zwischen sachlichen Abschnitten kurze Zusammenfassungen oder wichtige Hinweise einzufügen – etwa am Kapitelende oder zwischen methodischen Schritten.
+\end{tcolorbox}
+
+\section{Ziele dieser Arbeit}
+
+% Beispiel: Zentrale Infobox (Forschungsfragen, Definitionen, wichtige Aspekte)
+\begin{center}
+\begin{minipage}{\textwidth}
+\begin{tcolorbox}[title=\textbf{Forschungsfragen, Infobox, Definition etc.}, left=1mm, right=1mm]
+\raggedright
+Diese Box dient der übersichtlichen Darstellung wichtiger Inhalte wie Forschungsfragen, Definitionen oder methodischer Hinweise. Sie kann genutzt werden, um zentrale Aspekte optisch hervorzuheben und den Lesefluss zu unterstützen. \\
+\end{tcolorbox}
+\end{minipage}
+\end{center}
+
+\section{Vorgehensweise/Methode}
+
+\section{Abgrenzung}
+
+\section{Struktur der Arbeit}

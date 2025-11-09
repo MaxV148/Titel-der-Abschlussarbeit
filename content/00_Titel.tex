@@ -1,0 +1,86 @@
+% \subject{Diplomarbeit \\ Universität <einfügen>}
+% \title{<Titel einfügen>}
+% \author{Alexander Becker}
+% \date{<Datum einfügen>}
+% \maketitle
+
+\begin{titlepage}
+
+\begin{center}
+\includegraphics[width=1\textwidth]{images/Logo_THM_MNI.jpg}
+\par\end{center}
+
+
+\noindent \begin{center}
+\vspace{1cm}
+
+\par\end{center}
+
+\noindent \begin{center}
+\textsf{\textbf{\huge \theThesis}}\textsf{}\\
+\textsf{}\\
+\textsf{\Large \theTitle}
+\par\end{center}{\Large \par}
+
+\vspace{1cm}
+
+
+\begin{center}
+\ifthenelse{\equal{\lang}{ngerman}}
+{zur Erlangung des akademischen Grades}
+{for the Degree of}
+
+\par\end{center}
+
+\begin{center}
+{\textsf{\large \theAcedemicTitle}}
+\par\end{center}{\large \par}
+
+\begin{center}
+\ifthenelse{\equal{\lang}{ngerman}}
+{eingereicht im Fachbereich Mathematik, Naturwissenschaften und Informatik an der Technischen Hochschule Mittelhessen}
+{submitted to the Department of Mathematics, Natural Sciences, and Computer Science at the Technische Hochschule Mittelhessen (University of Applied Sciences)}
+
+{\large \vspace{1cm}
+}
+\par\end{center}{\large \par}
+
+\begin{center}
+\ifthenelse{\equal{\lang}{ngerman}}
+{von}{by}
+\par\end{center}
+
+\begin{center}
+\theAuthor
+\par\end{center}
+
+\begin{center}
+\today
+\par\end{center}
+
+\vspace{1.5cm}
+
+\ifthenelse{\equal{\lang}{ngerman}}
+{Referent}
+{Referee}: \theFirstReferee
+
+\ifthenelse{\equal{\lang}{ngerman}}
+{Korreferent}
+{Co-Referee}: \theSecondReferee
+
+\end{titlepage}
+
+
+\thispagestyle{empty}
+
+\cleardoublepage
+
+\printGenerativeAIDeclaration
+
+\printGenderDisclaimer
+
+\printDeclarationOfIndependence
+
+\clearpage
+\mbox{}\thispagestyle{empty}
+
