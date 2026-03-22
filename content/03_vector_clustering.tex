@@ -1,7 +1,7 @@
 \chapter{Vektorbasiertes Clustering zur kontinuierlichen Log-Auswertung}\label{clustern_mit_vek}
 Dieses Kapitel behandelt die Gruppierung von Logs mithilfe von Vektorisierung und Vektordatenbanken.
 
-\section{Vektordatenbanken: Auswahlkriterien und Evaluation von PostgreSQL}
+\section{Vektordatenbanken: Auswahlkriterien und Evaluation}
 
 Die Gruppierung der Vektoren erfordert eine passende Datenbank. Sie muss folgende Anforderungen erfüllen:
 
@@ -13,49 +13,98 @@ Die Gruppierung der Vektoren erfordert eine passende Datenbank. Sie muss folgend
 
 Die Anforderungen an die Datenbank leiten sich direkt aus dem Entwurf des Clustering-Algorithmus \ref{PG_Algorithmn} ab. Da das System periodisch neue Logs übermittelt und diese kontinuierlich gruppierten Beständen zuordnen muss, sucht der Algorithmus für jedes neue Log nach bereits vorhandenen, ähnlichen Einträgen innerhalb eines Ähnlichkeitsschwellwerts. Eine reine Top-K-Suche, die lediglich die k ähnlichsten Vektoren zurückgibt, ist hierfür ungeeignet, da die Anzahl der passenden Logs vorab nicht bekannt ist. Stattdessen werden alle Logs benötigt, deren Kosinus-Ähnlichkeit einen definierten Schwellwert unterschreitet. Neben den Vektoren speichert das System Metadaten wie die Clusternummer und den Log-Text, weshalb die Datenbank beides in einer gemeinsamen Struktur verwalten muss. Da das System auf einem eigenen Server betrieben wird, scheidet eine Cloud-Lösung aus; die Datenbank muss On-Premises lauffähig sein.
 
-Folgende Datenbanken stehen zur Auswahl: Qdrant \cite{qdrantQdrantVector} ist eine dedizierte Vektordatenbank, die 2021 als Open-Source-Projekt startete. Als Open-Source-Lösung lässt sie sich lokal, beispielsweise per Docker-Container, nutzen. Zudem speichert Qdrant Metadaten (Payload) \cite{qdrantPayloadQdrant} im JSON-Format. Die Query-API \cite{qdrantSearchQdrant} bietet viele Möglichkeiten, nach ähnlichen Dokumenten bzw. Vektoren zu suchen. Unter anderem vergleicht sie Vektor $A$ mit Vektor $B$ und begrenzt die Anzahl der Suchergebnisse. Es fehlt jedoch die Möglichkeit, nach Angabe eines Vergleichsvektors alle ähnlichen Vektoren innerhalb eines Ähnlichkeitsschwellwerts zu finden.
-Die Erweiterung pg\_vector \cite{githubGitHubPgvectorpgvector} ermöglicht es, mit einem normalen PostgreSQL-Server Vektoren zu speichern. Die Erweiterung führt einen neuen Datentyp $vector(l)$ ein, wobei $l$ die feste Länge des Vektors angibt. PostgreSQL ist eine Open-Source-Software, die sich einfach auf einem Linux-Server betreiben lässt. Die Erweiterung erlaubt die Suche nach allen Vektoren innerhalb eines Schwellwertes.
-Das folgende SQL-Statement zeigt, wie sich alle Vektoren mit einer Kosinus-Ähnlichkeit von unter 0,5 abfragen lassen. Da pg\_vector lediglich einen neuen Datentyp einführt, lassen sich die Metadaten zu den Vektoren einfach zusammen mit diesen in einer Tabelle speichern.
+\section{Qdrant}
+
+\section{Milvus}
+
+
+\section{PostgreSQL + pg\_vector}
+
+Die Erweiterung pg\_vector \cite{githubGitHubPgvectorpgvector} ermöglicht es, mit 
+einem normalen PostgreSQL-Server Vektoren zu speichern. PostgreSQL ist eine 
+Open-Source-Software, die sich einfach auf einem Linux-Server betreiben lässt. Die 
+Erweiterung führt einen neuen Datentyp $vector(l)$ ein, wobei $l$ die feste Länge 
+des Vektors angibt, und erlaubt die Suche nach allen Vektoren innerhalb eines 
+Schwellwertes. Da pg\_vector lediglich einen neuen Datentyp einführt, lassen sich 
+die Metadaten zu den Vektoren einfach zusammen mit diesen in einer Tabelle 
+speichern. Das folgende SQL-Statement zeigt, wie sich alle Vektoren mit einer 
+Kosinus-Ähnlichkeit von unter 0,5 abfragen lassen:\\
 \lstinline{SELECT * FROM items WHERE embedding <#> '[3,1,2]' < 0.5;}
 
+\paragraph{Technische Eigenschaften}
 Der Datentyp $vector(l)$ speichert einen Vektor mit $l$ Dimensionen als geordnete 
 Liste von Gleitkommazahlen. Für den $vector$-Typ unterstützt pg\_vector dabei bis 
 zu 2.000 Dimensionen \cite{githubGitHubPgvectorpgvector}. Da das in dieser Arbeit 
-eingesetzte Embedding-Modell \\ \texttt{sentence-transformers/all-MiniLM-L6-v2} 
+eingesetzte Embedding-Modell \texttt{sentence-transformers/all-MiniLM-L6-v2} 
 Vektoren mit 384 Dimensionen erzeugt, liegt die Dimensionalität deutlich unterhalb 
-dieser Grenze. Für die Ähnlichkeitssuche stellt die Erweiterung zwei Indexstrukturen 
-bereit: IVFFlat und HNSW. IVFFlat unterteilt den Vektorraum in Listen und durchsucht 
-bei einer Anfrage nur eine Teilmenge davon. HNSW (Hierarchical Navigable Small World) 
-baut einen mehrschichtigen Graphen über die Vektoren auf und bietet im Vergleich zu 
-IVFFlat eine bessere Query-Performance hinsichtlich des Speed-Recall-Tradeoffs, 
-benötigt jedoch mehr Speicher und längere Aufbauzeiten 
-\cite{githubGitHubPgvectorpgvector}. Aus Performancegründen kommt in dieser Arbeit 
-ein HNSW-Index auf der Kosinus-Distanz zum Einsatz:
+dieser Grenze. Für die Ähnlichkeitssuche stellt die Erweiterung zwei 
+Indexstrukturen bereit: IVFFlat und HNSW. IVFFlat unterteilt den Vektorraum in 
+Listen und durchsucht bei einer Anfrage nur eine Teilmenge davon. HNSW 
+(Hierarchical Navigable Small World) baut einen mehrschichtigen Graphen über die 
+Vektoren auf und bietet im Vergleich zu IVFFlat eine bessere Query-Performance 
+hinsichtlich des Speed-Recall-Tradeoffs, benötigt jedoch mehr Speicher und längere 
+Aufbauzeiten \cite{githubGitHubPgvectorpgvector}. Aus Performancegründen kommt in 
+dieser Arbeit ein HNSW-Index auf der Kosinus-Distanz zum Einsatz:\\
 \lstinline{CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops);}
 
+\paragraph{Limitierungen}
+Trotz der genannten Vorteile weist PostgreSQL in Kombination mit pg\_vector 
+gegenüber dedizierten Vektordatenbanken einige Einschränkungen auf. Da PostgreSQL 
+als relationales Datenbanksystem konzipiert ist, sind Vektoroperationen nicht der 
+primäre Anwendungsfall, sondern werden durch eine Erweiterung nachgerüstet. Der 
+HNSW-Index ermöglicht zwar eine schnelle Ähnlichkeitssuche, liefert jedoch nur 
+approximative Ergebnisse und tauscht dabei Recall gegen Geschwindigkeit ein 
+\cite{githubGitHubPgvectorpgvector}. Wie die Benchmark-Messungen von ANN-Benchmarks 
+für pgvector zeigen, sinkt der Durchsatz bei steigendem Recall über alle getesteten 
+Datensätze hinweg erheblich (siehe Abb.~\ref{fig:ann_recall}). Bei einem Recall 
+nahe 1,0 reduziert sich die Anzahl der Abfragen pro Sekunde gegenüber niedrigeren 
+Recall-Werten um ein Vielfaches \cite{annbenchmarksPgvector}. Die Datensätze 
+entstammen zwar anderen Domänen, der grundlegende Tradeoff zwischen Recall und 
+Durchsatz ist jedoch unabhängig vom Anwendungsfall.
 
-Tabelle~\ref{tab:vektordatenbanken} fasst die Evaluation der drei Kandidaten 
-anhand der definierten Anforderungen zusammen.
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/pgvector.png}
+    \caption{Recall-Queries-per-second-Tradeoff von pgvector über verschiedene 
+             Benchmark-Datensätze \cite{annbenchmarksPgvector}}
+    \label{fig:ann_recall}
+\end{figure}
+
+Zudem ist der $vector$-Typ beim Einsatz von Indizes auf 2.000 Dimensionen begrenzt 
+\cite{githubGitHubPgvectorpgvector}, was bei leistungsstarken Embedding-Modellen 
+mit höherer Dimensionalität eine Einschränkung darstellen kann. Der erhöhte 
+Speicherbedarf und die längeren Aufbauzeiten des HNSW-Index 
+\cite{githubGitHubPgvectorpgvector} fallen im Kontext dieser Arbeit jedoch kaum 
+ins Gewicht, da die verarbeiteten Log-Datensätze überschaubar sind und das 
+eingesetzte Modell lediglich 384 Dimensionen erzeugt.
+
+\paragraph{Fazit}
+Die Wahl von PostgreSQL mit pg\_vector stellt damit eine pragmatische Entscheidung 
+dar: Sie erfüllt alle definierten Anforderungen mit geringem Betriebsaufwand, auch 
+wenn dedizierte Vektordatenbanken bei reinen Vektoroperationen im großen Maßstab 
+performanter wären. Tabelle~\ref{tab:vektordatenbanken} fasst die Evaluation der 
+drei Kandidaten anhand der definierten Anforderungen zusammen.
 
 \begin{table}[h]
     \centering
     \begin{tabular}{lccc}
         \hline
-        \textbf{Kriterium} & \textbf{Qdrant} & \textbf{Milvus} & \textbf{PostgreSQL + pg\_vector} \\
+        \textbf{Kriterium} & \textbf{Qdrant} & \textbf{Milvus} & 
+        \textbf{PostgreSQL + pg\_vector} \\
         \hline
         Schwellwert-basierte Suche & $\times$ & $\times$ & \checkmark \\
         Metadatenspeicherung       & \checkmark & \checkmark & \checkmark \\
         On-Premises-Betrieb        & \checkmark & \checkmark & \checkmark \\
         \hline
     \end{tabular}
-    \caption{Vergleich der evaluierten Vektordatenbanken anhand der Auswahlkriterien}
+    \caption{Vergleich der evaluierten Vektordatenbanken anhand der 
+             Auswahlkriterien}
     \label{tab:vektordatenbanken}
 \end{table}
 
 
-
-Milvus\footnote{Offizielle Seite von Milvus: https://milvus.io/} ist eine weitere Open-Source-Datenbank für das Handling von Vektoren. Sie lässt sich On-Premises installieren und speichert Metadaten zusammen mit den Vektoren. Bei Abfragen von Vektoren begrenzt jedoch auch hier eine maximale Anzahl von Ergebnissen die Ausgabe, ähnlich wie bei Qdrant \footnote{Hier ist die Dokumentation der Query API von Milvus: https://milvus.io/docs/single-vector-search.md}.
-Da PostgreSQL in Kombination mit pg\_vector alle drei Kriterien erfüllt, fällt die Wahl auf diese Datenbank.
+% Milvus\footnote{Offizielle Seite von Milvus: https://milvus.io/} ist eine weitere Open-Source-Datenbank für das Handling von Vektoren. Sie lässt sich On-Premises installieren und speichert Metadaten zusammen mit den Vektoren. Bei Abfragen von Vektoren begrenzt jedoch auch hier eine maximale Anzahl von Ergebnissen die Ausgabe, ähnlich wie bei Qdrant \footnote{Hier ist die Dokumentation der Query API von Milvus: https://milvus.io/docs/single-vector-search.md}.
+% Da PostgreSQL in Kombination mit pg\_vector alle drei Kriterien erfüllt, fällt die Wahl auf diese Datenbank.
 
 
 \section{Ähnlichkeitsmetriken: Kosinus-Ähnlichkeit im Vektorvergleich}
