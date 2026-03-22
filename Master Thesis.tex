@@ -37,14 +37,12 @@
 \input{preambel/settings}
 \input{preambel/preambel}
 
-\author{Max Musterman}
+\author{Maximilian Vater}
 \thesis{Bachelor Thesis}
-%\thesis{Master Thesis}
-\title{Titel der Abschlussarbeit}
+\title{Evaluierung von algorithmischen und vektor-basierten Verfahren für kontinuierliches Log-Clustering und deren Umsetzung in einem Log-Analysesystem}
 \academicTitle{Bachelor of Science}
-%\academicTitle{Master of Science}
-\firstReferee{Prof. Dr. Tim Mustermann}
-\secondReferee{Prof. Dr. Max Häuser}
+\firstReferee{Prof. Dr. Hagen Lauer}
+\secondReferee{-}
 
 %
 %%%% Neue Befehle
@@ -59,6 +57,13 @@
 \usepackage{listings}
 \usepackage{tcolorbox}
 \usepackage{xcolor} % Für Farbdefinitionen
+\usepackage{amsfonts}
+\usepackage{amsthm} 
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{mdframed}
+
+
 
 % Globale Einstellungen für alle listings
 \lstset{
@@ -95,6 +100,9 @@
 % Nicht vergessen zu Entfernen wenn alles Fertig:
 %\listoftodos
 
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+
 % Abstract - Kurzfassung der Arbeit ohne Wertung
 \input{content/00_Abstract}
 \cleardoublepage
@@ -108,8 +116,8 @@
 % Hauptteil
 \mainmatter
 \input{content/01_Einfuehrung}
-\input{content/02_Hintergrund}
-\input{content/03_Konzept}
+\input{content/02_clustern_ml}
+\input{content/03_vector_clustering}
 \input{content/04_Realisierung}
 \input{content/05_Abschluss}
 

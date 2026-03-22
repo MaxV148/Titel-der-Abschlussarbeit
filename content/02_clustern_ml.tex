@@ -1,0 +1,138 @@
+
+
+\chapter{Clustern mit Machine Learning Algorithmen}
+
+Zunächst betrachtet die Analyse Algorithmen aus dem Bereich des Machine Learning. Im Fokus stehen insbesondere die Cluster-Algorithmen DBSCAN, k-Means und Drain. Diese Algorithmen sind für produktive Anwendungen interessant, da freie und quelloffene Bibliotheken wie scikit-learn stabile und getestete Implementierungen bereitstellen.
+
+Die Clusteranalyse mittels Machine-Learning-Algorithmen unterteilt sich in zwei Bereiche: partitionierende Verfahren wie K-Means und dichtebasierte Verfahren wie DBSCAN. Der folgende Abschnitt erläutert, warum sich partitionierende Verfahren für die kontinuierliche Log-Gruppierung weniger eignen.
+
+\section{Numerische Textrepräsentation für maschinelle Verarbeitung}
+Für die nachfolgende Verarbeitung ist es zunächst erforderlich, den Text in eine numerische Darstellung zu überführen. Hierbei stehen verschiedene Verfahren zur Auswahl, die sich hinsichtlich ihrer Komplexität und der Art der Informationserfassung unterscheiden.
+
+\subsection{Bag-of-Words: Vorteile und Grenzen dimensionaler Vektorräume}
+
+Ein grundlegender Ansatz ist das Bag-of-Words-Modell.\footnote{Der Artikel von IBM klärt über das Bag-of-Words-Modell auf: \url{https://www.ibm.com/de-de/think/topics/bag-of-words} (Zugriff: \today)} . Es basiert auf der Konstruktion eines Vektorraums, in dem jedes eindeutige Wort, das im Textkorpus vorkommt, eine eigene Dimension bildet. Umfasst das Vokabular beispielsweise n unterschiedliche Wörter, so weist der resultierende Vektorraum ebenfalls n Dimensionen auf. Innerhalb dieses mehrdimensionalen Raums wird jedes Textdokument als einzelner Datenpunkt verortet. Die Position des Punktes entlang einer bestimmten Achse (Dimension) wird dabei durch die Häufigkeit des entsprechenden Wortes im Dokument bestimmt. Das bedeutet, dass Begriffe, die besonders oft auftreten, einen stärkeren Einfluss auf die Positionierung des Dokuments im Vektorraum haben. Dies führt insbesondere bei umfangreichen Textsammlungen zu einer sehr hohen Dimensionalität, die sowohl Chancen als auch Herausforderungen für die weiterführende Analyse mit sich bringt. 
+
+
+Risiken sind dabei:
+\begin{itemize}
+    \item Überanpassung (Overfitting): Wenn ein Dokument aus vielen unterschiedlichen Wörtern besteht, werden die Vektorräume sehr groß (viele Dimensionen), das führt zu Performance einbüßen und hohen Speicherverbrauch. 
+    \item Verlust von Zusammenhängen: Je höher die Dimensionen durch Einzelwörter, desto schwieriger wird es ohne Zusatztechniken, semantische Zusammenhänge (Wort-Korrelationen) zu erkennen.
+\end{itemize}
+
+Daraus ergeben sich folgende Chancen. 
+\begin{itemize}
+    \item Feingranulare Informationen: Durch die hohe Dimensionalität geht kein Wort verloren.
+    \item Einfachheit \& Effektivität: Trotz der hohen Dimensionen ist das Modell durchaus effektiv für Aufgaben wie Dokumentenklassifizierung (zum Beispiel Spam-Filter)
+\end{itemize}
+Eine wesentliche Einschränkung dieses Modells liegt zudem in der Vernachlässigung der Syntax. Da das Modell die grammatikalische Struktur und die Reihenfolge der Wörter ignoriert, gehen im Zuge der Abstraktion teilweise semantische Zusammenhänge verloren. Dieser Punkt ist bei Lognachrichten jedoch weniger relevant, da sich darin oft keine oder nur wenige semantische Zusammenhänge ergeben. 
+
+\subsection{TF-IDF: Kontextbezogene Gewichtung technischer Log-Terme}
+
+
+Im Kontext klassischer Algorithmen hat sich zur Realisierung einer ressourcenschonenden und zugleich präzisen Gewichtung das TF-IDF-Maß etabliert. Diese statistische Methode quantifiziert die Relevanz eines einzelnen Wortes innerhalb eines Dokuments in Relation zur gesamten Dokumentenkollektion.Ein wesentlicher Vorteil dieses Verfahrens liegt in der Überwindung der Schwächen reiner Häufigkeitszählungen: Während allgemein häufige Begriffe in ihrer Gewichtung herabgestuft werden, erfahren seltene, aber inhaltlich signifikante Terme – wie beispielsweise spezifische Fehlercodes – eine stärkere Gewichtung.Basis dieser Berechnung ist die sogenannte „Term Frequency“, welche die Häufigkeit eines Wortes in einem betrachteten Dokument beschreibt. Formal lässt sich dies wie folgt darstellen:
+\footnote{Die Informationen zu TF-IDF stammen aus \cite{jm3} Kapiel 11: Information Retrieval and Retrieval-Augmented Generation}:
+
+\begin{equation}
+  \text{tf}_{t,d} = 
+  \begin{cases} 
+    1 + \log_{10} \text{count}(t,d) & \text{if } \text{count}(t,d) > 0 \\
+    0 & \text{otherwise}
+  \end{cases}
+\end{equation}
+
+Die Logarithmusfunktion vermeidet eine übermäßige Gewichtung von Wörtern mit hoher Vorkommensfrequenz. Der zweite Teil des Tf-IDF heißt IDF (Inverse Document Frequency) \cite{jm3}:
+\begin{equation}
+  \text{idf}_t = \log_{10} \frac{N}{\text{df}_t}
+\end{equation}
+Die IDF reduziert die Gewichtung von Wörtern, die in vielen Dokumenten auftreten, und verstärkt seltene Wörter. Dies trägt zur differenzierten Gewichtung einzelner Wörter bei.Das ist besonders praktisch bei der Verarbeitung von Log-Nachrichten, da dort viele technische Wörter vorkommen, denen jedoch nicht automatisch überdurchschnittlich viel Bedeutung zugesprochen werden muss. Diese ausgewogene Verarbeitung von Text ist der Grund für die weitere Verwendung zum Vektorisieren und Verarbeiten der Log-Nachrichten mit Methoden des maschinellen Lernens.
+
+\subsection{Semantische Textmodelle: Kontextuelle Vektorisierung durch Embeddings}
+Ein zentraler Baustein der modernen Sprachverarbeitung sind Embeddings – Vektorrepräsentationen, die die Bedeutung von sprachlichen Einheiten direkt aus deren Verteilung in Textdaten erlernen. Dieser Ansatz, der als Vektorsemantik bezeichnet wird, basiert auf der Distributionshypothese\footnote{Mehr dazu aus \cite{jm3} Kapitel 5 Embeddings}, nach der Wörter oder Texte, die in ähnlichen Kontexten auftreten, auch eine ähnliche Bedeutung tragen. Technisch betrachtet wird dabei jeder Text als Punkt in einem mehrdimensionalen semantischen Raum abgebildet. Die Stärke dieses Verfahrens liegt darin, dass semantische Ähnlichkeit in mathematische Distanz übersetzt wird: Je näher zwei Vektoren in diesem Raum beieinander liegen, desto ähnlicher ist ihre inhaltliche Bedeutung.
+Während klassische Ansätze oft statische Embeddings für einzelne Wörter generieren, ist es für die Verarbeitung ganzer Textpassagen notwendig, den Kontext dynamisch zu erfassen.\footnote{\cite{jm3} Kapitel 5.5} Zur praktischen Vektorisierung der Eingabedaten wird daher auf das Framework \texttt{sentence-transformers (SBERT)\footnote{Webseite der Python Bibliotek: \url{https://www.sbert.net/} (Zugegriffen: \today)}} zurückgegriffen (vgl. sbert.net). Dieses Framework ermöglicht die Generierung von Satz-Embeddings, die speziell für semantische Ähnlichkeitsvergleiche optimiert sind.
+Konkret kommt in dieser Arbeit das vortrainierte Modell \texttt{sentence-transformers/all-MiniLM-L6-v2} zum Einsatz. Die Wahl fiel auf dieses Modell, da es eine optimale Ausgewogenheit zwischen der Vektorlänge (hier 384 Dimensionen) und der Verarbeitungsgeschwindigkeit (Inferenzzeit) bietet. Dies gewährleistet eine ressourcenschonende Berechnung, die dennoch eine hohe Präzision bei der Abbildung semantischer Zusammenhänge aufweist. Das gewählte Modell wurde mit verschiedenen Datensätzen angelernt, darunter auch ein großer Anteil an Code von Programmiersprachen. Zu den angestrebten Verwendungen dieses Modells zählt auch das Clustering von Text. Dabei ist jedoch zu beachten, dass das Modell eine maximale Wortlänge von 256 Zeichen hat. Alles, was darüber hinausgeht, wird abgeschnitten.\footnote{\url{https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2} erläutert alle Details zu praktischen Verwendung des Modells} In den späteren Experimenten und Tests zur Gruppierung von Lognachrichten werden die Embedding-Modelle nur für die Verarbeitung mit Vektordatenbanken \ref{clustern_mit_vek} genutzt, da die nachfolgenden Ansätze mit Machine-Learning-Algorithmen sehr leichtgängig sind und durch die aufwendigere Vorverarbeitung ausgebremst werden würden. 
+
+\section{k-Means: Partitionierendes Clustering und dessen Einschränkungen}
+Nachdem die Nutzung der passenden Textvektorisierung geklärt ist, werden im Folgenden die Algorithmen zum Gruppieren bzw. Clustern der Log-Nachrichten beschrieben.
+
+Der K-Means-Clusteralgorithmus umfasst drei Schritte. Die Nutzung erfordert zunächst die Wahl eines Wertes für k.
+
+\begin{enumerate}
+    \item Der Algorithmus bestimmt zunächst K Masseschwerpunkte im Datensatz. Diese Schwerpunkte heißen Centroide $c(k)$ für $k = 1$ bis $K$.
+    \item Im zweiten Schritt berechnet er für jeden Vektor $x^n$ die Distanz zu den $K$ Masseschwerpunkten. Die Distanzfunktion hängt von der Problemstellung ab. Oft nutzt man die euklidische Distanz \cite{Wilmott2020-rx}:
+    \begin{equation}
+      \text{Distanz}^{(n,k)} = \sqrt{ \sum_{m=1}^{M} \left( x_m^{(n)} - c_m^{(k)} \right)^2 } \quad \text{für } k=1 \text{ bis } K
+    \end{equation}
+    Jeder Datenpunkt erhält den nächstgelegenen Masseschwerpunkt als Zuordnung.
+    \item Für jedes entstandene Cluster berechnet der Algorithmus den Mittelwert, wodurch die Centroide in die Nähe des Cluster-Mittelpunktes rücken. Die Schritte 2 und 3 wiederholen sich bis zur Konvergenz.
+\end{enumerate}
+Die Auswahl der Zahl $K$ ist essenziell für das Clustering.
+Der manuelle Aufwand bei einem System, das periodisch neue Logs einliest, ist jedoch zu hoch. Selbst eine Automatisierung mittels der Elbow-Methode zur Bestimmung von K erforderte bei jedem Durchlauf eine Neuberechnung. Zudem ist die Anzahl der Loggruppen im Voraus unbekannt. Deshalb ist ein Cluster-Algorithmus erforderlich, der ohne feste Eingabeparameter wie K auskommt.
+
+\section{DBSCAN: Flexibles, dichtebasiertes Clustering ohne vordefinierte Cluster-Anzahl}
+
+Der DBSCAN-Algorithmus gehört zu den dichtebasierten Clusterverfahren. Anders als k-Means benötigt er keinen Parameter k, was eine flexiblere Log-Gruppierung ermöglicht. DBSCAN definiert einen Cluster als dichte Region aus Datenpunkten, getrennt durch Bereiche geringerer Dichte. Der Algorithmus unterteilt Datenpunkte in drei Kategorien: Kernpunkte, Grenzpunkte und Rauschpunkte. Eine dichte Region definiert sich als Radius $\varepsilon$ um einen Punkt $x  \in \mathbb{R}^d$ \cite{Mohammed_Wagner_2020}:
+\begin{equation}
+    N_{\epsilon}(\mathbf{x}) = B_{d}(\mathbf{x}, \epsilon) = \{ \mathbf{y} \mid \| \mathbf{x} - \mathbf{y} \| \leq \epsilon \}
+\end{equation}
+Dabei bezeichnet $\| \mathbf{x} - \mathbf{y} \|$ die euklidische Distanz, ersetzbar durch andere Distanzfunktionen. Der Parameter $\epsilon$ gibt den Radius an. Zusätzlich definiert der Wert $minpts$ einen Schwellwert: Eine Anzahl von Punkten innerhalb eines Radius $\epsilon$ gilt ab diesem Wert als relevant. Ein Datenpunkt $x \in D$ heißt Kernpunkt, wenn er mindestens $minpts$ Nachbarn im Radius $\epsilon$ besitzt. Hat ein Punkt weniger Nachbarn, gilt er als Grenzpunkt. Liegt ein Datenpunkt zwar in Reichweite, aber nicht im $\epsilon$-Radius eines Kernpunktes, ist er ein Rauschpunkt. DBSCAN arbeitet in folgenden Schritten \cite{geeksforgeeksDBSCANClustering}:
+\begin{enumerate}
+    \item Kernpunkte identifizieren: Für jeden Datenpunkt $x \in D$ zählt der Algorithmus die Punkte innerhalb des Radius $\epsilon$. Übersteigt die Anzahl $minpts$, gilt der Punkt als Kernpunkt.
+    \item Jeder noch nicht zugeordnete Kernpunkt bildet ein neues Cluster. Anschließend sucht der Algorithmus rekursiv nach allen dichte-verbundenen Punkten innerhalb des Radius $\epsilon$ und ordnet diese dem Cluster zu. Zwei Punkte $x$ und $y$ sind dichte-verbunden, wenn eine Kette von Punkten innerhalb des Radius $\epsilon$ existiert, von denen mindestens einer ein Kernpunkt ist.
+    \item Alle Punkte ohne Cluster-Zugehörigkeit gelten als Rauschpunkte.
+\end{enumerate}
+
+\section{MinHash und LSH: Probabilistische Verfahren für skalierbare Ähnlichkeitssuchen}
+
+Eine weitere Möglichkeit, Lognachrichten effizient zu gruppieren, ist der Einsatz von probabilistischen Algorithmen und Datenstrukturen, wie MinHash und LSH (Locality Sensitive Hashing). Diese Verfahren opfern ein geringes Maß an Präzision, um im Gegenzug die Berechnungszeit für das Finden ähnlicher Datenpunkte massiv zu reduzieren.
+
+Die Praxistauglichkeit und Skalierbarkeit dieses Verfahrens zeigt sich eindrucksvoll in etablierten Big-Data-Anwendungen. Ein klassisches Einsatzgebiet ist die Erkennung von Dokumentenähnlichkeiten (Near-Duplicate Detection). Nachrichtenaggregatoren nutzen solche Verfahren beispielsweise, um verschiedene Publikationen desselben Ursprungsartikels zu bündeln. Selbst wenn der Kerntext durch redaktionelle Kürzungen, hinzugefügte Absätze oder das umgebende Webseiten-Layout (wie Werbung und Logos) abgewandelt wurde, lässt sich die textuelle Verwandtschaft effizient ermitteln, ohne einen exakten Abgleich durchführen zu müssen.\footnote{\cite{Leskovec2020Mining} Kapitel 3.1.2} \\
+Ein weiteres prominentes Anwendungsfeld liegt im Bereich der Empfehlungssysteme (Collaborative Filtering), wie sie im großflächigen E-Commerce eingesetzt werden. Hier dienen Verfahren wie MinHash und LSH dazu, Millionen von Kundenprofilen oder Artikeln anhand ihrer Kaufhistorien abzugleichen.  Grundlage hierfür ist oft die Jaccard-Ähnlichkeit, die das Verhältnis von gemeinsamen zu gesamten Eigenschaften misst. Bemerkenswert ist dabei, dass je nach Kontext bereits eine verhältnismäßig geringe Schnittmenge (beispielsweise 20 \%) ausreichen kann, um aussagekräftige Cluster von Nutzern mit ähnlichen Präferenzen zu bilden.\footnote{\cite{Leskovec2020Mining} Kapitel 3.1.3}
+
+Die Fähigkeit – das schnelle, ressourcenschonende Auffinden von strukturellen und inhaltlichen Überschneidungen in massiven, teils unübersichtlichen Datenmengen – macht MinHash und LSH zu einem geeigneten Kandidaten für die Gruppierung von Lognachrichten.
+
+
+\section{Shingling: Transformation von Textnachrichten in Mengen}
+Um die Lognachrichten für die Verarbeitung mit MinHash und LSH nutzbar zu machen, ist eine Überführung der Zeichenketten in mathematische Mengen (Sets) erforderlich. Ein etabliertes Verfahren hierfür ist das Shingling. Dabei wird ein Dokument formal als kontinuierliche Zeichenkette betrachtet. Ein $k$-Shingle definiert sich folglich als ein beliebiger Teilstring der Länge $k$, der innerhalb dieses Dokuments auftritt. Jedes Dokument lässt sich somit durch die Menge der in ihm vorkommenden $k$-Shingles repräsentieren. \\
+Betrachtet man zur Veranschaulichung das Dokument mit der Zeichenfolge „abcdabd“ und wählt $k$=2, so ergibt sich die Menge der 2-Shingles zu {ab, bc, cd, da, bd}. Hierbei ist zu beachten, dass der Teilstring „ab“ im Ursprungsdokument zwar zweimal vorkommt, in der resultierenden Repräsentation jedoch nur einmal als Element aufgenommen wird. Das Verfahren erzeugt somit eine mathematische Menge (Set) und keine Multimenge, in der die Frequenz der Shingles gezählt würde. Zur Optimierung der Datenqualität empfiehlt es sich zudem, aufeinanderfolgende Whitespace-Zeichen wie Leerzeichen, Tabulatoren oder Zeilenumbrüche im Vorfeld durch ein einzelnes Leerzeichen zu ersetzten.\footnote{\cite{Leskovec2020Mining} Kapitel 3 Beispiel 3.3} Das stellt sicher, dass Shingles, die Wortgrenzen überschreiten, konsistent gebildet und erkannt werden.\\
+Ein entscheidender Faktor für die Qualität der Repräsentation ist die Wahl der Konstante $k$. Wird der Wert für $k$ zu klein gewählt, wie beispielsweise im Extremfall k=1, würden die resultierenden Mengen lediglich die im Dokument vorhandenen Einzelzeichen abbilden. Dies hätte zur Folge, dass nahezu alle Dokumente eine fälschlich hohe Ähnlichkeit aufweisen würden, da sie aus demselben grundlegenden Zeichenvorrat bestehen, selbst wenn sie keinerlei gemeinsame Wörter oder Phrasen teilen. Der Parameter k muss daher so groß gewählt sein, dass die Wahrscheinlichkeit für das Auftreten eines spezifischen Shingles in einem beliebigen Dokument ausreichend gering ist.\footnote{\cite{Leskovec2020Mining} Kapitel 3.3.2}\\
+Die optimale Größe hängt dabei von der durchschnittlichen Länge der zu verarbeitenden Dokumente sowie der Vielfalt des verwendeten Zeichensatzes ab. Nimmt man beispielsweise an, dass ein Textkorpus wie E-Mails ausschließlich aus 26 Buchstaben und einem Leerzeichen besteht, ergäben sich für $k$=5 theoretisch 275 (etwa 14,3 Millionen) mögliche Shingles. Da eine durchschnittliche Nachricht weitaus weniger Zeichen umfasst, ist ein Wert von k=5 für solche Anwendungsfälle in der Regel zielführend. In der Praxis ist die Berechnung jedoch komplexer, da Zeichen in Texten nicht mit exakt gleicher Wahrscheinlichkeit auftreten. Gängige Buchstaben und Leerzeichen dominieren, während andere Zeichen äußerst selten sind. Daraus resultiert, dass auch kurze Texte viele 5-Shingles aus häufigen Buchstabenketten aufweisen können. Als verlässliche Faustregel gilt daher die Annahme eines reduzierten, effektiven Alphabets von 20 Zeichen, woraus sich eine Schätzung von $20^k$ möglichen Shingles ableitet. Während für kürzere Textdokumente ein $k$-Wert von 5 oft gut funktioniert, wird für sehr umfangreiche Dokumente, wie etwa wissenschaftliche Artikel, ein Wert von $k$=9 als sicher erachtet\footnote{\cite{Leskovec2020Mining} Kapitel 3.3.2}.
+
+\section{Die Jaccard-Ähnlichkeit als Vergleichsmetrik}
+Nachdem die Lognachrichten durch das Shingling-Verfahren in repräsentative Mengen überführt wurden, bedarf es einer mathematischen Metrik, um den Grad ihrer Übereinstimmung festzustellen. Da es sich um Mengen und nicht mehr um hochdimensionale Vektorräume handelt, kommt anstelle von Vektordistanzen die Jaccard-Ähnlichkeit zum Einsatz.
+Die Jaccard-Ähnlichkeit zweier Mengen $S$ und $T$ berechnet sich aus dem Quotienten der Größe ihrer Schnittmenge (Intersection) und der Größe ihrer Vereinigungsmenge (Union). Formal wird dieser Ähnlichkeitswert der Mengen S und T durch die Notation SIM(S,T) ausgedrückt. Mathematisch lässt sich diese Beziehung durch die folgende Gleichung darstellen\footnote{Definition und näheres in \cite{Leskovec2020Mining} Kapitel 3.1.1}:
+\begin{equation}
+SIM(S, T) = \frac{|S \cap T|}{|S \cup T|}
+\end{equation}
+
+Dieses Verhältnis liefert einen normierten Wert, der ausdrückt, wie groß der Anteil der gemeinsamen Elemente an der Gesamtheit aller vorhandenen Elemente beider Mengen ist.
+
+\section{MinHashing: Dimensionsreduktion durch Signaturbildung}
+Das Ziel von MinHashing ist es, die im Shingling-Schritt erzeugten Mengen in kompakte Signaturen fester Länge umzuwandeln, ohne die zugrunde liegende Jaccard-Ähnlichkeit maßgeblich zu verfälschen. Durch diese Dimensionsreduktion sinkt der Rechenaufwand für den Abgleich zweier Lognachrichten von einer aufwendigen mengenbasierten Operation auf einen simplen Array-Vergleich in $O(k)$. Stellt man sich die Datenbasis als boolesche Matrix vor, entsprechen die Zeilen dem gesamten Vokabular aller möglichen Shingles und die Spalten den einzelnen Lognachrichten. Ein Matrixeintrag ist 1, sofern das Shingle in der Nachricht existiert, andernfalls 0.Der MinHash-Algorithmus permutiert die Zeilen dieser Matrix zufällig. Für jede Spalte wird anschließend der Index der ersten Zeile gespeichert, die den Wert 1 enthält. Die Wahrscheinlichkeit, dass zwei Spalten nach einer zufälligen Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer Jaccard-Ähnlichkeit. Um robuste Schätzungen zu erhalten, wird dieser Vorgang $k$-mal wiederholt, wodurch eine Signatur der Länge $k$ entsteht.
+
+\section{Locality-Sensitive Hashing (LSH): Skalierbares Bucket-Clustering}
+Während MinHashing die Jaccard-Ähnlichkeit zweier Lognachrichten auf einen kompakten Signaturvergleich reduziert, löst es das eigentliche Skalierungsproblem noch nicht vollständig: Bei n Lognachrichten sind immer noch O(n²) paarweise Signaturvergleiche erforderlich. Locality-Sensitive Hashing (LSH) setzt genau hier an und reduziert diesen Aufwand durch eine gezielte Hashstrategie drastisch. Das grundlegende Prinzip kehrt das klassische Ziel von Hash-Funktionen um – statt Kollisionen zu vermeiden, werden sie gezielt herbeigeführt: Ähnliche Signaturen sollen mit hoher Wahrscheinlichkeit in denselben Bucket fallen, unähnliche hingegen nicht.
+
+In der konkreten Umsetzung, dem sogenannten Banding-Verfahren, wird die MinHash-Signaturmatrix horizontal in $b$ gleich große Bänder (\textit{bands}) unterteilt, die jeweils $r$ Zeilen umfassen. Jeder Band-Teilvektor einer Signatur wird anschließend durch eine separate Hash-Funktion einem Bucket zugeordnet. Zwei Lognachrichten gelten als Kandidatenpaar, sobald ihre Teilsignaturen in mindestens einem Band in denselben Bucket fallen. Die Wahrscheinlichkeit, dass zwei Signaturen mit der Jaccard-Ähnlichkeit $s$ als Kandidaten erkannt werden, berechnet sich zu $1 - (1 - s^r)^b$ \footnote{\cite{Leskovec2020Mining} Kapitel: 3.4.2 Analysis of the Banding Technique}. Durch Variation der Parameter $b$ und $r$ lässt sich diese Schwellwertkurve präzise steuern, sodass der Übergang von „kein Kandidat" zu „Kandidat" einem annähernden Stufensprung gleicht. Dadurch reduziert sich die Kandidatenmenge von $\mathcal{O}(n^2)$ auf einen Bruchteil der Datenpunkte, ohne dass ähnliche Paare systematisch übersehen werden.
+
+\section{Drain3: Effizientes On-Demand-Parsing mittels Baumstrukturen}
+
+
+Im folgenden Abschnitt geht es um den Drain Online Log Parser, welcher in den algorithmischen Vergleichen durch die Python-Bibliothek drain3 \footnote{GitHub Repository zur Python Implementierung von drain: \url{https://github.com/logpai/Drain3}} genutzt wird. Die Bibliothek basiert auf dem Drain-Algorithmus. Die „3” im Namen zeigt an, dass es sich um eine Weiterentwicklung der Drain-Bibliothek handelt, welche für Python 3 optimiert wurde. Die Vorgänger-Bibliothek war für Python 2 entwickelt worden. 
+Drain ist in der Lage, Lognachrichten kontinuierlich zu verarbeiten und ihnen dabei ein Logcluster sowie ein Logtemplate zuzuordnen. Ein Online-Logparser wie drain3 kann Logs eines Systems „on-demand“ verarbeiten, er muss nicht vorher auf Daten angelernt werden. Dies geschieht durch einen internen Parse-Baum mit fester Tiefe (Fixed Depth Tree), welcher den Kern des Algorithmus bildet. Statt Lognachrichten erst über einen Zeitraum zu sammeln und nachträglich auszuwerten, leitet Drain jede neu eintreffende Nachricht direkt durch diese Baumstruktur, um sie effizient dem passenden Cluster zuzuordnen. Der Prozess lässt sich vereinfacht in vier Schritte unterteilen \footnote{Die Schritte stammen aus \cite{drain} III. METHODOLOGY}:
+
+\begin{enumerate}
+    \item Vorverarbeitung: Zunächst werden mittels einfacher regulärer Ausdrücke offensichtliche Variablen wie IP-Adressen oder Block-IDs aus der Lognachricht entfernt, um die Genauigkeit zu verbessern.
+    \item Suche nach Log-Länge: Auf der ersten Ebene des Baums sortiert Drain die Nachricht basierend auf ihrer Länge (Anzahl der Tokens). Die Annahme hierbei ist, dass Logs, die zum gleichen Event gehören, in der Regel auch die gleiche Anzahl an Wörtern besitzen.
+    \item Suche nach Anfangs-Tokens: Auf den tieferen Ebenen navigiert der Algorithmus anhand der ersten Wörter der Nachricht. Da Logzeilen oft mit konstanten Begriffen beginnen, führen diese Pfade effizient in die richtige Richtung. Um eine Explosion des Baumes zu verhindern, werden Tokens, die Ziffern enthalten, hierbei nicht als eigener Pfad angelegt, sondern generalisiert.
+    \item Ähnlichkeitsprüfung: Am Ende eines Pfades (im Blattknoten) befindet sich eine Liste potenzieller Loggruppen. Hier vergleicht Drain die neue Nachricht mit den dort gespeicherten Events. Wird ein passendes Template gefunden, wird die Nachricht der Gruppe hinzugefügt und das Template gegebenenfalls aktualisiert (z. B. durch Einfügen von Wildcards). Findet sich kein Match, erstellt Drain an dieser Stelle eine neue Loggruppe.
+\end{enumerate}
+
+Durch diese Struktur mit fester Tiefe vermeidet Drain, dass der Suchbaum zu tief und unbalanciert wird, was die hohe Geschwindigkeit bei gleichzeitiger Präzision ermöglicht.
+
+Für den praktischen Einsatz der Python-Bibliothek drain3 ist zudem ein Aspekt relevant, der über die theoretische Beschreibung im ursprünglichen Paper hinausgeht: die Persistenz des Log-Modells. Der Drain Algorithmus ist als reines In-Memory-Verfahren konzipiert, bei dem der Parse-Baum flüchtig im Arbeitsspeicher existiert und theoretisch bei jedem Systemstart neu aufgebaut werden müsste. Die drain3-Bibliothek erweitert diesen Ansatz jedoch um eine Speicherfunktion (\textit{Snapshotting}). Dies ermöglicht es, den kompletten internen Zustand des Baumes inklusive aller gelernten Templates und Cluster auf die Festplatte zu schreiben und bei einem Neustart wiederherzustellen. In der Praxis muss der Parser somit nicht jedes Mal bei null beginnen ("Cold Start"), sondern kann nahtlos auf das historische Wissen zugreifen und neue Lognachrichten sofort effizient in die bestehende Struktur integrieren.
+
+\section{Persistenz in Drain3: Zustandserhaltung des Parse-Baums}
+
+Die Persistenzmechanik innerhalb der \lstinline{TemplateMiner-Klasse} \ref{lst:template_miner_py} der Datei \\ \texttt{templateminer.py} gewährleistet die Dauerhaftigkeit des trainierten Modellzustands über Laufzeiten hinweg. Die Architektur sieht hierfür die Nutzung eines abstrakten PersistenceHandlers vor, der bei der Initialisierung des TemplateMiners optional übergeben wird. Ist ein solcher Handler definiert, initiiert das System beim Start automatisch den Versuch, einen bereits existierenden Zustand mittels der Methode \lstinline{load_state()} wiederherzustellen. Der eigentliche Speichervorgang wird durch die Methode \lstinline{save_state()} abgebildet. Dabei verwendet die Funktion \lstinline{save_state} das Modul \lstinline{jsonpickle}, das ganze Python-Objektgraphen in das JSON-Format überführen kann. \lstinline{jsonpickle} ist eine Serialisierungsbibliothek, die beliebige Python-Objekte in lesbares JSON umwandeln und auch wieder exakt in ihre ursprüngliche Objektinstanz zurückführen kann. Dies gelingt, indem das Modul automatisch Python-spezifische Metadaten wie Klassennamen, Variablen und deren Werte in das JSON einbettet. Dadurch können selbst komplexe, verschachtelte Strukturen wie der Drain-Parse-Baum ohne Informationsverlust gespeichert und beim Neustart nahtlos wiederhergestellt werden. Die Funktion \lstinline{load_state} liest den Zustand aus der abgespeicherten Datei ein und dekomprimiert den Inhalt, wenn vorher eine Komprimierung mit \lstinline{zlib} stattgefunden hat.  Anschließend wandelt \lstinline{JSONPickle.load()} den Zustand wieder in eine Instanz der Drain-Klasse zurück. Danach werden Felder wie \lstinline{id_to_cluster} gesetzt. Dabei handelt es sich um ein Schlüssel-Wert-Paar, welches die Zuordnung von der Cluster-ID und den Logcluster-Daten aus dem Template, der Cluster-Größe und der ID ermöglicht. Auch der \lstinline{cluster_count} wird wiederhergestellt, der anzeigt, wie viele Cluster schon gefunden wurden, sowie das \lstinline{root_node}, der Wurzelknoten des Baums zur Verarbeitung der Logs. 
+Die beiden Funktionen \lstinline{save_state()} und \lstinline{load_state()} stellen sicher, dass der Zustand des Parsers über einen Neustart hinweg gespeichert und wiederhergestellt werden kann. Durch die Implementierung als abstrakte Klasse bietet die Bibliothek viel Flexibilität, wie der Zustand des Systems gespeichert werden soll. Die Bibliothek kommt mit vorgefertigten PersistenceHandlern für Redis und Kafka, zwei Vertreter performanter Schlüssel-Wert-Datenbanken. 

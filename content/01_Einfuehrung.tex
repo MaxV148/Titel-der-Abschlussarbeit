@@ -1,17 +1,14 @@
 \chapter{Einführung}
-Software-Systeme stellen einen essenziellen Bestandteil der Wirtschaft dar und sind somit auch für den Endkunden von signifikanter Relevanz. Ein Ausfall, der sich auf einen kleinen Teil eines komplexen Systems beschränkt, kann katastrophale Auswirkungen auf Firmen und Privatpersonen haben. Ein Ausfall im DNS-System des Cloudanbieters AWS \cite{Staff_2025} veranschaulicht, dass bereits eine geringfügige Störung zu einer globalen IT-Problematik werden kann. Dies ist darauf zurückzuführen, dass eine Vielzahl von IT-Produkten auf Cloudlösungen basiert, was einen Ausfall dieser Systeme zu einem signifikanten Schaden führen kann. 
-Die DevOps-Bewegung \cite{bass2015devops} ist ein Phänomen, das in den letzten Jahren entstanden ist und das Ziel verfolgt, die Stabilität von Software während der Produktionsphase zu gewährleisten und eine zeitnahe Reaktion auf auftretende Fehler zu ermöglichen. Die Entwicklung und der Betrieb von Software sollten nicht mehr getrennt voneinander betrachtet werden, da eine Symbiose der beiden Aspekte zunehmend an Bedeutung gewinnt. 
-Logs des Systems spielen dabei eine wichtige Rolle, da sie durch ihren Inhalt und ihre Häufigkeit den Zustand der Software abbilden. Dabei kann man Logs, die dem unterliegenden System, dem Server, entspringen, von Lognachrichten aus der Software unterscheiden. Lognachrichten aus einem Linux-System folgen beispielsweise oft einem klaren Nachrichtenformat aus dem Syslog-Protokoll \cite{rfc5424}, was eine einfache Verarbeitung ermöglicht. 
+Software-Systeme sind ein essenzieller Bestandteil der Wirtschaft und besitzen hohe Relevanz für Endkunden. Bereits ein lokaler Ausfall in einem komplexen System kann katastrophale Folgen für Firmen und Privatpersonen haben. Ein Ausfall im DNS-System des Cloudanbieters AWS \cite{Staff_2025} zeigt, dass schon geringfügige Störungen zu globalen IT-Problemen führen. Da viele IT-Produkte auf Cloudlösungen basieren, verursachen Ausfälle dieser Systeme oft signifikante Schäden.
 
-Individuelle Lognachrichten aus einer selbst entwickelten Software folgen dagegen oft keinem festen Format, was die Weiterverarbeitung und Analyse erschwert. Um die große Menge an Log-Nachrichten verwalten und analysieren zu können, kann Open-Source-Software wie der sogenannte ELK-Stack genutzt werden. Dieser besteht aus drei Komponenten. Das „E“ steht für Elasticsearch, eine NoSQL-Datenbank, die Daten im JSON-Format speichert. „L“ steht für Logstash, eine Datenverarbeitungspipeline, die beispielsweise Lognachrichten aus verschiedenen Quellen an Elasticsearch sendet. „K“ steht für Kibana, eine Weboberfläche zur Visualisierung der Daten. 
-Kibana eignet sich zwar grundsätzlich gut, um nach dem Auftreten von Lognachrichten zu suchen, aber es bleibt ein Problem. Viele Logs unterscheiden sich lediglich durch unterschiedliche Metadaten wie Zeitstempel, IP-Adressen und variable Teile in der Nachricht selbst, sagen aber das Gleiche aus. Die Beispiele zeigen, dass beide Log-Nachrichten über ein Verbindungsproblem mit dem MySQL-Server berichten. Somit könnte man diese Logs einer Gruppe zuordnen. Das Gruppieren solcher Logs kann auf verschiedene Weise erfolgen. Eine Möglichkeit sind reguläre Ausdrücke (Regex), mit denen sich die variablen Teile herausfiltern lassen, um so Gruppen zu bilden. Der Vorteil dieses Verfahrens ist die Flexibilität, da man sehr individuell nach Log-Nachrichten suchen kann. Ein Nachteil dieser Arbeitsweise ist der große manuelle Aufwand, die Regex-Liste zu pflegen, wenn beispielsweise neue Logs im System auftreten. Eine andere Möglichkeit wäre, Algorithmen zu nutzen, um den Text der Log-Nachrichten zu gruppieren. Dies ist der Gegenstand dieser Arbeit: Es soll eine Möglichkeit gefunden werden, Log-Nachrichten kontinuierlich zu gruppieren bzw. zu clustern, und das mit möglichst wenig manuellem Aufwand.
+Die in den letzten Jahren entstandene DevOps-Bewegung \cite{bass2015devops} zielt darauf ab, die Softwarestabilität in der Produktionsphase zu gewährleisten und zeitnahe Reaktionen auf Fehler zu ermöglichen. Entwicklung und Betrieb von Software gelten nicht mehr als getrennte Bereiche, da ihre Symbiose zunehmend an Bedeutung gewinnt.
 
 
 
-\section{Problembeschreibung/Motivation}
-
-Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. \cite{rfc5424}
-
+\section{Motivation: Herausforderungen der unstrukturierten Log-Analyse}
+System-Logs spielen dabei eine wichtige Rolle, da Inhalt und Häufigkeit den Softwarezustand abbilden. Dabei unterscheidet man zwischen Logs des unterliegenden Systems (Server) und Nachrichten der Software selbst. Linux-System-Logs folgen oft dem klaren Format des Syslog-Protokolls \cite{rfc5424}, was die Verarbeitung erleichtert.
+Individuelle Lognachrichten aus eigener Softwareentwicklung folgen hingegen oft keinem festen Format, was Weiterverarbeitung und Analyse erschwert. Zur Verwaltung und Analyse großer Log-Mengen eignet sich Open-Source-Software wie der ELK-Stack. Dieser besteht aus drei Komponenten: „E“ steht für Elasticsearch, eine NoSQL-Datenbank für JSON-Daten. „L“ bezeichnet Logstash, eine Pipeline, die Lognachrichten aus verschiedenen Quellen an Elasticsearch sendet. „K“ steht für Kibana, eine Weboberfläche zur Datenvisualisierung.
+Kibana eignet sich gut für die Suche nach Log-Nachrichten, löst jedoch ein zentrales Problem nicht: Viele Logs unterscheiden sich nur durch Metadaten wie Zeitstempel oder IP-Adressen, besitzen aber die gleiche Aussage.
 
 \begin{logbox}{Beispiel 1: Syslog Kernel Message}
 \begin{lstlisting}
@@ -26,29 +23,46 @@ Nov  6 09:11:05 servername sshd[12345]: Failed password for invalid user admin f
 \end{logbox}
 
 
+Die Beispiele veranschaulichen Log-Nachrichten, die ähnliche Ereignisse beschreiben. Eine Gruppierung solcher Logs ist sinnvoll. Dies gelingt beispielsweise mit regulären Ausdrücken (Regex), die variable Teile filtern und Gruppen bilden. Dieses Verfahren bietet Flexibilität bei der individuellen Suche, erfordert jedoch hohen manuellen Pflegeaufwand, etwa bei neuen Log-Typen. Alternativ gruppieren Algorithmen den Text der Log-Nachrichten automatisch. Diese Arbeit untersucht Möglichkeiten, Log-Nachrichten kontinuierlich und mit minimalem manuellen Aufwand zu clustern.
+
+\section{Zielsetzung: Entwicklung eines kontinuierlichen Clustering-Systems}
+Ziel dieser Arbeit ist die Entwicklung eines Systems, das Lognachrichten kontinuierlich clustert. Die Auswahl des Algorithmus basiert auf folgenden Kriterien:
+\begin{itemize}
+    \item Verarbeitung von 5000 Logs/Minute
+    \item Hohe Cluster-Qualität \footnote{Näheres zur Qualität der Cluster in \ref{Vorgensweise}}
+    \item Geringer Ressourcenverbrauch
+\end{itemize}
+Ein Vergleich diverser Algorithmen bestimmt die Auswahl.
+Das entwickelte System bietet eine benutzerfreundliche Weboberfläche und die Software ruft regelmäßig neue Logs aus Elasticsearch ab und verarbeitet sie. Eine Datenbank speichert Metadaten wie die Clusternummer sowie die Logs. Die Webseite stellt die Daten übersichtlich dar und ermöglicht die Suche nach Logs und Loggruppen.
 
 
-Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore \cite{miller2017chapter}  veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut \cite{website2021example}  odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.
 
-% Beispiel: Hinweisbox (kurze Tipps oder Zusammenfassungen)
-\begin{tcolorbox}[arc=3mm, boxrule=0pt, leftrule=4pt, left=10pt]
-Diese Art von Box eignet sich besonders gut, um zwischen sachlichen Abschnitten kurze Zusammenfassungen oder wichtige Hinweise einzufügen – etwa am Kapitelende oder zwischen methodischen Schritten.
-\end{tcolorbox}
+\section{Methodik: Evaluierung mittels ARI-Wert und V-Measure} \label{Vorgensweise}
 
-\section{Ziele dieser Arbeit}
+Nach dem Vergleich der vier Clustering-Algorithmen bewerten zwei Metriken die Qualität: der ARI-Wert \cite{gates2017impactrandommodelsclustering} (Adjusted Rand Index) und das V-Measure \cite{inproceedings}. Der ARI-Score ist eine verbreitete Metrik für Clustering-Ergebnisse. Er misst die Ähnlichkeit einer gefundenen Cluster-Einteilung mit einer Referenzeinteilung (Ground Truth). Als Weiterentwicklung des ursprünglichen Rand-Index (RI) korrigiert er den Zufallseffekt statistisch. Der ARI nutzt einen kombinatorischen Ansatz: Statt Cluster als Ganzes zu vergleichen, betrachtet er alle möglichen Paare von Datenpunkten.
+Für jedes Paar prüft der Algorithmus, ob beide Punkte im vorhergesagten Clustering und im Referenz-Clustering derselben Gruppe angehören. Der ursprüngliche Rand-Index berechnet den Anteil der übereinstimmenden Paare. Dabei nutzt er den Wertebereich zwischen 0 und 1 ineffizient: Selbst bei zufälligen Clusterings liegt der Wert oft nahe 1, was die Interpretation erschwert.
+Der ARI korrigiert dies, indem er eine Basis etabliert und den gemessenen Rand-Index mit dem Erwartungswert bei zufälliger Verteilung vergleicht.
+Durch diese Normalisierung erlaubt der ARI-Wert eine klare Interpretation: 1,0 steht für perfekte Übereinstimmung, 0,0 entspricht dem Zufall, und negative Werte zeigen eine Zuordnung schlechter als Zufall an.
 
-% Beispiel: Zentrale Infobox (Forschungsfragen, Definitionen, wichtige Aspekte)
-\begin{center}
-\begin{minipage}{\textwidth}
-\begin{tcolorbox}[title=\textbf{Forschungsfragen, Infobox, Definition etc.}, left=1mm, right=1mm]
-\raggedright
-Diese Box dient der übersichtlichen Darstellung wichtiger Inhalte wie Forschungsfragen, Definitionen oder methodischer Hinweise. Sie kann genutzt werden, um zentrale Aspekte optisch hervorzuheben und den Lesefluss zu unterstützen. \\
-\end{tcolorbox}
-\end{minipage}
-\end{center}
 
-\section{Vorgehensweise/Methode}
+Zusätzlich dient das V-Measure zur Bewertung. Es ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen. \footnote{Das Paper \cite{inproceedings} beschreibt im Detail die Hintergründe des V-Measure-Wertes} „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße sowie das „Problem of Matching“. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit. Homogenität ist wie folgt definiert:
+\begin{definition}[Homogenität]
+    Ein Clustering-Ergebnis erfüllt das Kriterium der Homogenität, wenn jeder Cluster ausschließlich Datenpunkte enthält, die derselben Klasse angehören. \footnote{Aus \cite{inproceedings} S. 410 Definition für: Completeness}
+\end{definition} Die Vollständigkeit ist wie folgt definiert:
+\begin{definition}[Vollständigkeit]
+    Ein Clustering-Ergebnis erfüllt das Kriterium der Vollständigkeit, wenn alle Datenpunkte einer bestimmten Klasse demselben Cluster zugeordnet sind. \footnote{Aus \cite{inproceedings} S. 410 Definition für: Vollständigkeit}
+\end{definition}
+Die Versuche nutzen die V-Measure-Werte der Python-Bibliothek „scikit-learn“, die wie folgt berechnet werden: \footnote{Dokumentation der Funktion v\_measure\_score \url{https://scikit-learn.org/stable/modules/generated/sklearn.metrics.v_measure_score.html}}
+\begin{equation*}
+  v = \frac{(1 + \beta) \cdot \text{homogeneity} \cdot \text{completeness}}{\beta \cdot \text{homogeneity} + \text{completeness}}
+\end{equation*}
+Der Beta-Wert ist ein variabler Faktor (Standardwert 1,0), der die Gewichtung von Homogenität und Vollständigkeit anpasst.
+Die Kombination dieser Metriken vereint verschiedene mathematische Ansätze. Das V-Measure beurteilt Homogenität und Vollständigkeit und analysiert, ob Klassen vermischt oder zersplittert sind. Der ARI korrigiert hingegen den Zufallseinfluss und dient als strenger Benchmark für die Übereinstimmung mit der Referenz.
 
-\section{Abgrenzung}
 
-\section{Struktur der Arbeit}
+
+\section{Abgrenzung: Einsatz etablierter Algorithmen statt Neuentwicklung}
+Die Arbeit entwirft keine neuen Algorithmen, sondern nutzt bestehende, etablierte und getestete Bibliotheken.
+
+%\section{Struktur der Arbeit}
+

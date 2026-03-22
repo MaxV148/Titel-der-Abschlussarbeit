@@ -1,0 +1,183 @@
+\chapter{Vektorbasiertes Clustering zur kontinuierlichen Log-Auswertung}\label{clustern_mit_vek}
+Dieses Kapitel behandelt die Gruppierung von Logs mithilfe von Vektorisierung und Vektordatenbanken.
+
+\section{Vektordatenbanken: Auswahlkriterien und Evaluation von PostgreSQL}
+
+Die Gruppierung der Vektoren erfordert eine passende Datenbank. Sie muss folgende Anforderungen erfüllen:
+
+\begin{enumerate}
+    \item Die Datenbank muss Vektoren anhand ihrer Ähnlichkeit innerhalb eines Distanz-Schwellwerts suchen.
+    \item Die Datenbank soll auch Tabellen oder Dokumente mit Metadaten speichern können.
+    \item Es soll eine On-Premises-Datenbank sein.
+\end{enumerate}
+
+Die Anforderungen an die Datenbank leiten sich direkt aus dem Entwurf des Clustering-Algorithmus \ref{PG_Algorithmn} ab. Da das System periodisch neue Logs übermittelt und diese kontinuierlich gruppierten Beständen zuordnen muss, sucht der Algorithmus für jedes neue Log nach bereits vorhandenen, ähnlichen Einträgen innerhalb eines Ähnlichkeitsschwellwerts. Eine reine Top-K-Suche, die lediglich die k ähnlichsten Vektoren zurückgibt, ist hierfür ungeeignet, da die Anzahl der passenden Logs vorab nicht bekannt ist. Stattdessen werden alle Logs benötigt, deren Kosinus-Ähnlichkeit einen definierten Schwellwert unterschreitet. Neben den Vektoren speichert das System Metadaten wie die Clusternummer und den Log-Text, weshalb die Datenbank beides in einer gemeinsamen Struktur verwalten muss. Da das System auf einem eigenen Server betrieben wird, scheidet eine Cloud-Lösung aus; die Datenbank muss On-Premises lauffähig sein.
+
+Folgende Datenbanken stehen zur Auswahl: Qdrant \cite{qdrantQdrantVector} ist eine dedizierte Vektordatenbank, die 2021 als Open-Source-Projekt startete. Als Open-Source-Lösung lässt sie sich lokal, beispielsweise per Docker-Container, nutzen. Zudem speichert Qdrant Metadaten (Payload) \cite{qdrantPayloadQdrant} im JSON-Format. Die Query-API \cite{qdrantSearchQdrant} bietet viele Möglichkeiten, nach ähnlichen Dokumenten bzw. Vektoren zu suchen. Unter anderem vergleicht sie Vektor $A$ mit Vektor $B$ und begrenzt die Anzahl der Suchergebnisse. Es fehlt jedoch die Möglichkeit, nach Angabe eines Vergleichsvektors alle ähnlichen Vektoren innerhalb eines Ähnlichkeitsschwellwerts zu finden.
+Die Erweiterung pg\_vector \cite{githubGitHubPgvectorpgvector} ermöglicht es, mit einem normalen PostgreSQL-Server Vektoren zu speichern. Die Erweiterung führt einen neuen Datentyp $vector(l)$ ein, wobei $l$ die feste Länge des Vektors angibt. PostgreSQL ist eine Open-Source-Software, die sich einfach auf einem Linux-Server betreiben lässt. Die Erweiterung erlaubt die Suche nach allen Vektoren innerhalb eines Schwellwertes.
+Das folgende SQL-Statement zeigt, wie sich alle Vektoren mit einer Kosinus-Ähnlichkeit von unter 0,5 abfragen lassen. Da pg\_vector lediglich einen neuen Datentyp einführt, lassen sich die Metadaten zu den Vektoren einfach zusammen mit diesen in einer Tabelle speichern.
+\lstinline{SELECT * FROM items WHERE embedding <#> '[3,1,2]' < 0.5;}
+
+
+Tabelle~\ref{tab:vektordatenbanken} fasst die Evaluation der drei Kandidaten 
+anhand der definierten Anforderungen zusammen.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lccc}
+\hline
+\textbf{Kriterium} & \textbf{Qdrant} & \textbf{Milvus} & \textbf{PostgreSQL + pg\_vector} \\
+\hline
+Schwellwert-basierte Suche & \texttimes & \texttimes & \checkmark \\
+Metadatenspeicherung       & \checkmark & \checkmark & \checkmark \\
+On-Premises-Betrieb        & \checkmark & \checkmark & \checkmark \\
+\hline
+\end{tabular}
+\caption{Vergleich der evaluierten Vektordatenbanken anhand der Auswahlkriterien}
+\label{tab:vektordatenbanken}
+\end{table}
+
+
+
+Milvus\footnote{Offizielle Seite von Milvus: https://milvus.io/} ist eine weitere Open-Source-Datenbank für das Handling von Vektoren. Sie lässt sich On-Premises installieren und speichert Metadaten zusammen mit den Vektoren. Bei Abfragen von Vektoren begrenzt jedoch auch hier eine maximale Anzahl von Ergebnissen die Ausgabe, ähnlich wie bei Qdrant \footnote{Hier ist die Dokumentation der Query API von Milvus: https://milvus.io/docs/single-vector-search.md}.
+Da PostgreSQL in Kombination mit pg\_vector alle drei Kriterien erfüllt, fällt die Wahl auf diese Datenbank.
+
+
+\section{Ähnlichkeitsmetriken: Kosinus-Ähnlichkeit im Vektorvergleich}
+Die Erweiterung pg\_vector bietet mehrere Ähnlichkeitsmetriken, darunter die Kosinus-Ähnlichkeit und das Skalarprodukt.
+Das Skalarprodukt vergleicht die Länge zweier Vektoren und stellt so eine Ähnlichkeit zwischen ihnen fest (siehe Abb. \ref{fig:skalar}) \cite{pineconeVectorSimilarity}.
+\begin{equation}
+  \bold{a} \cdot \bold{b} = |a||b|\cos{\alpha}
+\end{equation}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{images/b2af046e6a6d5d2057f2328171d0bdeba0489a90-338x357.png}
+    \caption{Skalarprodukt zweier Vektoren}
+    \label{fig:skalar}
+\end{figure}
+
+Die Kosinus-Ähnlichkeit (siehe Formel \ref{cos}) betrachtet hingegen nicht die Länge der Vektoren, sondern nur den Winkel zueinander \cite{pineconeVectorSimilarity}.
+\begin{equation}
+  sim(a,b) = \frac{a\cdot b}{||a||\cdot||b||}
+  \label{cos}
+\end{equation}
+Bei der Auswahl der Ähnlichkeitsmetrik ist die Vorverarbeitung relevant: Wenn ein Modell den Text vektorisiert, das beispielsweise die Kosinus-Ähnlichkeit nutzt, ist es von Vorteil, diese Metrik auch beim Vergleich der Vektoren zu verwenden \cite{pineconeVectorSimilarity}. In diesem Fall kommt das Embedding-Modell „sentence-transformers/all-MiniLM-L6-v2“ zum Einsatz, bei dessen Training auch die Kosinus-Ähnlichkeit Verwendung fand \footnote{Mehr Details unter Training procedure: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2}.
+
+\section{Entwurf eines iterativen Algorithmus zur Vektorgruppierung}\label{PG_Algorithmn}
+Nach der Datenbankwahl folgt die Implementierung eines Algorithmus zur kontinuierlichen Gruppierung der Lognachrichten mithilfe der Vektordatenbank. Da das System periodisch neue Logs übermittelt, deckt der Algorithmus zwei Zustände ab. Zunächst erfolgt eine initiale Gruppierung, sofern noch keine Loggruppen vorliegen. Anschließend erweitern neue Logs die bestehenden Gruppen.
+
+\begin{algorithm}[H]
+\caption{Initial Log Clustering}
+\begin{algorithmic}[1]
+
+\Require Keine Eingabe (verwendet Datenbank-Daten)
+\Ensure Gruppierte Log-Einträge in Clustern
+
+\Statex
+
+\State // Schritt 1: Hole alle noch nicht verarbeiteten Logs
+\ForAll{$log$ \textbf{in} $unprocessed\_logs$}
+    
+    
+    \State // Schritt 2: Überspringen, falls bereits zugewiesen
+    \If{$log\_bereits\_in\_cluster(log)$}
+        \State \textbf{continue}
+    \EndIf
+    
+    \State // Schritt 3: Ähnliche Logs per Cosine-Ähnlichkeit finden
+    \State $ähnliche\_logs \gets finde\_ähnliche\_logs(log,cosine\_threshold)$
+    
+    \If{$ähnliche\_logs$ \textbf{ist leer}}
+        \State \textbf{continue}
+    \EndIf
+    
+    \State // Schritt 5: Cluster erstellen und zuweisen
+    \State $neuer\_cluster \gets erstelle\_neuen\_log\_cluster()$
+    \State weise\_cluster\_zu\_und\_markiere\_verarbeitet($ähnliche\_logs$, $neuer\_cluster.id$)
+
+
+\EndFor
+
+\Statex
+
+\State // Schritt 6: Durchschnittswerte berechnen
+\State fülle\_durchschnitts\_log\_gruppen\_tabelle()
+
+\end{algorithmic}
+\end{algorithm}
+
+
+
+Algorithmus 1 beschreibt das initiale Clustering. Zunächst iteriert der Prozess über jedes neue, noch nicht verarbeitete Log. Der zweite Schritt prüft für jedes neue Log, ob es bereits bei einer früheren Iteration einer Gruppe hinzugefügt wurde. Der dritte Schritt sucht mithilfe eines Schwellwerts für die Kosinus-Ähnlichkeit in der Vektordatenbank nach ähnlichen Logs. Findet der Algorithmus keine ähnlichen Logs, überspringt er das aktuelle Log. Im fünften Schritt erhalten die ähnlichen Logs die Clusternummer und die iterierten Logs eine Markierung als „bearbeitet“. Schritt 6 berechnet die Durchschnittsvektoren (Cluster-Embeddings) neu.
+
+
+\begin{algorithm}[H]
+\caption{Re-Cluster Logs (Inkrementelles Clustering)}
+\begin{algorithmic}[1]
+
+\Require Keine Eingabe (verwendet Datenbank-Daten)
+\Ensure Erweiterte oder neue Log-Cluster
+
+\Statex
+\State // Schritt 1: Hole alle noch nicht verarbeiteten Logs
+\ForAll{$log$ \textbf{in} get\_unprocessed\_logs()}
+
+    
+    \State // Schritt 2: Gruppierung nach Rang
+    \State $gruppierte\_logs \gets gruppiere\_nach\_template(gerankte\_logs)$
+    
+    \Statex
+    
+    \ForAll{$(rang, logs\_mit\_gleichem\_rang)$ \textbf{in} $gruppierte\_logs$}
+
+        \State // Schritt 3: Hole ersten Log
+        \State $repräsentatives\_log \gets logs\_mit\_gleichem\_rang[0]$
+        \State $log\_ids \gets extrahiere\_alle\_logs(logs\_mit\_gleichem\_template)$
+        
+        \Statex
+        \State // Strategie 1: Durchschnitts-Cluster-Embeddings
+        \State $ähnlicher\_cluster\_avg \gets finde\_cluster\_in\_avg\_tabelle(repräsentatives\_log)$
+        
+        \If{$ähnlicher\_cluster\_avg$ \textbf{existiert}}
+            \State $cluster \gets hole\_cluster\_by\_id(ähnlicher\_cluster\_avg)$
+            \State weise\_cluster\_zu($log\_ids$, $cluster.id$)
+            \State markiere\_als\_verarbeitet($log\_ids$)
+        
+        \Else
+        
+            \State // Strategie 2: Suche in verarbeiteten Logs
+            \State $ähnliches\_log \gets finde\_ähnlichstes\_verarbeitetes\_log(repräsentatives\_log)$
+            
+            \If{$ähnliches\_log$ \textbf{existiert}}
+                \State weise\_cluster\_zu($log\_ids$, $ähnliches\_log.log\_cluster.id$)
+                \State markiere\_als\_verarbeitet($log\_ids$)
+            
+            \Else
+                \State // Strategie 3: Neuen Cluster anlegen
+                \State $neuer\_cluster \gets erstelle\_neuen\_log\_cluster()$
+                \State weise\_cluster\_zu($log\_ids$, $neuer\_cluster.id$)
+                \State markiere\_als\_verarbeitet($log\_ids$)
+            \EndIf
+            
+        \EndIf
+        
+    \EndFor
+    
+\EndFor
+
+\Statex
+
+\State // Schritt 4: Durchschnitts-Embeddings aktualisieren
+\State $zuletzt\_geänderte\_cluster \gets hole\_zuletzt\_geänderte\_cluster()$
+
+\ForAll{$cluster\_id$ \textbf{in} $zuletzt\_geänderte\_cluster$}
+    \State aktualisiere\_durchschnitts\_embedding($cluster\_id$)
+\EndFor
+
+\end{algorithmic}
+\end{algorithm}
+
+
+
+Nach dem ersten Algorithmus besitzen die Logs zugewiesene Gruppen, auf die das System aufbaut. Bei erneutem Programmstart kommt der zweite Algorithmus zum Einsatz. Schritt 1 iteriert durch die unverarbeiteten Logs. Schritt 2 gruppiert die Logs nach dem Log-Template. Dies spart Rechenleistung, da viele Logs mit gleichem Template häufiger vorkommen, aber nicht mehrfach verarbeitet werden müssen. Drei Strategien unterteilen den nächsten Schritt. Zunächst wählt Schritt 3 ein Log aus den zuvor nach dem Template gruppierten Logs aus. Die erste Strategie sucht nach ähnlichen Loggruppen über den Durchschnitt der Cluster-Embeddings. Dies ist effizienter, da die Tabelle für die Durchschnittsvektoren nur so viele Einträge hat, wie es Loggruppen gibt. Dies sind deutlich weniger als die Einträge in der Tabelle mit allen Logs und ihren Embeddings. Findet Strategie 1 keine passenden Logs, sucht Strategie 2 in allen Logs nach ähnlichen Einträgen und fügt sie dem Log sowie allen gruppierten Logs hinzu. Ohne Treffer erstellt das System eine neue Loggruppe und weist diese zu. Schritt 4 aktualisiert die Tabelle der Durchschnitts-Embeddings.

@@ -1,1 +1,153 @@
-\chapter{Realisierung}
+\chapter{Praktische Realisierung der Testumgebung und Verfahren}
+
+Der folgende Abschnitt beschreibt die Testumgebung für den Vergleich der Clustering-Algorithmen. Ziel ist eine realitätsnahe Umgebung, um Leistungsfähigkeit und Effizienz der Algorithmen unter kontrollierten Bedingungen zu bewerten. Die Testumgebung umfasst die eingesetzte Hardware und Software, die Konfiguration der Vektordatenbank sowie die Vorbereitung der Logdaten. Die Versuche finden in fünf Durchläufen statt, wobei eine zufällige Neuanordnung der Logdaten in den Proben erfolgt. Dies stellt sicher, dass die Tests die Algorithmen nicht nur punktuell, sondern auch im kontinuierlichen Betrieb unter realen Bedingungen prüfen.
+Diese umfassende Testumgebung bildet die Grundlage für einen fundierten und nachvollziehbaren Vergleich der unterschiedlichen Clustering-Ansätze.
+
+\section{Jupyter Notebooks: Interaktive Validierung der Clustering-Ansätze}
+Eine geeignete Softwareumgebung ist essenziell für die Durchführung und Validierung der Tests. Prinzipiell lassen sich die erforderlichen Python-Skripte über die Konsole ausführen. Für explorative Analysen ist der Einsatz von Jupyter Notebooks jedoch effizienter und komfortabler.\footnote{Eine detaillierte Beschreibung der Architektur von Jupyter-Notebook ist hier zu finden: \url{https://docs.jupyter.org/en/latest/projects/architecture/content-architecture.html}}
+Der entscheidende Vorteil gegenüber herkömmlichen Python-Dateien liegt in der interaktiven, zellenbasierten Struktur. Während ein klassisches Skript linear durchläuft und den Arbeitsspeicher anschließend freigibt, hält das Jupyter Notebook den Kernel-Zustand (Speicherinhalt) über die Ausführung einzelner Zellen hinaus aufrecht. Dies erlaubt die einmalige Ausführung rechenintensiver Vorgänge – wie das Laden großer Datensätze oder das Trainieren von Modellen. Anschließend lassen sich verschiedene Analyseschritte iterativ testen, ohne den gesamten Prozess neu zu starten.
+Zudem unterstützt Jupyter den Ansatz des „Literate Programming“\footnote{Ein Programmierparadigma von Donald E. Knuth: \url{http://www.literateprogramming.com/index.html}}: Die Kombination von ausführbarem Code, formatiertem Text (Markdown) und visualisierten Ergebnissen in einem Dokument erhöht die Nachvollziehbarkeit. Grafiken und Diagramme erscheinen direkt im Kontext des Codes, was die Interpretation der Ergebnisse und die spätere Berichterstellung erleichtert.
+
+\section{Docker: Isolierte und reproduzierbare Testumgebungen}
+
+Die Testumgebung für das Clustering der Lognachrichten stellt zwei Hauptanforderungen: Reproduzierbarkeit und Isolation zur Vermeidung von Abhängigkeitsproblemen. Die Verarbeitung mit klassischen Algorithmen erfordert lediglich einige Python-Bibliotheken, die sich auch in einer virtuellen Umgebung installieren ließen. Für das Clustering mit der Vektordatenbank ist jedoch PostgreSQL mit der pg\_vector-Erweiterung notwendig. Statt einer schwergewichtigen virtuellen Maschine kommt daher Docker als leichtgewichtige Alternative zum Einsatz.
+Docker ist eine Open-Source-Plattform für Containerisierung, die Anwendungen in isolierten Umgebungen ausführt. Im Gegensatz zur klassischen Virtualisierung mittels Virtual Machines (VMs) nutzt Docker die Betriebssystem-Virtualisierung.\footnote{Unter \url{https://docs.docker.com/get-started/docker-overview/} sind mehr Details zur Architektur von Docker zu finden} Die Container teilen sich den Kernel des Host-Betriebssystems, wodurch sie deutlich ressourceneffizienter arbeiten.
+Den Kern einer Docker-Umgebung bilden das Docker-Image und der daraus resultierende Container. Ein Image fungiert als schreibgeschützte Vorlage mit Anwendungscode, Bibliotheken und Konfigurationsdateien. Ein instanziiertes Image wird zum Container, einer ausführbaren, isolierten Einheit. Die Kapselung aller Abhängigkeiten ermöglicht ein portables System, das auf verschiedenen Rechnern läuft. Da die Testumgebung zwei Container benötigt, bietet Docker Compose eine komfortable Lösung zur Orchestrierung. Dieses Werkzeug definiert und führt Multi-Container-Anwendungen aus. Die Konfiguration erfolgt deklarativ über eine YAML-Datei (`docker-compose.yml`), die Services, Netzwerke und Volumes spezifiziert. Ein einziger Befehl (`docker-compose up`) startet die gesamte Umgebung.
+
+
+\section{Testsetup: Orchestrierung von PostgreSQL und Jupyter}
+Abbildung \ref{lst:docker-compose} zeigt den Inhalt der `docker-compose.yml`-Datei der Testumgebung. Die Konfigurationsdatei definiert zwei zentrale Services: eine PostgreSQL-Datenbank mit pgvector-Erweiterung und einen Jupyter-Notebook-Container.
+\newpage
+
+\begin{lstlisting}[caption={Docker Compose Konfiguration für PGVector und Jupyter}, label={lst:docker-compose}]
+services:
+  pgvector:
+    image: pgvector/pgvector:pg17
+    container_name: pgvector_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vectordb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d vectordb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jupyter_notebook
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/notebooks
+    environment:
+      PGVECTOR_DB_URL: "postgresql+psycopg://postgres:postgres@pgvector:5432/vectordb"
+    depends_on:
+      pgvector:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgvector_data:
+\end{lstlisting}
+
+Der `pgvector`-Service basiert auf einem vorgefertigten Image und stellt eine PostgreSQL-Datenbank mit installierter pgvector-Erweiterung bereit. Er speichert Daten persistent in einem Docker-Volume und ist über Port 5432 erreichbar. Ein Healthcheck prüft regelmäßig die Einsatzbereitschaft der Datenbank.
+Der `jupyter`-Service nutzt ein eigenes Image, das auf einem Dockerfile basiert. Abbildung 4 zeigt den Inhalt dieser Datei. Das Dockerfile verwendet ein Python-3.10-Image als Basis und setzt `/app` als Arbeitsverzeichnis. Es installiert essenzielle System-Abhängigkeiten: `build-essential` für Compiler, `libpq-dev` für PostgreSQL-Bibliotheken und `curl` für Downloads. Anschließend erfolgt die Installation des Python-Paketmanagers `uv`, der dem Systempfad hinzugefügt wird. Die Datei `pyproject.toml` definiert die Abhängigkeiten, die zusammen mit Jupyter, JupyterLab und ipywidgets im Image installiert werden. Das Arbeitsverzeichnis wechselt zu `/notebooks`, das über ein Volume mit dem Host-System geteilt ist. Der Container exponiert Port 8888 für den Zugriff auf die Weboberfläche. Der Startbefehl konfiguriert Jupyter Lab für den Zugriff über alle Netzwerkschnittstellen ohne Authentifizierung, was die lokale Entwicklung vereinfacht. Die Umgebungsvariable `PGVECTOR\_DB\_URL` konfiguriert die Datenbankverbindung. Die `depends\_on`-Direktive stellt sicher, dass der Jupyter-Container erst nach der Datenbank startet. So entsteht eine flexible und reproduzierbare Entwicklungs- und Testumgebung.
+
+
+\section{Datenvorbereitung: Dimensionsreduzierung durch TF-IDF-Vektorisierung}
+Um die textuellen Lognachrichten für nachfolgende Machine Learning Algorithmen nutzbar zu machen, ist eine Überführung in eine numerische Repräsentation erforderlich. Dies erfolgt im vorliegenden Ansatz mittels des TF-IDF-Verfahrens (Term Frequency-Inverse Document Frequency), welches die Relevanz einzelner Begriffe innerhalb der gesamten Log-Sammlung gewichtet. Das Vorgehen ist im Code Beispiel \ref{lst:text-tf-idf} zu sehen. 
+
+Vor der Vektorisierung werden die Rohdaten aus der Spalte 'log' des Dataframes extrahiert und mittels der strip-Methode von führenden sowie abschließenden Leerzeichen bereinigt, um eine konsistente Datenbasis zu gewährleisten. Die eigentliche Transformation übernimmt die Klasse \texttt{TfidfVectorizer}.
+
+\begin{lstlisting}[caption={Vektorisieren mit TF-IDF}, label={lst:text-tf-idf}]
+# TF-IDF Parameter
+TFIDF_MAX_FEATURES = 1000
+TFIDF_MIN_DF = 2
+TFIDF_MAX_DF = 0.95
+
+# ===== TF-IDF VEKTORISIERUNG =====
+# Logs aus dem df_labeled extrahieren
+logs_clean = df_labeled['log'].str.strip().tolist()
+
+vectorizer = TfidfVectorizer(
+    max_features=TFIDF_MAX_FEATURES,
+    min_df=TFIDF_MIN_DF,
+    max_df=TFIDF_MAX_DF
+)
+X_tfidf = vectorizer.fit_transform(logs_clean)
+\end{lstlisting}
+
+Die Konfiguration des Vektorisierers zielt darauf ab, die Dimensionalität des entstehenden Feature-Raums zu kontrollieren und Rauschen zu minimieren. Der Parameter \texttt{TFIDF\_MAX\_FEATURES} beschränkt das Vokabular auf die 1000 signifikantesten Terme. Ergänzend filtern die Parameter \texttt{min\_df} und \texttt{max\_df} irrelevante Begriffe: Terme, die in weniger als zwei Log-Einträgen vorkommen (\texttt{min\_df = 2}), werden als Ausreißer ignoriert, während Begriffe, die in mehr als 95\,\% aller Logs erscheinen (\texttt{max\_df = 0.95}), als generische Stopwörter ausgeschlossen werden. Durch den Aufruf von \texttt{fit\_transform} wird das Vokabular gelernt und die Logdaten werden final in die gewichtete Matrix \texttt{X\_tfidf} überführt.
+
+\section{k-Means in der Praxis: Implementierung und Zentroid-Zuweisung}
+m Anschluss an die Vektorisierung erfolgt die semantische Gruppierung der Logdaten mittels des K-Means-Algorithmus. Dieses partitionierende Verfahren unterteilt den Datenraum in eine vordefinierte Anzahl von Clustern, wobei jeder Log-Eintrag dem Cluster mit dem nächstgelegenen Schwerpunkt (Zentroid) zugeordnet wird.
+
+\begin{lstlisting}[caption={Clustern mit k-Means}, label={lst:k-means-cluster}]
+# K-Means Parameter
+KMEANS_N_CLUSTERS = 32
+KMEANS_RANDOM_STATE = 42
+# ===== K-MEANS CLUSTERING =====
+kmeans = KMeans(
+    n_clusters=KMEANS_N_CLUSTERS,
+    random_state=KMEANS_RANDOM_STATE
+)
+df_labeled['kmeans_cluster_id'] = kmeans.fit_predict(X_tfidf)
+\end{lstlisting}
+
+Die Initialisierung des Algorithmus erfolgt durch die Klasse \texttt{KMeans}, wobei zwei wesentliche Parameter konfiguriert werden. Die Anzahl der zu bildenden Cluster (\texttt{n\_clusters}) wird für diesen Versuch auf 32 festgelegt. Um die Reproduzierbarkeit der Ergebnisse im Rahmen dieser Arbeit zu gewährleisten, wird der Zufallsgenerator über den Parameter \texttt{random\_state} auf den festen Wert $42$ fixiert. Dies stellt sicher, dass bei erneuter Ausführung des Codes trotz der stochastischen Initialisierung der Zentroide identische Zuordnungen entstehen.
+
+Die Ausführung des Clusterings erfolgt durch die Methode \texttt{fit\_predict}, welche auf die zuvor erzeugte TF-IDF-Matrix \texttt{X\_tfidf} angewendet wird. In diesem Schritt berechnet der Algorithmus iterativ die Cluster-Zentren und weist jedem Log-Vektor ein Label zu. Die resultierenden Cluster-IDs werden abschließend als neue Spalte \texttt{'kmeans\_cluster\_id'} im Dataframe gespeichert, wodurch ein direkter Vergleich mit den Ergebnissen der anderen Algorithmen ermöglicht wird.
+
+\section{DBSCAN in der Praxis: Dichtebasierte Gruppierung und Rauschfilterung}
+Als alternativer Ansatz zum partitionierenden K-Means-Verfahren wird der dichte-basierte Algorithmus DBSCAN (Density-Based Spatial Clustering of Applications with Noise) eingesetzt. Im Gegensatz zu K-Means muss hierbei die Anzahl der Cluster nicht a priori definiert werden; stattdessen bildet der Algorithmus Gruppen basierend auf der lokalen Dichte der Datenpunkte im Vektorraum.
+
+Die Konfiguration der DBSCAN-Instanz erfolgt über drei zentrale Parameter. Der Parameter eps (\texttt{}{DBSCAN\_EPS}) definiert den maximalen Radius um einen Datenpunkt, innerhalb dessen nach Nachbarn gesucht wird. Ergänzend legt \texttt{min\_samples} (\texttt{DBSCAN\_MIN\_SAMPLES}) fest, wie viele Punkte sich mindestens in dieser $\epsilon$-Umgebung befinden müssen, um einen dichten Bereich zu bilden. Die Berechnung der Abstände erfolgt dabei anhand der in \texttt{DBSCAN\_METRIC} spezifizierten Distanzfunktion, in diesem Fall wird die Cosinus Distanz genutzt.
+
+\begin{lstlisting}[caption={Clustern mit DBSCAN}, label={lst:dbscan-cluster}]
+# DBSCAN Parameter
+DBSCAN_EPS = 0.6
+DBSCAN_MIN_SAMPLES = 2
+DBSCAN_METRIC = 'cosine'
+# ===== DBSCAN CLUSTERING =====
+dbscan = DBSCAN(
+    eps=DBSCAN_EPS,
+    min_samples=DBSCAN_MIN_SAMPLES,
+    metric=DBSCAN_METRIC
+)
+df_labeled['dbscan_cluster_id'] = dbscan.fit_predict(X_tfidf)
+\end{lstlisting}
+Angewendet wird das Verfahren mittels \texttt{fit\_predict} auf die TF-IDF-Matrix \texttt{X\_tfidf}. Dabei werden Punkte in Regionen hoher Dichte zu Clustern zusammengefasst, während Datenpunkte, die in Regionen geringer Dichte liegen und keinem Cluster zugeordnet werden können, als Rauschen (Noise) klassifiziert werden. Diese Ausreißer erhalten typischerweise das Label -1. Die resultierenden Cluster-IDs werden analog zu den vorherigen Verfahren in der neuen Spalte \texttt{dbscan\_cluster\_id} im Dataframe abgelegt.
+
+
+\section{Drain3 in der Praxis: Iterative Zuordnung durch den Online-Parser}
+
+Die praktische Umsetzung des Clustering-Verfahrens mittels drain3 ist in Listing 4.2 dargestellt. Zunächst erfolgt die Konfiguration des Parsers über das TemplateMinerConfig-Objekt. Ein zentraler Parameter ist hierbei der Ähnlichkeitsschwellenwert (\lstinline{drain_sim_th}), der im vorliegenden Szenario auf $0,2$ festgelegt wird. Dieser Schwellenwert definiert, ab welchem Grad der Ähnlichkeit eine neue Lognachricht einem existierenden Logtemplate im Parse-Baum zugeordnet wird.
+Mit der definierten Konfiguration wird anschließend eine Instanz des TemplateMiner initialisiert, welcher die Kernlogik des Drain-Algorithmus kapselt. Entsprechend der Funktionsweise eines Online-Parsers werden die Daten nicht als statischer Block, sondern iterativ verarbeitet. Die Lognachrichten aus der Spalte 'log' des Dataframes \lstinline{df_labeled} werden in einer Schleife einzeln mittels der Methode \lstinline{add_log_message} an den Miner übergeben.
+Für jede verarbeitete Nachricht liefert der Algorithmus ein Ergebnisobjekt zurück, aus welchem die identifizierte Cluster-ID extrahiert wird. Diese IDs werden zunächst gesammelt und abschließend als neue Spalte \lstinline{drain_cluster_id} dem Dataframe hinzugefügt. Dadurch ist jeder ursprünglichen Lognachricht das entsprechende Cluster zugeordnet, was die Grundlage für weiterführende Analysen bildet.
+
+\begin{lstlisting}[caption={clustern mit drain3}, label={lst:drain3}]
+# Drain3 Parameter
+DRAIN_SIM_TH = 0.2
+
+# ===== DRAIN3 CLUSTERING =====
+drain_config = TemplateMinerConfig()
+drain_config.drain_sim_th = DRAIN_SIM_TH
+
+template_miner = TemplateMiner(config=drain_config)
+
+drain_cluster_ids = []
+for log in df_labeled['log']:
+    result = template_miner.add_log_message(log)
+    drain_cluster_ids.append(result.get("cluster_id"))
+
+df_labeled['drain_cluster_id'] = drain_cluster_ids
+\end{lstlisting}
