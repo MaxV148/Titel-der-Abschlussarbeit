@@ -18,23 +18,38 @@ Die Erweiterung pg\_vector \cite{githubGitHubPgvectorpgvector} ermöglicht es, m
 Das folgende SQL-Statement zeigt, wie sich alle Vektoren mit einer Kosinus-Ähnlichkeit von unter 0,5 abfragen lassen. Da pg\_vector lediglich einen neuen Datentyp einführt, lassen sich die Metadaten zu den Vektoren einfach zusammen mit diesen in einer Tabelle speichern.
 \lstinline{SELECT * FROM items WHERE embedding <#> '[3,1,2]' < 0.5;}
 
+Der Datentyp $vector(l)$ speichert einen Vektor mit $l$ Dimensionen als geordnete 
+Liste von Gleitkommazahlen. Für den $vector$-Typ unterstützt pg\_vector dabei bis 
+zu 2.000 Dimensionen \cite{githubGitHubPgvectorpgvector}. Da das in dieser Arbeit 
+eingesetzte Embedding-Modell \\ \texttt{sentence-transformers/all-MiniLM-L6-v2} 
+Vektoren mit 384 Dimensionen erzeugt, liegt die Dimensionalität deutlich unterhalb 
+dieser Grenze. Für die Ähnlichkeitssuche stellt die Erweiterung zwei Indexstrukturen 
+bereit: IVFFlat und HNSW. IVFFlat unterteilt den Vektorraum in Listen und durchsucht 
+bei einer Anfrage nur eine Teilmenge davon. HNSW (Hierarchical Navigable Small World) 
+baut einen mehrschichtigen Graphen über die Vektoren auf und bietet im Vergleich zu 
+IVFFlat eine bessere Query-Performance hinsichtlich des Speed-Recall-Tradeoffs, 
+benötigt jedoch mehr Speicher und längere Aufbauzeiten 
+\cite{githubGitHubPgvectorpgvector}. Aus Performancegründen kommt in dieser Arbeit 
+ein HNSW-Index auf der Kosinus-Distanz zum Einsatz:
+\lstinline{CREATE INDEX ON items USING hnsw (embedding vector_cosine_ops);}
+
 
 Tabelle~\ref{tab:vektordatenbanken} fasst die Evaluation der drei Kandidaten 
 anhand der definierten Anforderungen zusammen.
 
 \begin{table}[h]
-\centering
-\begin{tabular}{lccc}
-\hline
-\textbf{Kriterium} & \textbf{Qdrant} & \textbf{Milvus} & \textbf{PostgreSQL + pg\_vector} \\
-\hline
-Schwellwert-basierte Suche & \texttimes & \texttimes & \checkmark \\
-Metadatenspeicherung       & \checkmark & \checkmark & \checkmark \\
-On-Premises-Betrieb        & \checkmark & \checkmark & \checkmark \\
-\hline
-\end{tabular}
-\caption{Vergleich der evaluierten Vektordatenbanken anhand der Auswahlkriterien}
-\label{tab:vektordatenbanken}
+    \centering
+    \begin{tabular}{lccc}
+        \hline
+        \textbf{Kriterium} & \textbf{Qdrant} & \textbf{Milvus} & \textbf{PostgreSQL + pg\_vector} \\
+        \hline
+        Schwellwert-basierte Suche & $\times$ & $\times$ & \checkmark \\
+        Metadatenspeicherung       & \checkmark & \checkmark & \checkmark \\
+        On-Premises-Betrieb        & \checkmark & \checkmark & \checkmark \\
+        \hline
+    \end{tabular}
+    \caption{Vergleich der evaluierten Vektordatenbanken anhand der Auswahlkriterien}
+    \label{tab:vektordatenbanken}
 \end{table}
 
 
