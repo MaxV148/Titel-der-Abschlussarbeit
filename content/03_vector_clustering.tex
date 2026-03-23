@@ -15,7 +15,95 @@ Die Anforderungen an die Datenbank leiten sich direkt aus dem Entwurf des Cluste
 
 \section{Qdrant}
 
+Qdrant \cite{qdrantQdrantVector} ist eine spezialisierte Open-Source-Vektordatenbank, 
+die auf die effiziente Speicherung und Suche hochdimensionaler Vektoren ausgelegt 
+ist. Sie lässt sich On-Premises betreiben und speichert Metadaten in Form von 
+sogenannten Payloads direkt zusammen mit den Vektoren in einer gemeinsamen 
+Struktur \cite{qdrantPayloadQdrant}. Das folgende Beispiel zeigt eine typische 
+Suchanfrage in der Python-Bibliothek von Qdrant:
+\begin{lstlisting}[language=Python]
+client.query_points(
+    collection_name="logs",
+    query=[0.2, 0.1, 0.9, 0.7],
+    score_threshold=0.5,
+    limit=10
+)
+\end{lstlisting}
+\paragraph{Technische Eigenschaften}
+Die grundlegende Datenstruktur in Qdrant ist die \textit{Collection}, die eine 
+Menge von \textit{Points} enthält. Jeder Point besteht aus einem Vektor und einem 
+optionalen Payload, der beliebige Metadaten im JSON-Format aufnimmt 
+\cite{qdrantPayloadQdrant}. Für die Ähnlichkeitssuche setzt Qdrant intern auf 
+einen HNSW-Index \cite{qdrantQdrantVector}, der eine schnelle approximative 
+Nearest-Neighbour-Suche ermöglicht. Unterstützte Ähnlichkeitsmetriken umfassen 
+Kosinus-Ähnlichkeit, euklidische Distanz und das Skalarprodukt. Der Parameter 
+\texttt{score\_threshold} erlaubt es, Ergebnisse unterhalb eines definierten 
+Ähnlichkeitswerts aus der Ausgabe zu filtern \cite{qdrantSearchQdrant}.
+
+\paragraph{Limitierungen}
+Trotz des \texttt{score\_threshold}-Parameters weist die Such-API von Qdrant eine 
+entscheidende Einschränkung auf: Jede Anfrage erfordert zwingend die Angabe eines 
+\texttt{limit}-Werts, der die maximale Anzahl zurückgegebener Ergebnisse 
+deckelt \cite{qdrantSearchQdrant}. Der Schwellwert wirkt damit lediglich als 
+nachgelagerter Filter auf eine Top-K-Treffermenge. Es ist folglich nicht möglich, 
+alle Vektoren unterhalb eines Distanzwerts zurückzugeben, ohne die Ergebnisanzahl 
+vorab zu kennen. Da der Clustering-Algorithmus \ref{PG_Algorithmn} jedoch genau 
+dies voraussetzt – die Anzahl ähnlicher Logs ist zum Anfragezeitpunkt unbekannt –, 
+erfüllt Qdrant das erste Auswahlkriterium nicht.
+
+\paragraph{Fazit}
+Qdrant erfüllt zwei der drei definierten Anforderungen: On-Premises-Betrieb und 
+Metadatenspeicherung sind vollständig gegeben. Die fehlende Unterstützung für eine 
+echte schwellwertbasierte Suche ohne festes Ergebnislimit schließt Qdrant für den 
+vorliegenden Anwendungsfall jedoch aus.
+
 \section{Milvus}
+
+Milvus \cite{milvus} ist eine weitere spezialisierte Open-Source-Vektordatenbank, 
+die für den Umgang mit hochdimensionalen Vektoren ausgelegt ist. Sie lässt sich 
+On-Premises betreiben und speichert Metadaten zusammen mit den Vektoren in einer 
+gemeinsamen Struktur. Das folgende Beispiel zeigt eine typische Suchanfrage über 
+die Python-Bibliothek von Milvus:
+\begin{lstlisting}[language=Python]
+client.search(
+    collection_name="logs",
+    data=[[0.2, 0.1, 0.9, 0.7]],
+    anns_field="embedding",
+    search_params={"metric_type": "COSINE"},
+    limit=10
+)
+\end{lstlisting}
+
+\paragraph{Technische Eigenschaften}
+Die grundlegende Datenstruktur in Milvus ist ebenfalls die \textit{Collection}, 
+die eine Menge von \textit{Entities} enthält. Jede Entity besteht aus einem oder 
+mehreren Vektorfeldern sowie beliebigen skalaren Feldern für Metadaten, 
+beispielsweise Clusternummer oder Log-Text \cite{milvus}. Für die 
+Ähnlichkeitssuche unterstützt Milvus mehrere Indexstrukturen, darunter HNSW und 
+IVFFlat, sowie verschiedene Ähnlichkeitsmetriken wie Kosinus-Ähnlichkeit, 
+euklidische Distanz und das Skalarprodukt. Darüber hinaus bietet Milvus mit der 
+Range Search eine Suchmethode, die Ergebnisse anhand eines Distanzintervalls 
+einschränkt: Der Parameter \texttt{radius} definiert dabei die äußere 
+Distanzgrenze, während \texttt{range\_filter} optional eine innere Grenze 
+festlegt \cite{key}.
+
+\paragraph{Limitierungen}
+Trotz der Range-Search-Funktionalität unterliegt auch die Milvus-Such-API einer 
+strukturellen Einschränkung: Jede Anfrage erfordert zwingend die Angabe eines 
+\texttt{limit}-Werts, der die maximale Anzahl zurückgegebener Ergebnisse 
+deckelt \cite{key}. Die Range Search schränkt den Suchraum zwar auf ein 
+Distanzintervall ein, die Ausgabe bleibt jedoch auf die angegebene Anzahl an 
+Treffern begrenzt. Damit verhält sich Milvus in diesem Punkt analog zu Qdrant: 
+Eine echte schwellwertbasierte Suche, die alle Vektoren unterhalb eines 
+Distanzwerts ohne festes Ergebnislimit zurückgibt, ist nicht möglich. Da der 
+Clustering-Algorithmus \ref{PG_Algorithmn} die Anzahl ähnlicher Logs zum 
+Anfragezeitpunkt nicht kennt, erfüllt Milvus das erste Auswahlkriterium nicht.
+
+\paragraph{Fazit}
+Milvus erfüllt, wie Qdrant, zwei der drei definierten Anforderungen: 
+On-Premises-Betrieb und Metadatenspeicherung sind vollständig gegeben. Die 
+fehlende Unterstützung für eine unbegrenzte schwellwertbasierte Suche schließt 
+Milvus für den vorliegenden Anwendungsfall jedoch aus.
 
 
 \section{PostgreSQL + pg\_vector}
