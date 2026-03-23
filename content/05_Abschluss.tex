@@ -4,6 +4,22 @@
 
 \section{Weitere Ansätze}
 
+Der Vergleich der Algorithmen in dieser Arbeit entstand im Rahmen eines 
+Praktikums und umfasst die zum damaligen Zeitpunkt bekannten und verfügbaren 
+Verfahren. Im Nachgang wurde mit Brain \cite{brain} ein weiterer 
+Log-Parsing-Algorithmus bekannt, der für den beschriebenen Anwendungsfall 
+relevant ist. Da Brain nicht mehr in die systematische Evaluierungsphase 
+eingeflossen ist, wird er an dieser Stelle ergänzend vorgestellt. Erste Tests 
+mit denselben Datensätzen, die auch für den Vergleich der anderen Algorithmen 
+verwendet wurden, deuten darauf hin, dass Brain sowohl Drain als auch den 
+vektorbasierten Ansatz mit PostgreSQL und pg\_vector in der Parsing-Qualität 
+übertrifft – und das bei deutlich geringerem Ressourcenverbrauch. Während der 
+vektorbasierte Ansatz auf ein vortrainiertes Embedding-Modell sowie eine 
+laufende Datenbankinstanz angewiesen ist, kommt Brain ohne diese Abhängigkeiten 
+aus und arbeitet rein algorithmisch.
+\section{Brain: Log Parsing mit bidirektionalem Parallelbaum}
+
+
 \section{Nächste Schritte}
 
 \section{Ausblick}
