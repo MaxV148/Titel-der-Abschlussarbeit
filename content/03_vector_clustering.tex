@@ -13,7 +13,7 @@ Die Gruppierung der Vektoren erfordert eine passende Datenbank. Sie muss folgend
 
 Die Anforderungen an die Datenbank leiten sich direkt aus dem Entwurf des Clustering-Algorithmus \ref{PG_Algorithmn} ab. Da das System periodisch neue Logs übermittelt und diese kontinuierlich gruppierten Beständen zuordnen muss, sucht der Algorithmus für jedes neue Log nach bereits vorhandenen, ähnlichen Einträgen innerhalb eines Ähnlichkeitsschwellwerts. Eine reine Top-K-Suche, die lediglich die k ähnlichsten Vektoren zurückgibt, ist hierfür ungeeignet, da die Anzahl der passenden Logs vorab nicht bekannt ist. Stattdessen werden alle Logs benötigt, deren Kosinus-Ähnlichkeit einen definierten Schwellwert unterschreitet. Neben den Vektoren speichert das System Metadaten wie die Clusternummer und den Log-Text, weshalb die Datenbank beides in einer gemeinsamen Struktur verwalten muss. Da das System auf einem eigenen Server betrieben wird, scheidet eine Cloud-Lösung aus; die Datenbank muss On-Premises lauffähig sein.
 
-\section{Qdrant}
+\subsection{Qdrant}
 
 Qdrant \cite{qdrantQdrantVector} ist eine spezialisierte Open-Source-Vektordatenbank, 
 die auf die effiziente Speicherung und Suche hochdimensionaler Vektoren ausgelegt 
@@ -57,7 +57,7 @@ Metadatenspeicherung sind vollständig gegeben. Die fehlende Unterstützung für
 echte schwellwertbasierte Suche ohne festes Ergebnislimit schließt Qdrant für den 
 vorliegenden Anwendungsfall jedoch aus.
 
-\section{Milvus}
+\subsection{Milvus}
 
 Milvus \cite{milvus} ist eine weitere spezialisierte Open-Source-Vektordatenbank, 
 die für den Umgang mit hochdimensionalen Vektoren ausgelegt ist. Sie lässt sich 
@@ -106,7 +106,7 @@ fehlende Unterstützung für eine unbegrenzte schwellwertbasierte Suche schließ
 Milvus für den vorliegenden Anwendungsfall jedoch aus.
 
 
-\section{PostgreSQL + pg\_vector}
+\subsection{PostgreSQL + pg\_vector}
 
 Die Erweiterung pg\_vector \cite{githubGitHubPgvectorpgvector} ermöglicht es, mit 
 einem normalen PostgreSQL-Server Vektoren zu speichern. PostgreSQL ist eine 
