@@ -128,6 +128,42 @@ Drain ist in der Lage, Lognachrichten kontinuierlich zu verarbeiten und ihnen da
     \item Ähnlichkeitsprüfung: Am Ende eines Pfades (im Blattknoten) befindet sich eine Liste potenzieller Loggruppen. Hier vergleicht Drain die neue Nachricht mit den dort gespeicherten Events. Wird ein passendes Template gefunden, wird die Nachricht der Gruppe hinzugefügt und das Template gegebenenfalls aktualisiert (z. B. durch Einfügen von Wildcards). Findet sich kein Match, erstellt Drain an dieser Stelle eine neue Loggruppe.
 \end{enumerate}
 
+\subsection{Formale Ähnlichkeitsbewertung: Die simSeq-Funktion}
+
+Nachdem Drain im vierten Schritt den passenden Blattknoten erreicht hat, muss der 
+Algorithmus entscheiden, ob eine neu eintreffende Lognachricht einem bereits 
+existierenden Logtemplate zugeordnet werden kann oder ob eine neue Loggruppe 
+anzulegen ist. Diese Entscheidung basiert auf der Ähnlichkeitsfunktion 
+$simSeq$, welche im ursprünglichen Drain-Paper formal definiert ist 
+\footnote{Die Formeln stammen aus \cite{drain} III. METHODOLOGY, E. Step 4: 
+Search by Token Similarity}:
+
+\begin{equation}
+    simSeq = \frac{\sum_{i=1}^{n} equ(seq_1(i), seq_2(i))}{n}
+    \label{eq:simseq}
+\end{equation}
+
+Dabei repräsentieren $seq_1$ die neu eintreffende Lognachricht und $seq_2$ das 
+gespeicherte Logtemplate einer Kandidatengruppe. Der Ausdruck $seq(i)$ bezeichnet 
+das $i$-te Token der jeweiligen Sequenz, während $n$ die Gesamtlänge beider 
+Sequenzen in Token angibt – da Drain auf der ersten Baumebene bereits nach 
+Log-Länge filtert, ist diese für beide Sequenzen identisch. Die Hilfsfunktion 
+$equ$ bewertet den paarweisen Tokenvergleich:
+
+\begin{equation}
+    equ(t_1, t_2) = \begin{cases} 1 & \text{if } t_1 = t_2 \\ 0 & \text{otherwise} \end{cases}
+    \label{eq:equ}
+\end{equation}
+
+$simSeq$ ergibt sich damit als der Anteil übereinstimmender Tokens an der 
+Gesamtlänge der Nachricht – ein Wert zwischen $0$ und $1$. Wird der berechnete 
+Wert mit dem konfigurierbaren Ähnlichkeitsschwellenwert $st$ verglichen 
+(\lstinline{drain_sim_th} in der drain3-Bibliothek), gilt: Ist 
+$simSeq \geq st$, wird die Nachricht der Kandidatengruppe mit dem höchsten 
+$simSeq$-Wert zugeordnet und das Template gegebenenfalls durch Wildcards 
+aktualisiert. Unterschreitet der beste Kandidat den Schwellenwert, legt Drain 
+an dieser Stelle eine neue Loggruppe an.
+
 Durch diese Struktur mit fester Tiefe vermeidet Drain, dass der Suchbaum zu tief und unbalanciert wird, was die hohe Geschwindigkeit bei gleichzeitiger Präzision ermöglicht.
 
 Für den praktischen Einsatz der Python-Bibliothek drain3 ist zudem ein Aspekt relevant, der über die theoretische Beschreibung im ursprünglichen Paper hinausgeht: die Persistenz des Log-Modells. Der Drain Algorithmus ist als reines In-Memory-Verfahren konzipiert, bei dem der Parse-Baum flüchtig im Arbeitsspeicher existiert und theoretisch bei jedem Systemstart neu aufgebaut werden müsste. Die drain3-Bibliothek erweitert diesen Ansatz jedoch um eine Speicherfunktion (\textit{Snapshotting}). Dies ermöglicht es, den kompletten internen Zustand des Baumes inklusive aller gelernten Templates und Cluster auf die Festplatte zu schreiben und bei einem Neustart wiederherzustellen. In der Praxis muss der Parser somit nicht jedes Mal bei null beginnen ("Cold Start"), sondern kann nahtlos auf das historische Wissen zugreifen und neue Lognachrichten sofort effizient in die bestehende Struktur integrieren.
