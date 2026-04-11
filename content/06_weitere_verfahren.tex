@@ -1,0 +1,96 @@
+\chapter{Weitere betrachtete Verfahren}\label{chap:weitere_verfahren}
+
+Neben den im Hauptvergleich untersuchten Verfahren wurde im Rahmen dieser Arbeit
+auch der Einsatz probabilistischer Ähnlichkeitsverfahren evaluiert. Das folgende
+Kapitel beschreibt den Ansatz auf Basis von MinHash und LSH (Locality Sensitive
+Hashing) sowie die Begründung, weshalb er für das kontinuierliche Log-Clustering
+nicht geeignet ist.
+
+\section{MinHash und LSH: Probabilistische Ähnlichkeitssuche}\label{sec:minhash_lsh}
+
+MinHash und LSH bilden eine Kombination probabilistischer Algorithmen, die darauf
+ausgelegt sind, ähnliche Datenpunkte in großen Mengen effizient aufzufinden. Das
+Verfahren opfert dabei ein geringes Maß an Präzision zugunsten einer erheblichen
+Reduktion des Rechenaufwands. Klassische Einsatzgebiete sind die
+Duplikaterkennung in Dokumentensammlungen sowie kollaborative Filtersysteme im
+großflächigen E-Commerce\footnote{\cite{Leskovec2020Mining} Kapitel 3.1}.
+
+\paragraph{Funktionsprinzip.}
+Das Verfahren gliedert sich in drei aufeinanderfolgende Schritte. Im ersten
+Schritt wird jede Lognachricht durch \textit{Shingling} in eine mathematische
+Menge überführt: Ein $k$-Shingle ist ein beliebiger Teilstring der Länge $k$,
+der in der Nachricht vorkommt. Die Wahl von $k$ beeinflusst dabei maßgeblich
+die Trennschärfe – zu kleine Werte führen zu fälschlich hohen
+Ähnlichkeitswerten\footnote{\cite{Leskovec2020Mining} Kapitel 3.3.2}.
+
+Als Ähnlichkeitsmetrik dient die \textit{Jaccard-Ähnlichkeit}, die das
+Verhältnis von Schnitt- zu Vereinigungsmenge zweier Shingle-Mengen $S$ und $T$
+beschreibt:
+\begin{equation}
+    \mathrm{SIM}(S, T) = \frac{|S \cap T|}{|S \cup T|}
+    \label{eq:jaccard}
+\end{equation}
+
+Da der direkte mengenbasierte Vergleich bei $n$ Lognachrichten einen Aufwand
+von $\mathcal{O}(n^2)$ erzeugt, reduziert \textit{MinHashing} die Mengen auf
+kompakte Signaturen fester Länge $k$. Der Algorithmus permutiert die Zeilen
+der booleschen Shingle-Matrix zufällig und speichert je Spalte den Index der
+ersten Zeile mit dem Wert~1. Die Wahrscheinlichkeit, dass zwei Spalten nach
+einer Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer
+Jaccard-Ähnlichkeit. Durch $k$-fache Wiederholung entsteht eine Signatur der
+Länge $k$\footnote{\cite{Leskovec2020Mining} Kapitel 3.3}.
+
+\textit{Locality Sensitive Hashing (LSH)} löst das verbleibende
+Skalierungsproblem: Selbst mit Signaturen sind noch $\mathcal{O}(n^2)$
+paarweise Vergleiche erforderlich. Das Banding-Verfahren unterteilt die
+Signaturmatrix horizontal in $b$ Bänder à $r$ Zeilen und bildet jeden
+Band-Teilvektor per Hashfunktion auf einen Bucket ab. Zwei Signaturen gelten
+als Kandidatenpaar, sobald sie in mindestens einem Band in denselben Bucket
+fallen. Die Kandidatenwahrscheinlichkeit bei Jaccard-Ähnlichkeit $s$ beträgt:
+\begin{equation}
+    P(\text{Kandidat}) = 1 - (1 - s^r)^b
+    \label{eq:lsh_prob}
+\end{equation}
+Durch Variation von $b$ und $r$ lässt sich die Schwellwertkurve so steuern, dass
+der Übergang von „kein Kandidat" zu „Kandidat" einem annähernden Stufensprung
+gleicht\footnote{\cite{Leskovec2020Mining} Kapitel 3.4.2}.
+
+\paragraph{Limitierungen für kontinuierliches Log-Clustering.}
+Trotz der theoretischen Attraktivität des Verfahrens ergeben sich für den
+vorliegenden Anwendungsfall strukturelle Einschränkungen, die einen Einsatz
+im Hauptvergleich ausschließen.
+
+Erstens ist MinHash\,+\,LSH ein \textit{Batch-Verfahren}: Die Signaturmatrix und
+der LSH-Index werden über den vollständigen Datensatz aufgebaut. Bei einem
+kontinuierlichen System, das periodisch neue Logs erhält, müsste der Index bei
+jedem neuen Batch vollständig neu berechnet oder durch aufwendige
+Merge-Operationen erweitert werden. Ein inhärentes Gedächtnis – wie es Drain3
+durch seinen persistierten Parse-Baum oder der pgvector-Ansatz durch die
+gespeicherten Cluster-Embeddings bereitstellt – fehlt.
+
+Zweitens misst die Jaccard-Ähnlichkeit auf Basis von Wort-N-Grammen die
+\textit{strukturelle Zeichenüberschneidung}, nicht die semantische Verwandtschaft
+von Log-Templates. Variable Bestandteile wie IP-Adressen, Zeitstempel oder
+numerische IDs erzeugen bei Logs desselben Templates unterschiedliche
+Shingle-Mengen und senken dadurch die gemessene Ähnlichkeit künstlich ab.
+
+\paragraph{Empirische Einordnung.}
+Im Rahmen dieser Arbeit wurde das Verfahren prototypisch mit der Python-Bibliothek
+\texttt{datasketch} auf dem OpenStack-Datensatz des Loghub-Benchmarks erprobt.
+Bei einer wortbasierten Trigramm-Tokenisierung (\texttt{MINHASH\_NGRAM\_SIZE = 3}),
+128~Permutationen (\texttt{MINHASH\_NUM\_PERM = 128}) und einem Jaccard-Schwellenwert
+von $0{,}5$ (\texttt{MINHASH\_THRESHOLD = 0.5}) entstanden 1\,809~Cluster. Die
+tatsächliche Anzahl der Log-Templates im Datensatz liegt jedoch deutlich darunter.
+Dieses Ergebnis bestätigt die oben beschriebene Schwäche: Der gewählte
+Schwellenwert reicht nicht aus, um Logs desselben Templates zuverlässig in einem
+Bucket zusammenzuführen, da ihre Trigramm-Überschneidung die Schwelle bei
+variablen Token-Positionen häufig unterschreitet.
+
+\paragraph{Fazit.}
+MinHash und LSH sind leistungsfähige Werkzeuge für die skalierbare
+Ähnlichkeitssuche in statischen Datenmengen, erfüllen jedoch die zentralen
+Anforderungen des kontinuierlichen Log-Clusterings nicht: Es fehlt sowohl ein
+persistierbarer Zustand für inkrementelle Verarbeitung als auch eine
+Ähnlichkeitsmetrik, die gegenüber den variablen Bestandteilen von Lognachrichten
+robust ist. Das Verfahren scheidet daher als eigenständiger Clustering-Ansatz
+für den vorliegenden Anwendungsfall aus.
