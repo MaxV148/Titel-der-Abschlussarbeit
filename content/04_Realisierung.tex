@@ -108,15 +108,22 @@ Die Initialisierung des Algorithmus erfolgt durch die Klasse \texttt{KMeans}, wo
 Die Ausführung des Clusterings erfolgt durch die Methode \texttt{fit\_predict}, welche auf die zuvor erzeugte TF-IDF-Matrix \texttt{X\_tfidf} angewendet wird. In diesem Schritt berechnet der Algorithmus iterativ die Cluster-Zentren und weist jedem Log-Vektor ein Label zu. Die resultierenden Cluster-IDs werden abschließend als neue Spalte \texttt{'kmeans\_cluster\_id'} im Dataframe gespeichert, wodurch ein direkter Vergleich mit den Ergebnissen der anderen Algorithmen ermöglicht wird.
 
 \section{DBSCAN in der Praxis: Dichtebasierte Gruppierung und Rauschfilterung}
-Als alternativer Ansatz zum partitionierenden K-Means-Verfahren wird der dichte-basierte Algorithmus DBSCAN (Density-Based Spatial Clustering of Applications with Noise) eingesetzt. Im Gegensatz zu K-Means muss hierbei die Anzahl der Cluster nicht a priori definiert werden; stattdessen bildet der Algorithmus Gruppen basierend auf der lokalen Dichte der Datenpunkte im Vektorraum.
 
-Die Konfiguration der DBSCAN-Instanz erfolgt über drei zentrale Parameter. Der Parameter eps (\texttt{}{DBSCAN\_EPS}) definiert den maximalen Radius um einen Datenpunkt, innerhalb dessen nach Nachbarn gesucht wird. Ergänzend legt \texttt{min\_samples} (\texttt{DBSCAN\_MIN\_SAMPLES}) fest, wie viele Punkte sich mindestens in dieser $\epsilon$-Umgebung befinden müssen, um einen dichten Bereich zu bilden. Die Berechnung der Abstände erfolgt dabei anhand der in \texttt{DBSCAN\_METRIC} spezifizierten Distanzfunktion, in diesem Fall wird die Cosinus Distanz genutzt.
+Als alternativer Ansatz zum partitionierenden K-Means-Verfahren wird der
+dichtebasierte Algorithmus DBSCAN (Density-Based Spatial Clustering of
+Applications with Noise) eingesetzt. Im Gegensatz zu K-Means muss hierbei die
+Anzahl der Cluster nicht a priori definiert werden; stattdessen bildet der
+Algorithmus Gruppen basierend auf der lokalen Dichte der Datenpunkte im
+Vektorraum. Dies ist für den vorliegenden Anwendungsfall von Vorteil, da die
+tatsächliche Anzahl der Log-Templates im Datensatz im Vorfeld nicht bekannt ist.
+Die praktische Umsetzung ist in Listing~\ref{lst:dbscan-cluster} dargestellt.
 
 \begin{lstlisting}[caption={Clustern mit DBSCAN}, label={lst:dbscan-cluster}]
 # DBSCAN Parameter
-DBSCAN_EPS = 0.6
+DBSCAN_EPS         = 0.6
 DBSCAN_MIN_SAMPLES = 2
-DBSCAN_METRIC = 'cosine'
+DBSCAN_METRIC      = 'cosine'
+
 # ===== DBSCAN CLUSTERING =====
 dbscan = DBSCAN(
     eps=DBSCAN_EPS,
@@ -125,7 +132,60 @@ dbscan = DBSCAN(
 )
 df_labeled['dbscan_cluster_id'] = dbscan.fit_predict(X_tfidf)
 \end{lstlisting}
-Angewendet wird das Verfahren mittels \texttt{fit\_predict} auf die TF-IDF-Matrix \texttt{X\_tfidf}. Dabei werden Punkte in Regionen hoher Dichte zu Clustern zusammengefasst, während Datenpunkte, die in Regionen geringer Dichte liegen und keinem Cluster zugeordnet werden können, als Rauschen (Noise) klassifiziert werden. Diese Ausreißer erhalten typischerweise das Label -1. Die resultierenden Cluster-IDs werden analog zu den vorherigen Verfahren in der neuen Spalte \texttt{dbscan\_cluster\_id} im Dataframe abgelegt.
+
+Die Konfiguration der DBSCAN-Instanz erfolgt über drei zentrale Parameter,
+deren Wahl maßgeblich das Ergebnis beeinflusst.
+
+\paragraph{Distanzmetrik: Cosinus-Distanz.}
+Der Parameter \texttt{DBSCAN\_METRIC} legt die Distanzfunktion fest, anhand
+derer die Nachbarschaft eines Datenpunktes bestimmt wird. In dieser Umsetzung
+wird die Cosinus-Distanz gewählt, die sich aus der Cosinus-Ähnlichkeit ableitet:
+\begin{equation}
+    d_{\cos}(\mathbf{u}, \mathbf{v}) = 1 - \frac{\mathbf{u} \cdot \mathbf{v}}
+    {\|\mathbf{u}\| \cdot \|\mathbf{v}\|}
+\end{equation}
+Die Wahl dieser Metrik ist für TF-IDF-Vektoren aus zwei Gründen besonders
+geeignet. Erstens sind TF-IDF-Vektoren hochdimensional und dünn besetzt
+(\textit{sparse}); die euklidische Distanz leidet in solchen Räumen unter dem
+sogenannten \textit{Curse of Dimensionality}, da sie alle Dimensionen gleich
+gewichtet und von der absoluten Länge der Vektoren abhängt.\footnote{Eine
+ausführliche Diskussion des \textit{Curse of Dimensionality} im Kontext
+hochdimensionaler Daten findet sich in \cite{Leskovec2020Mining} Kapitel~7.1.}
+Zweitens erfassen Lognachrichten desselben Templates häufig dieselben
+Schlüsselwörter in ähnlicher Gewichtung, unterscheiden sich jedoch in der
+absoluten Häufigkeit dieser Wörter. Die Cosinus-Distanz normiert diesen Effekt
+heraus, indem sie ausschließlich den Winkel zwischen zwei Vektoren misst.
+
+\paragraph{Nachbarschaftsradius: \texttt{eps = 0.6}.}
+Der Parameter \texttt{DBSCAN\_EPS} definiert den Radius $\varepsilon$, innerhalb
+dessen zwei Datenpunkte als Nachbarn gelten. Da die Cosinus-Distanz Werte im
+Bereich $[0, 2]$ annimmt – wobei $0$ identische und $2$ vollständig entgegengesetzte
+Vektoren bedeutet – entspricht ein Wert von $\varepsilon = 0{,}6$ einer geforderten
+Cosinus-Ähnlichkeit von mindestens $0{,}4$ zwischen zwei Lognachrichten. Dieser
+Schwellenwert erlaubt es, semantisch ähnliche Lognachrichten eines Templates als
+Nachbarn zu erkennen, ohne dabei strukturell verschiedene Nachrichten fälschlich
+zusammenzuführen.
+
+\paragraph{Mindestanzahl an Nachbarn: \texttt{min\_samples = 2}.}
+Der Parameter \texttt{DBSCAN\_MIN\_SAMPLES} legt fest, wie viele Punkte sich
+mindestens im $\varepsilon$-Radius eines Punktes befinden müssen, damit dieser
+als Kernpunkt klassifiziert wird. Der Wert $2$ ist die kleinstmögliche sinnvolle
+Einstellung und bewirkt, dass bereits zwei sich gegenseitig als Nachbarn erkennende
+Lognachrichten einen Cluster bilden. Da der Datensatz pro Log-Template im Mittel
+lediglich $2\,000 / n_{\text{Templates}}$ Einträge enthält\footnote{Der verwendete
+OpenStack-Datensatz aus dem loghub-Benchmark umfasst 2\,000 Lognachrichten, verteilt
+auf eine unbekannte Anzahl von Templates.}, sichert ein kleiner Wert ab, dass auch
+selten auftretende Templates nicht fälschlich als Rauschen klassifiziert werden.
+
+Angewendet wird das Verfahren über \texttt{fit\_predict} auf die zuvor erzeugte
+TF-IDF-Matrix \texttt{X\_tfidf}. Datenpunkte in Regionen hoher Dichte werden zu
+Clustern zusammengefasst, während Punkte, die keinem Cluster zugeordnet werden
+können, als Rauschen klassifiziert werden und das Label $-1$ erhalten. Die
+resultierenden Cluster-IDs werden als neue Spalte \texttt{dbscan\_cluster\_id}
+im Dataframe gespeichert. Im vorliegenden Testlauf entstanden auf diese Weise
+$27$ Cluster, wobei ein nennenswerter Anteil der Lognachrichten als Rauschen
+eingestuft wurde – ein charakteristisches Verhalten von DBSCAN bei inhomogen
+verteilten Datensätzen.
 
 
 \section{Drain3 in der Praxis: Iterative Zuordnung durch den Online-Parser}
@@ -151,3 +211,342 @@ for log in df_labeled['log']:
 
 df_labeled['drain_cluster_id'] = drain_cluster_ids
 \end{lstlisting}
+
+\section{MinHash LSH in der Praxis: Signaturbasiertes Clustering via Union-Find}
+
+Die praktische Umsetzung des MinHash-LSH-Verfahrens erfolgt mithilfe der Python-Bibliothek
+\texttt{datasketch}\footnote{Dokumentation und Quellcode der Bibliothek sind unter
+\url{https://github.com/ekzhu/datasketch} verfügbar.}, die eine effiziente Implementierung
+von MinHash-Signaturen und LSH-Indizes bereitstellt. Die theoretischen Grundlagen des
+Verfahrens – Shingling, Jaccard-Ähnlichkeit, MinHashing sowie das Banding-Verfahren –
+wurden in Kapitel~\ref{chap:clustering} erläutert. Der folgende Abschnitt beschreibt
+ausschließlich die konkrete Umsetzung im Rahmen dieser Arbeit.
+
+Die Implementierung gliedert sich in drei aufeinanderfolgende Phasen: die Tokenisierung der
+Lognachrichten in Word-N-Gramme, die Erzeugung kompakter MinHash-Signaturen sowie den
+Aufbau eines LSH-Index mit anschließender Clusterbildung über ein Union-Find-Verfahren.
+Das vollständige Vorgehen ist in Listing~\ref{lst:minhash-lsh} dargestellt.
+
+\paragraph{Phase 1 – Tokenisierung durch Word-N-Gramme.}
+Abweichend vom zeichenbasierten Shingling, wie es in Kapitel~\ref{chap:clustering}
+beschrieben wird, kommt in dieser Umsetzung eine wortbasierte N-Gramm-Tokenisierung
+(\lstinline{MINHASH_NGRAM_SIZE = 3}) zum Einsatz. Jede Lognachricht wird zunächst in
+einzelne Tokens zerlegt. Anschließend werden aus je drei aufeinanderfolgenden Tokens
+sogenannte Trigramme gebildet, die gemeinsam die Mengendarstellung der Nachricht
+konstituieren. Diese Darstellung ist für strukturierte Lognachrichten besser geeignet
+als zeichenbasierte Shingles, da zusammengehörige Schlüsselwörter einer Logzeile –
+etwa \texttt{``nova compute start''} – als atomare Einheit erhalten bleiben und nicht
+durch Zeichengrenzen aufgespalten werden. Enthält eine Lognachricht weniger Tokens als
+die gewählte N-Gramm-Größe, werden die vorhandenen Einzeltokens als Fallback-Menge
+verwendet.
+
+\paragraph{Phase 2 – Erzeugung der MinHash-Signaturen.}
+Für jede Lognachricht wird ein \lstinline{MinHash}-Objekt mit \lstinline{MINHASH_NUM_PERM = 128}
+Permutationen initialisiert. Dieser Parameter bestimmt die Länge der erzeugten Signatur
+und steuert damit den Schätzfehler der Jaccard-Ähnlichkeit: Je größer der Wert, desto
+präziser die Approximation, aber desto höher auch der Speicher- und Rechenaufwand.
+Mit 128 Permutationen ergibt sich ein erwarteter Schätzfehler von $\approx 1/\sqrt{128}
+\approx 8{,}8\,\%$\footnote{\cite{Leskovec2020Mining} Kapitel 3.3.5}, was für den
+vorliegenden Anwendungsfall einen guten Kompromiss zwischen Präzision und Laufzeit
+darstellt. Jedes Trigramm der Nachricht wird UTF-8-kodiert an die
+\lstinline{update}-Methode übergeben, die die interne Signatur sukzessive aktualisiert.
+
+\paragraph{Phase 3 – LSH-Index und Union-Find-Clustering.}
+Alle erzeugten Signaturen werden in einen gemeinsamen \lstinline{MinHashLSH}-Index
+eingefügt. Der Parameter \lstinline{MINHASH_THRESHOLD = 0.5} legt die Jaccard-Schwelle
+fest, ab der zwei Lognachrichten als ähnlich gelten und als Kandidatenpaar in den
+Buckets des Index kollektiert werden. Anschließend wird für jede Lognachricht der LSH-Index
+abgefragt, um ihre Nachbarn zu ermitteln. Die gefundenen Kandidatenpaare werden über
+ein Union-Find-Verfahren\footnote{Das Union-Find-Verfahren (auch Disjoint-Set-Union genannt)
+verwaltet eine Partition einer Menge in disjunkte Teilmengen. Die \textit{path compression}
+in der \lstinline{_uf\_find}-Funktion stellt sicher, dass wiederholte Anfragen in nahezu
+konstanter Zeit beantwortet werden.} zu transitiv verbundenen Clustern zusammengeführt.
+Jede zusammenhängende Komponente entspricht einem Cluster; ihr wird eine fortlaufende
+ganzzahlige Cluster-ID zugewiesen. Die resultierenden Labels werden abschließend als neue
+Spalte \lstinline{minhash\_cluster\_id} im Dataframe gespeichert.
+
+\begin{lstlisting}[caption={Clustering mit MinHash LSH}, label={lst:minhash-lsh}]
+# MinHash LSH Parameter
+MINHASH_NUM_PERM  = 128
+MINHASH_THRESHOLD = 0.5
+MINHASH_NGRAM_SIZE = 3
+
+# ===== PHASE 1: TOKENISIERUNG =====
+def minhash_tokenize(log_line, n=MINHASH_NGRAM_SIZE):
+    words = log_line.split()
+    if len(words) < n:
+        return set(words) if words else {log_line}
+    return set(' '.join(words[i:i+n]) for i in range(len(words) - n + 1))
+
+# ===== PHASE 2: MINHASH-SIGNATUREN =====
+minhashes = []
+for log in logs_clean:
+    m = MinHash(num_perm=MINHASH_NUM_PERM)
+    for shingle in minhash_tokenize(log):
+        m.update(shingle.encode('utf8'))
+    minhashes.append(m)
+
+# ===== PHASE 3: LSH-INDEX UND UNION-FIND =====
+lsh_index = MinHashLSH(threshold=MINHASH_THRESHOLD,
+                       num_perm=MINHASH_NUM_PERM)
+for i, m in enumerate(minhashes):
+    lsh_index.insert(str(i), m)
+
+_parent = list(range(len(logs_clean)))
+
+def _uf_find(x):
+    while _parent[x] != x:
+        _parent[x] = _parent[_parent[x]]
+        x = _parent[x]
+    return x
+
+def _uf_union(a, b):
+    ra, rb = _uf_find(a), _uf_find(b)
+    if ra != rb:
+        _parent[ra] = rb
+
+for i, m in enumerate(minhashes):
+    for nb in lsh_index.query(m):
+        _uf_union(i, int(nb))
+
+root_to_cluster = {}
+minhash_labels  = []
+next_cluster_id = 0
+for i in range(len(logs_clean)):
+    root = _uf_find(i)
+    if root not in root_to_cluster:
+        root_to_cluster[root] = next_cluster_id
+        next_cluster_id += 1
+    minhash_labels.append(root_to_cluster[root])
+
+df_labeled['minhash_cluster_id'] = minhash_labels
+\end{lstlisting}
+
+Ein charakteristisches Merkmal dieses Verfahrens ist, dass die Clusteranzahl nicht vorab
+festgelegt werden muss – sie ergibt sich vollständig aus dem gewählten Ähnlichkeitsschwellenwert
+und der Struktur der Daten. Im vorliegenden Testlauf entstanden mit den gewählten
+Parametern 1\,809 Cluster, was deutlich über den Ground-Truth-Klassen des Datensatzes liegt.
+Dies ist ein Hinweis darauf, dass der Schwellenwert von $0{,}5$ für den vorliegenden
+Datensatz zu konservativ gewählt ist: Lognachrichten desselben Templates werden nicht
+zuverlässig in einem einzigen Bucket zusammengeführt, da ihre Trigramm-Überschneidung
+die Schwelle häufig unterschreitet.
+
+\section{pgvector in der Praxis: Zweistufiges Embedding-basiertes Clustering}
+
+Das pgvector-Verfahren unterscheidet sich grundlegend von den bisher vorgestellten
+Ansätzen: Anstatt auf statistischen Termgewichtungen (TF-IDF) oder regelbasierten
+Baumstrukturen (Drain3) zu operieren, repräsentiert es jede Lognachricht als
+semantischen Vektor in einem kontinuierlichen, hochdimensionalen Einbettungsraum.
+Ähnliche Lognachrichten liegen in diesem Raum geometrisch nah beieinander, sodass
+die Clusterbildung auf Basis von Vektordistanzen erfolgen kann. Die Implementierung
+gliedert sich in drei Phasen: die Erzeugung der Embeddings, den Aufbau des
+Datenbankschemas sowie das zweistufige Clustering. Die Parameter der Umsetzung
+sind:
+
+\begin{itemize}
+    \item \texttt{PGVECTOR\_EMBEDDING\_MODEL = "sentence-transformers/all-MiniLM-L6-v2"}
+    \item \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.5}
+    \item \texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.3}
+    \item \texttt{PGVECTOR\_INITIAL\_RATIO = 0.5}
+\end{itemize}
+
+\subsection{Embedding-Erzeugung mit Sentence Transformers}
+
+Die Überführung der Lognachrichten in numerische Vektoren übernimmt das
+vortrainierte Modell \texttt{sentence-transformers/all-MiniLM-L6-v2} aus der
+\texttt{sentence-transformers}-Bibliothek. Das Modell erzeugt für jede
+Eingabezeichenkette einen Vektor mit $384$ Dimensionen, der die semantische
+Bedeutung des Textes kodiert. Gegenüber TF-IDF-Vektoren, die lediglich das
+Vokommen einzelner Terme zählen, erfassen Sentence-Embeddings auch synonyme
+Ausdrücke und kontextuelle Bedeutungsunterschiede, da das Modell auf großen
+Textkorpora vortrainiert wurde. Das Encoding erfolgt über die Methode
+\lstinline{model.encode}, welche alle Lognachrichten in einem Batch verarbeitet
+und eine NumPy-Matrix der Form $(n, 384)$ zurückgibt.
+
+\begin{lstlisting}[caption={Embedding-Erzeugung mit all-MiniLM-L6-v2},
+                   label={lst:pgvector-embed}]
+PGVECTOR_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+model = SentenceTransformer(PGVECTOR_EMBEDDING_MODEL)
+embeddings = model.encode(logs_clean, show_progress_bar=True)
+\end{lstlisting}
+
+\subsection{Datenbankschema: Tabellen und HNSW-Index}
+
+Die erzeugten Embeddings werden in einer PostgreSQL-Datenbank mit der
+pgvector-Erweiterung persistiert. Das Schema umfasst zwei Tabellen sowie jeweils
+einen HNSW-Index, wie in Listing~\ref{lst:pgvector-schema} dargestellt.
+
+\begin{lstlisting}[caption={Datenbankschema mit HNSW-Indizes},
+                   label={lst:pgvector-schema}]
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Haupt-Tabelle: eine Zeile pro Lognachricht
+CREATE TABLE IF NOT EXISTS log (
+    id             SERIAL PRIMARY KEY,
+    message        TEXT NOT NULL,
+    embedding      vector(384),
+    processed      BOOLEAN DEFAULT FALSE,
+    log_cluster_id INTEGER
+);
+
+-- Hilfstabelle: ein Durchschnittsvektor pro Cluster
+CREATE TABLE IF NOT EXISTS avg_embedding (
+    id             SERIAL PRIMARY KEY,
+    avg_embedding  vector(384) NOT NULL,
+    log_cluster_id INTEGER NOT NULL UNIQUE
+);
+
+-- HNSW-Indizes fuer schnelle Cosinus-Distanz-Suche
+CREATE INDEX IF NOT EXISTS idx_log_embedding_hnsw
+    ON log USING hnsw (embedding vector_cosine_ops);
+
+CREATE INDEX IF NOT EXISTS idx_avg_embedding_hnsw
+    ON avg_embedding USING hnsw (avg_embedding vector_cosine_ops);
+\end{lstlisting}
+
+Die Tabelle \texttt{log} speichert neben dem Rohtext und dem Embedding zwei
+Steuerfelder: \texttt{processed} kennzeichnet, ob eine Lognachricht bereits einem
+Cluster zugewiesen wurde, und \texttt{log\_cluster\_id} hält die resultierende
+Cluster-Zugehörigkeit. Die zweite Tabelle \texttt{avg\_embedding} enthält pro
+Cluster genau einen Eintrag mit dem arithmetischen Mittelvektor aller zugehörigen
+Embeddings. Sie dient als kompakte Repräsentation der bekannten Cluster und
+ermöglicht es, neue Lognachrichten effizient gegen bestehende Cluster abzugleichen,
+ohne alle Einzelvektoren durchsuchen zu müssen.
+
+Auf beiden Tabellen wird ein HNSW-Index (\textit{Hierarchical Navigable Small World})
+mit dem Operator \texttt{vector\_cosine\_ops} angelegt. HNSW baut einen
+mehrschichtigen Graphen über die Vektoren auf, in dem jeder Knoten mit einer
+begrenzten Anzahl von Nachbarknoten verbunden ist. Eine Suchanfrage traversiert
+diesen Graphen von groben zu feinen Schichten und findet so in nahezu konstanter
+Zeit die nächsten Nachbarn eines Abfragevektors. Im Vergleich zur alternativen
+Indexstruktur IVFFlat bietet HNSW einen besseren Speed-Recall-Tradeoff, benötigt
+jedoch mehr Speicher und eine längere Aufbauzeit
+\cite{githubGitHubPgvectorpgvector}. Da die Datenmenge in diesem Szenario
+überschaubar ist, überwiegen die Vorteile der schnelleren Abfragezeit.
+
+\subsection{Phase 1: Initial Clustering auf der ersten Hälfte der Daten}
+
+Das Clustering folgt einem zweistufigen Ansatz, der die Verarbeitungsreihenfolge
+explizit kontrolliert. In Phase 1 werden die ersten 50\,\% der Lognachrichten
+(\lstinline{split\_idx = int(len(logs\_clean) * 0.5)}) verarbeitet, um eine initiale
+Clusterbasis aufzubauen. Die restlichen Einträge werden zunächst als
+\lstinline{processed = TRUE} markiert, sodass der Algorithmus sie in dieser Phase
+überspringt. Das Vorgehen ist in Listing~\ref{lst:pgvector-initial} dargestellt.
+
+\begin{lstlisting}[caption={Phase 1: Initial Clustering},
+                   label={lst:pgvector-initial}]
+PGVECTOR_INITIAL_COSINE_DISTANCE = 0.5
+PGVECTOR_INITIAL_RATIO           = 0.5
+
+split_idx = int(len(logs_clean) * PGVECTOR_INITIAL_RATIO)
+
+# Zweite Haelfte temporaer sperren
+conn.execute(text(
+    "UPDATE log SET processed = TRUE WHERE id > :s"
+), {"s": split_idx})
+
+# Initial Clustering auf erster Haelfte
+for (log_id,) in candidates:
+    # Bereits zugewiesene Logs ueberspringen
+    if already_assigned(log_id):
+        continue
+
+    # Aehnliche Logs per Cosinus-Distanz finden
+    similar = conn.execute(text("""
+        WITH target AS (SELECT embedding FROM log WHERE id = :id)
+        SELECT l.id FROM log l, target t
+        WHERE l.processed = FALSE
+          AND (l.embedding <=> t.embedding) < :threshold
+        ORDER BY l.embedding <=> t.embedding
+    """), {"id": log_id,
+           "threshold": PGVECTOR_INITIAL_COSINE_DISTANCE})
+
+    if similar:
+        new_cluster_id = max_cluster_id() + 1
+        assign_cluster(similar_ids, new_cluster_id)
+
+# Durchschnittsvektoren berechnen
+INSERT INTO avg_embedding (log_cluster_id, avg_embedding)
+SELECT log_cluster_id, AVG(embedding) FROM log
+WHERE log_cluster_id IS NOT NULL
+GROUP BY log_cluster_id
+ON CONFLICT (log_cluster_id) DO UPDATE
+    SET avg_embedding = EXCLUDED.avg_embedding;
+\end{lstlisting}
+
+Der Algorithmus iteriert sequenziell über alle noch nicht zugewiesenen
+Kandidaten. Für jeden Kandidaten wird über den HNSW-Index eine Nachbarschaftssuche
+mit dem Schwellenwert \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.5} ausgeführt:
+Alle Logs, deren Cosinus-Distanz zum aktuellen Kandidaten diesen Wert unterschreitet,
+gelten als ähnlich genug für eine gemeinsame Cluster-Zugehörigkeit. Der gesamte
+Ähnlichkeitsbatch erhält eine neue Cluster-ID. Nach Abschluss aller Zuweisungen
+werden die Durchschnittsvektoren je Cluster in \texttt{avg\_embedding} berechnet
+und gespeichert.
+
+\subsection{Phase 2: Re-Clustering auf der zweiten Hälfte der Daten}
+
+In Phase 2 werden die zurückgehaltenen 50\,\% der Lognachrichten verarbeitet.
+Diese werden als \lstinline{processed = FALSE} markiert und iterativ gegen die
+bereits bekannten Cluster abgeglichen. Das Re-Clustering folgt einer
+Drei-Strategien-Logik, die in Listing~\ref{lst:pgvector-recluster} dargestellt ist.
+
+\begin{lstlisting}[caption={Phase 2: Re-Clustering mit drei Strategien},
+                   label={lst:pgvector-recluster}]
+PGVECTOR_RECLUSTER_COSINE_DISTANCE = 0.3
+
+for (log_id,) in unprocessed:
+
+    # Strategie 1: Aehnlichen Durchschnittsvektor suchen
+    similar_cluster = conn.execute(text("""
+        WITH target AS (SELECT embedding FROM log WHERE id = :id)
+        SELECT ae.log_cluster_id FROM avg_embedding ae, target t
+        WHERE (ae.avg_embedding <=> t.embedding) <= :threshold
+        ORDER BY ae.avg_embedding <=> t.embedding LIMIT 1
+    """), {"id": log_id,
+           "threshold": PGVECTOR_RECLUSTER_COSINE_DISTANCE})
+
+    if similar_cluster:
+        assign_to_existing_cluster(log_id, similar_cluster)
+
+    else:
+        # Strategie 2: Aehnliches Einzel-Log suchen
+        similar_log = conn.execute(text("""
+            WITH target AS (SELECT embedding FROM log WHERE id = :id)
+            SELECT l.log_cluster_id FROM log l, target t
+            WHERE l.processed = TRUE
+              AND (l.embedding <=> t.embedding) < :threshold
+            ORDER BY l.embedding <=> t.embedding LIMIT 1
+        """), {"id": log_id,
+               "threshold": PGVECTOR_INITIAL_COSINE_DISTANCE})
+
+        if similar_log:
+            assign_to_existing_cluster(log_id, similar_log)
+        else:
+            # Strategie 3: Neuen Cluster anlegen
+            assign_new_cluster(log_id)
+
+    # Durchschnittsvektor aktualisieren
+    update_avg_embedding(log_id)
+\end{lstlisting}
+
+Die drei Strategien sind nach aufsteigendem Rechenaufwand geordnet. Strategie~1
+sucht zunächst in der \texttt{avg\_embedding}-Tabelle nach einem ähnlichen
+Cluster-Schwerpunkt; dieser Vergleich ist besonders effizient, da die Tabelle
+nur so viele Einträge enthält, wie Cluster existieren – deutlich weniger als die
+Gesamtzahl der Lognachrichten. Der Schwellenwert von
+\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.3} ist dabei bewusst strenger
+als in Phase 1 ($0{,}5$) gewählt: Ein neues Log soll einem bestehenden Cluster
+nur dann zugeordnet werden, wenn es sich in unmittelbarer Nähe des
+Cluster-Schwerpunktes befindet, um Cluster-Drift durch sukzessive Fehlzuweisungen
+zu vermeiden. Findet Strategie~1 keinen Treffer, weitet Strategie~2 die Suche
+auf alle verarbeiteten Einzellogs aus. Erst wenn auch diese Suche erfolglos
+bleibt, legt Strategie~3 einen neuen Cluster an. Nach jeder Zuweisung wird der
+betroffene Durchschnittsvektor in \texttt{avg\_embedding} aktualisiert, sodass
+nachfolgende Zuweisungen auf dem aktuellen Stand der Clusterbasis operieren.
+
+Im vorliegenden Testlauf erzeugte Phase~1 insgesamt 28 Cluster; Phase~2 erstellte
+keine neuen Cluster, da alle verbleibenden Lognachrichten einem der bestehenden
+Cluster zugeordnet werden konnten. Das Endergebnis von 28 Clustern entspricht
+damit in guter Näherung der tatsächlichen Anzahl der Log-Templates im
+OpenStack-Datensatz.
