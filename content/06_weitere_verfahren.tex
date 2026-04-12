@@ -77,14 +77,36 @@ Shingle-Mengen und senken dadurch die gemessene Ähnlichkeit künstlich ab.
 \paragraph{Empirische Einordnung.}
 Im Rahmen dieser Arbeit wurde das Verfahren prototypisch mit der Python-Bibliothek
 \texttt{datasketch} auf dem OpenStack-Datensatz des Loghub-Benchmarks erprobt.
-Bei einer wortbasierten Trigramm-Tokenisierung (\texttt{MINHASH\_NGRAM\_SIZE = 3}),
-128~Permutationen (\texttt{MINHASH\_NUM\_PERM = 128}) und einem Jaccard-Schwellenwert
-von $0{,}5$ (\texttt{MINHASH\_THRESHOLD = 0.5}) entstanden 1\,809~Cluster. Die
-tatsächliche Anzahl der Log-Templates im Datensatz liegt jedoch deutlich darunter.
-Dieses Ergebnis bestätigt die oben beschriebene Schwäche: Der gewählte
-Schwellenwert reicht nicht aus, um Logs desselben Templates zuverlässig in einem
-Bucket zusammenzuführen, da ihre Trigramm-Überschneidung die Schwelle bei
-variablen Token-Positionen häufig unterschreitet.
+Zur Ermittlung geeigneter Hyperparameter wurde eine empirische Parametersuche
+durchgeführt, deren Verlauf im Folgenden dokumentiert wird.
+
+Als Ausgangskonfiguration dienten eine wortbasierte Trigramm-Tokenisierung
+(\texttt{MINHASH\_NGRAM\_SIZE\;=\;3}), 128~Permutationen
+(\texttt{MINHASH\_NUM\_PERM\;=\;128}) und ein Jaccard-Schwellenwert von $0{,}5$
+(\texttt{MINHASH\_THRESHOLD\;=\;0.5}). Diese Konfiguration erzeugte
+1\,809~Cluster -- eine massive Übersegmentierung, da die tatsächliche Anzahl
+der Log-Templates im Datensatz deutlich darunter liegt. Die Ursache ist die in
+Abschnitt~\ref{sec:minhash_lsh} beschriebene Schwäche: Variable Token-Positionen
+(IP-Adressen, UUIDs, numerische Werte) reduzieren die Trigramm-Überschneidung
+strukturell identischer Logs so stark, dass der Schwellenwert von $0{,}5$
+systematisch unterschritten wird.
+
+Um die Übersegmentierung zu kompensieren, wurde der Schwellenwert auf $0{,}2$
+gesenkt und die Tokenisierung auf Unigramme (\texttt{MINHASH\_NGRAM\_SIZE\;=\;1})
+vereinfacht. Diese Konfiguration führte zum entgegengesetzten Extrem: Sämtliche
+Logs wurden in einem einzigen Cluster zusammengefasst, da die
+Bag-of-Words-Repräsentation über unterschiedliche Log-Templates hinweg zu viele
+gemeinsame Token aufweist und der niedrige Schwellenwert nahezu alle Paare als
+ähnlich einstuft.
+
+Als Kompromiss wurden schließlich \texttt{MINHASH\_THRESHOLD\;=\;0.3} und
+\texttt{MINHASH\_NGRAM\_SIZE\;=\;2} gewählt. Bigramme bieten gegenüber
+Unigrammen eine höhere Trennschärfe, ohne die bei Trigrammen auftretende
+Anfälligkeit gegenüber variablen Token vollständig zu übernehmen. Der
+Schwellenwert von $0{,}3$ erzeugt 31~Cluster und liegt damit in der
+Größenordnung der übrigen Verfahren (K-Means: 32, pgvector: 28). Die
+resultierende Clusterqualität wird in Kapitel~\ref{chap:abschluss} im
+Rahmen des Gesamtvergleichs ausgewertet. //TODO
 
 \paragraph{Fazit.}
 MinHash und LSH sind leistungsfähige Werkzeuge für die skalierbare
