@@ -1,6 +1,7 @@
 
 
 \chapter{Clustern mit Machine Learning Algorithmen}
+\label{chap:ml}
 
 Zunächst betrachtet die Analyse Algorithmen aus dem Bereich des Machine Learning. Im Fokus stehen insbesondere die Cluster-Algorithmen DBSCAN, k-Means und Drain. Diese Algorithmen sind für produktive Anwendungen interessant, da freie und quelloffene Bibliotheken wie scikit-learn stabile und getestete Implementierungen bereitstellen.
 
@@ -53,6 +54,7 @@ Während klassische Ansätze oft statische Embeddings für einzelne Wörter gene
 Konkret kommt in dieser Arbeit das vortrainierte Modell \texttt{sentence-transformers/all-MiniLM-L6-v2} zum Einsatz. Die Wahl fiel auf dieses Modell, da es eine optimale Ausgewogenheit zwischen der Vektorlänge (hier 384 Dimensionen) und der Verarbeitungsgeschwindigkeit (Inferenzzeit) bietet. Dies gewährleistet eine ressourcenschonende Berechnung, die dennoch eine hohe Präzision bei der Abbildung semantischer Zusammenhänge aufweist. Das gewählte Modell wurde mit verschiedenen Datensätzen angelernt, darunter auch ein großer Anteil an Code von Programmiersprachen. Zu den angestrebten Verwendungen dieses Modells zählt auch das Clustering von Text. Dabei ist jedoch zu beachten, dass das Modell eine maximale Wortlänge von 256 Zeichen hat. Alles, was darüber hinausgeht, wird abgeschnitten.\footnote{\url{https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2} erläutert alle Details zu praktischen Verwendung des Modells} In den späteren Experimenten und Tests zur Gruppierung von Lognachrichten werden die Embedding-Modelle nur für die Verarbeitung mit Vektordatenbanken \ref{clustern_mit_vek} genutzt, da die nachfolgenden Ansätze mit Machine-Learning-Algorithmen sehr leichtgängig sind und durch die aufwendigere Vorverarbeitung ausgebremst werden würden. 
 
 \section{k-Means: Partitionierendes Clustering und dessen Einschränkungen}
+\label{sec:kmeans}
 Nachdem die Nutzung der passenden Textvektorisierung geklärt ist, werden im Folgenden die Algorithmen zum Gruppieren bzw. Clustern der Log-Nachrichten beschrieben.
 
 Der K-Means-Clusteralgorithmus umfasst drei Schritte. Die Nutzung erfordert zunächst die Wahl eines Wertes für k.
@@ -70,6 +72,7 @@ Die Auswahl der Zahl $K$ ist essenziell für das Clustering.
 Der manuelle Aufwand bei einem System, das periodisch neue Logs einliest, ist jedoch zu hoch. Selbst eine Automatisierung mittels der Elbow-Methode zur Bestimmung von K erforderte bei jedem Durchlauf eine Neuberechnung. Zudem ist die Anzahl der Loggruppen im Voraus unbekannt. Deshalb ist ein Cluster-Algorithmus erforderlich, der ohne feste Eingabeparameter wie K auskommt.
 
 \section{DBSCAN: Flexibles, dichtebasiertes Clustering ohne vordefinierte Cluster-Anzahl}
+\label{sec:dbscan}
 
 Der DBSCAN-Algorithmus gehört zu den dichtebasierten Clusterverfahren. Anders als k-Means benötigt er keinen Parameter k, was eine flexiblere Log-Gruppierung ermöglicht. DBSCAN definiert einen Cluster als dichte Region aus Datenpunkten, getrennt durch Bereiche geringerer Dichte. Der Algorithmus unterteilt Datenpunkte in drei Kategorien: Kernpunkte, Grenzpunkte und Rauschpunkte. Eine dichte Region definiert sich als Radius $\varepsilon$ um einen Punkt $x  \in \mathbb{R}^d$ \cite{Mohammed_Wagner_2020}:
 \begin{equation}
@@ -83,6 +86,7 @@ Dabei bezeichnet $\| \mathbf{x} - \mathbf{y} \|$ die euklidische Distanz, ersetz
 \end{enumerate}
 
 \section{Drain3: Effizientes On-Demand-Parsing mittels Baumstrukturen}
+\label{sec:drain3}
 
 
 Im folgenden Abschnitt geht es um den Drain Online Log Parser, welcher in den algorithmischen Vergleichen durch die Python-Bibliothek drain3 \footnote{GitHub Repository zur Python Implementierung von drain: \url{https://github.com/logpai/Drain3}} genutzt wird. Die Bibliothek basiert auf dem Drain-Algorithmus. Die „3” im Namen zeigt an, dass es sich um eine Weiterentwicklung der Drain-Bibliothek handelt, welche für Python 3 optimiert wurde. Die Vorgänger-Bibliothek war für Python 2 entwickelt worden. 
@@ -141,6 +145,7 @@ Die Persistenzmechanik innerhalb der \lstinline{TemplateMiner-Klasse} \ref{lst:t
 Die beiden Funktionen \lstinline{save_state()} und \lstinline{load_state()} stellen sicher, dass der Zustand des Parsers über einen Neustart hinweg gespeichert und wiederhergestellt werden kann. Durch die Implementierung als abstrakte Klasse bietet die Bibliothek viel Flexibilität, wie der Zustand des Systems gespeichert werden soll. Die Bibliothek kommt mit vorgefertigten PersistenceHandlern für Redis und Kafka, zwei Vertreter performanter Schlüssel-Wert-Datenbanken. 
 
 \section{Brain: Log Parsing mit bidirektionalem Parallelbaum}
+\label{sec:brain}
 
 Brain \cite{brain} ist ein stabiler und effizienter Log-Parser, der auf der 
 Beobachtung basiert, dass das längste gemeinsame Muster innerhalb einer Gruppe 

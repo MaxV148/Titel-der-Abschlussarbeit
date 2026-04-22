@@ -1,4 +1,5 @@
 \chapter{Praktische Realisierung der Testumgebung und Verfahren}
+\label{chap:real}
 
 Der folgende Abschnitt beschreibt die Testumgebung für den Vergleich der Clustering-Algorithmen. Ziel ist eine realitätsnahe Umgebung, um Leistungsfähigkeit und Effizienz der Algorithmen unter kontrollierten Bedingungen zu bewerten. Die Testumgebung umfasst die eingesetzte Hardware und Software, die Konfiguration der Vektordatenbank sowie die Vorbereitung der Logdaten. Die Versuche finden in fünf Durchläufen statt, wobei eine zufällige Neuanordnung der Logdaten in den Proben erfolgt. Dies stellt sicher, dass die Tests die Algorithmen nicht nur punktuell, sondern auch im kontinuierlichen Betrieb unter realen Bedingungen prüfen.
 Diese umfassende Testumgebung bildet die Grundlage für einen fundierten und nachvollziehbaren Vergleich der unterschiedlichen Clustering-Ansätze.
@@ -172,10 +173,12 @@ mindestens im $\varepsilon$-Radius eines Punktes befinden müssen, damit dieser
 als Kernpunkt klassifiziert wird. Der Wert $2$ ist die kleinstmögliche sinnvolle
 Einstellung und bewirkt, dass bereits zwei sich gegenseitig als Nachbarn erkennende
 Lognachrichten einen Cluster bilden. Da der Datensatz pro Log-Template im Mittel
-lediglich $2\,000 / n_{\text{Templates}}$ Einträge enthält\footnote{Der verwendete
-OpenStack-Datensatz aus dem loghub-Benchmark umfasst 2\,000 Lognachrichten, verteilt
-auf eine unbekannte Anzahl von Templates.}, sichert ein kleiner Wert ab, dass auch
-selten auftretende Templates nicht fälschlich als Rauschen klassifiziert werden.
+lediglich $10\,000 / n_{\text{Templates}}$ Einträge enthält\footnote{Der verwendete
+Datensatz setzt sich aus den Loghub-2k-Quellen \texttt{Linux}, \texttt{Apache} und
+\texttt{OpenSSH} zusammen und umfasst nach der Mischung insgesamt $10\,000$ Lognachrichten,
+verteilt auf $44$ Ground-Truth-Klassen; siehe Abschnitt~\ref{sec:eval:aufbau}.}, sichert
+ein kleiner Wert ab, dass auch selten auftretende Templates nicht fälschlich als Rauschen
+klassifiziert werden.
 
 Angewendet wird das Verfahren über \texttt{fit\_predict} auf die zuvor erzeugte
 TF-IDF-Matrix \texttt{X\_tfidf}. Datenpunkte in Regionen hoher Dichte werden zu
@@ -213,6 +216,7 @@ df_labeled['drain_cluster_id'] = drain_cluster_ids
 \end{lstlisting}
 
 \section{pgvector in der Praxis: Zweistufiges Embedding-basiertes Clustering}
+\label{sec:real:pgvector}
 
 Das pgvector-Verfahren unterscheidet sich grundlegend von den bisher vorgestellten
 Ansätzen: Anstatt auf statistischen Termgewichtungen (TF-IDF) oder regelbasierten
@@ -429,5 +433,5 @@ nachfolgende Zuweisungen auf dem aktuellen Stand der Clusterbasis operieren.
 Im vorliegenden Testlauf erzeugte Phase~1 insgesamt 28 Cluster; Phase~2 erstellte
 keine neuen Cluster, da alle verbleibenden Lognachrichten einem der bestehenden
 Cluster zugeordnet werden konnten. Das Endergebnis von 28 Clustern entspricht
-damit in guter Näherung der tatsächlichen Anzahl der Log-Templates im
-OpenStack-Datensatz.
+damit in guter Näherung der tatsächlichen Anzahl der Ground-Truth-Klassen im
+verwendeten Loghub-Datensatz.

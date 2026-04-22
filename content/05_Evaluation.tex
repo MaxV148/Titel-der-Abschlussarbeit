@@ -5,35 +5,459 @@
 \section{Experimentaufbau}
 \label{sec:eval:aufbau}
 
-% Datensatz (OpenStack, Loghub), Metriken (ARI, V-Measure), Testumgebung
+Der Experimentaufbau gliedert sich in vier Komponenten: den verwendeten Datensatz mit seiner
+Ground-Truth-Einteilung, die eingesetzten Evaluationsmetriken, die Testumgebung sowie das
+Verfahren der Mehrfachauswertung. Die technische Infrastruktur der Laufzeitumgebung ist in
+Kapitel~\ref{chap:real} beschrieben; der vorliegende Abschnitt konzentriert sich auf die
+methodischen Aspekte der Evaluation und legt damit die Grundlage für die verfahrensspezifischen
+Ergebnisse in den nachfolgenden Abschnitten.
+
+\paragraph{Datensatz.}
+Als Datengrundlage dienen drei Quellen des Loghub-2k-Benchmarks~\cite{TODO:loghub}: die
+Systemlog-Datensätze \texttt{Linux}, \texttt{Apache} und \texttt{OpenSSH}, die jeweils
+$2\,000$ Lognachrichten umfassen. Die drei Quellen werden zu einem gemeinsamen Datensatz
+mit $10\,000$ Einträgen zusammengeführt und zufällig permutiert. Diese Mischung bildet ein
+realitätsnäheres Szenario ab, in dem ein Log-Aggregator Nachrichten aus heterogenen
+Systemquellen mit unterschiedlichen Format- und Vokabularkonventionen verarbeiten muss.
+
+Die Ground-Truth-Klassifikation wird durch einen regelbasierten Beschriftungsschritt erzeugt.
+Jede Lognachricht wird mittels regulärer Ausdrücke und Teilstring-Suche einer von $44$
+definierten Template-Klassen zugeordnet. Lognachrichten, die keinem Muster entsprechen,
+erhalten das Label $-20$ und gelten als nicht klassifiziert. Diese Einteilung bildet die
+Referenz für alle nachfolgenden Metriken.
+
+\paragraph{Evaluationsmetriken.}
+Zur Beurteilung der Clustering-Güte werden zwei komplementäre Metriken eingesetzt, die
+unterschiedliche Aspekte der Übereinstimmung mit der Ground Truth erfassen. Ergänzend werden
+die Teilgrößen Homogenität und Vollständigkeit separat berichtet.
+
+\textit{Adjusted Rand Index.}
+Der Adjusted Rand Index~(ARI) misst, wie gut zwei Partitionierungen – die vorhergesagte
+Clusterzugehörigkeit und die Ground Truth – auf Ebene von Datenpunktpaaren übereinstimmen.
+Dazu wird berechnet, welcher Anteil aller Paare in beiden Partitionierungen übereinstimmend
+in denselben oder in verschiedene Cluster eingeteilt ist; dieser Wert wird anschließend um
+den zufallsbedingten Erwartungswert korrigiert:
+
+\begin{equation}
+    \label{eq:ari}
+    \mathrm{ARI} =
+    \frac{\displaystyle\sum_{ij}\binom{n_{ij}}{2}
+          - \dfrac{\bigl[\sum_{i}\binom{a_i}{2}\bigr]
+                   \bigl[\sum_{j}\binom{b_j}{2}\bigr]}{\binom{n}{2}}}
+    {\dfrac{1}{2}\Bigl[\sum_{i}\binom{a_i}{2}+\sum_{j}\binom{b_j}{2}\Bigr]
+     - \dfrac{\bigl[\sum_{i}\binom{a_i}{2}\bigr]
+              \bigl[\sum_{j}\binom{b_j}{2}\bigr]}{\binom{n}{2}}}
+\end{equation}
+
+Dabei bezeichnet $n_{ij}$ die Anzahl der Datenpunkte, die sowohl Cluster~$i$ der einen als
+auch Cluster~$j$ der anderen Partition angehören; $a_i$ und $b_j$ sind die jeweiligen
+Randgrößen der Kontingenztafel, $n$ die Gesamtzahl der Datenpunkte. Ein ARI von $1{,}0$
+bedeutet vollständige Übereinstimmung mit der Ground Truth; ein Wert nahe $0$ entspricht einer
+zufälligen Zuordnung; negative Werte zeigen eine schlechtere Übereinstimmung als der Zufall an.
+
+\textit{V-Measure.}
+Das V-Measure bewertet die Clustering-Güte aus zwei orthogonalen Perspektiven und vereint
+diese als harmonisches Mittel~\cite{TODO:vmeasure}. \textit{Homogenität}~$h$ misst, ob jeder
+gebildete Cluster ausschließlich Lognachrichten einer einzigen Ground-Truth-Klasse enthält;
+\textit{Vollständigkeit}~$c$ misst, ob alle Lognachrichten einer Ground-Truth-Klasse demselben
+Cluster zugeordnet sind:
+
+\begin{equation}
+    \label{eq:vmeasure}
+    V = \frac{(1 + \beta^2)\cdot h \cdot c}{\beta^2 \cdot h + c},
+    \qquad
+    h = 1 - \frac{H(C \mid K)}{H(C)},
+    \qquad
+    c = 1 - \frac{H(K \mid C)}{H(K)}
+\end{equation}
+
+Für $\beta = 1$ gehen Homogenität und Vollständigkeit gleichgewichtig ein. Die separate
+Betrachtung beider Teilmetriken erlaubt eine differenzierte Fehlerdiagnose: ein hoher
+Homogenitätswert bei niedriger Vollständigkeit deutet auf zu feinkörnige Cluster hin
+(Over-Clustering), während der umgekehrte Fall auf zu grobe Zusammenfassungen hindeutet
+(Under-Clustering).
+
+\paragraph{Testumgebung.}
+Die Laufzeitumgebung besteht aus zwei Docker-Containern, deren Konfiguration in
+Kapitel~\ref{chap:real} beschrieben ist: einem Jupyter-Notebook-Container, der die
+Implementierung aller Algorithmen enthält, sowie einem PostgreSQL-Container mit
+\texttt{pgvector}-Erweiterung für das vektorbasierte Verfahren. Alle Algorithmen werden
+innerhalb desselben Notebooks \texttt{ML.ipynb} ausgeführt, sodass identische Eingabedaten,
+eine einheitliche Vorverarbeitungspipeline und eine gemeinsame Evaluationslogik sichergestellt
+sind.
+
+\paragraph{Permutationsbasierte Mehrfachauswertung.}
+Um das Verhalten der Verfahren unter variierender Eingangsreihenfolge zu untersuchen, wird
+jeder Algorithmus in $N = 5$ unabhängigen Durchläufen ausgeführt. In jedem Durchlauf wird
+der gesamte Datensatz mit einem festgelegten Zufallsseed permutiert:
+
+\begin{lstlisting}[caption={Konfiguration der Mehrfachauswertung}, label={lst:eval-seeds}]
+RANDOM_SEEDS = [42, 123, 456, 789, 1011]
+
+for seed in RANDOM_SEEDS:
+    random.seed(seed)
+    np.random.seed(seed)
+    indices = list(range(len(logs_original)))
+    random.shuffle(indices)
+    logs_shuffled    = [logs_original[i] for i in indices]
+    ground_truth_shuffled = ground_truth[indices]
+    # Algorithmen auf logs_shuffled ausfuehren ...
+\end{lstlisting}
+
+Die Permutation ist insbesondere für reihenfolgeabhängige Online-Verfahren von Bedeutung.
+Drain3, Brain und der pgvector-Algorithmus verarbeiten Lognachrichten sequenziell und
+treffen Zuordnungsentscheidungen auf Basis des jeweils aktuellen Modellzustands; eine
+veränderte Eingangsreihenfolge kann daher zu abweichenden Clusterzuweisungen führen.
+TF-IDF-basierte Stapelverfahren~-- K-Means und DBSCAN~-- sind von der Permutation
+inhaltlich nicht betroffen, da sie alle Datenpunkte simultan verarbeiten; der Seed
+steuert dort ausschließlich die stochastische Initialisierung der Zentroide bei K-Means.
+Als Kennzahlen werden für jede Metrik der Mittelwert~$\bar{x}$ sowie die
+Standardabweichung~$\sigma$ über alle fünf Durchläufe berechnet und berichtet.
 
 % ----------------------------------------------------------------
 \section{Ergebnisse der algorithmischen Verfahren}
 \label{sec:eval:algo}
 
+Die folgenden Abschnitte dokumentieren die Evaluationsergebnisse der fünf algorithmischen
+Verfahren. Alle angegebenen Werte sind Mittelwerte mit Standardabweichung über $N = 5$
+Permutationsdurchläufe, wie in Abschnitt~\ref{sec:eval:aufbau} beschrieben. Qualitative
+Beobachtungen beschränken sich auf das, was die Messwerte unmittelbar belegen; eine
+vergleichende Gesamtbewertung erfolgt in Abschnitt~\ref{sec:eval:vergleich}.
+
+% ----------------------------------------------------------------
 \subsection{K-Means}
 \label{sec:eval:kmeans}
 
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse K-Means ($k = 32$, $N = 5$ Durchläufe)}
+    \label{tab:eval:kmeans}
+    \begin{tabular}{lrr}
+        \toprule
+        Metrik & $\bar{x}$ & $\sigma$ \\
+        \midrule
+        ARI            & $33{,}2\,\%$ & $\pm\,2{,}0\,\%$ \\
+        V-Measure      & $70{,}6\,\%$ & $\pm\,1{,}3\,\%$ \\
+        Homogenität    & $93{,}2\,\%$ & $\pm\,1{,}1\,\%$ \\
+        Vollständigkeit& $56{,}9\,\%$ & $\pm\,1{,}2\,\%$ \\
+        \midrule
+        Clusteranzahl  & $32$ & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Das auffälligste Merkmal ist das starke Ungleichgewicht zwischen Homogenität ($93{,}2\,\%$)
+und Vollständigkeit ($56{,}9\,\%$). Die gebildeten Cluster sind nahezu rein: Jeder Cluster
+enthält überwiegend Lognachrichten einer einzigen Ground-Truth-Klasse. Gleichzeitig werden
+die $44$ Klassen des Datensatzes auf lediglich $k = 32$ Partitionen aufgeteilt, sodass
+größere oder strukturell heterogene Klassen auf mehrere Cluster verteilt werden. Dieser
+Effekt der Überpartitionierung einzelner Klassen senkt die Vollständigkeit und damit auch den
+ARI auf $33{,}2\,\%$.
+
+Die Standardabweichung von $\pm\,2{,}0$ Prozentpunkten beim ARI zeigt, dass das Verfahren
+moderat sensitiv gegenüber der Datenreihenfolge ist. Ursache ist die stochastische
+Zentroid-Initialisierung: Unterschiedliche Startbedingungen führen zu leicht abweichenden
+Endzuständen. Wie in Abschnitt~\ref{sec:kmeans} dargelegt, muss $k$ vor der Ausführung
+festgelegt werden. Da die tatsächliche Anzahl der Log-Templates im kontinuierlichen Betrieb
+nicht bekannt ist, stellt diese Anforderung eine strukturelle Einschränkung dar, die sich
+direkt in den Messwerten manifestiert. Hinzu kommt, dass K-Means als Stapelverfahren den
+gesamten Datensatz bei jeder Neuverarbeitung einlesen muss und damit nicht für den
+inkrementellen Betrieb geeignet ist.
+
+% ----------------------------------------------------------------
 \subsection{DBSCAN}
 \label{sec:eval:dbscan}
 
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse DBSCAN ($\varepsilon = 0{,}6$, \texttt{min\_samples} $= 2$, $N = 5$ Durchläufe)}
+    \label{tab:eval:dbscan}
+    \begin{tabular}{lrr}
+        \toprule
+        Metrik & $\bar{x}$ & $\sigma$ \\
+        \midrule
+        ARI            & $4{,}6\,\%$  & $\pm\,0{,}0\,\%$ \\
+        V-Measure      & $22{,}4\,\%$ & $\pm\,0{,}0\,\%$ \\
+        Homogenität    & $14{,}5\,\%$ & $\pm\,0{,}0\,\%$ \\
+        Vollständigkeit& $48{,}7\,\%$ & $\pm\,0{,}0\,\%$ \\
+        \midrule
+        Clusteranzahl  & $27$ & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+DBSCAN erzielt mit einem ARI von $4{,}6\,\%$ und einer Homogenität von $14{,}5\,\%$ die
+schwächsten Ergebnisse aller untersuchten Verfahren. Die Nullabweichung über alle fünf
+Durchläufe ist erwartungskonform: DBSCAN operiert als Stapelverfahren auf der vollständigen
+TF-IDF-Matrix und ist gegenüber der Eingangsreihenfolge invariant. Die niedrige Homogenität
+zeigt, dass die gebildeten Cluster stark inhomogen sind – Lognachrichten unterschiedlicher
+Templates werden in denselben Cluster zusammengefasst. Der gewählte Nachbarschaftsradius
+$\varepsilon = 0{,}6$ erweist sich damit als zu tolerant für diesen Datensatz.
+
+Wie in Abschnitt~\ref{sec:dbscan} beschrieben, reagiert DBSCAN empfindlich auf ungleichmäßige
+Dichtverteilungen. Der gemischte Loghub-Datensatz enthält Klassen sehr unterschiedlicher
+Häufigkeit; seltene Templates liefern im TF-IDF-Raum zu wenige Kernpunkte und werden
+als Rauschen (Label $-1$) klassifiziert. Diese Rauschpunkte entziehen sich der Evaluation
+und senken die Vollständigkeit zusätzlich. Das Verfahren scheidet für den kontinuierlichen
+Betrieb aus denselben Gründen wie K-Means aus: Eine inkrementelle Erweiterung ist ohne
+vollständige Neuberechnung nicht möglich.
+
+% ----------------------------------------------------------------
 \subsection{Drain3}
 \label{sec:eval:drain3}
 
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse Drain3 (\texttt{sim\_th} $= 0{,}2$, \texttt{depth} $= 3$, $N = 5$ Durchläufe)}
+    \label{tab:eval:drain3}
+    \begin{tabular}{lrr}
+        \toprule
+        Metrik & $\bar{x}$ & $\sigma$ \\
+        \midrule
+        ARI            & $57{,}9\,\%$ & $\pm\,0{,}1\,\%$ \\
+        V-Measure      & $80{,}5\,\%$ & $\pm\,0{,}4\,\%$ \\
+        Homogenität    & $96{,}1\,\%$ & $\pm\,0{,}6\,\%$ \\
+        Vollständigkeit& $69{,}3\,\%$ & $\pm\,0{,}3\,\%$ \\
+        \midrule
+        Clusteranzahl  & $52$ & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Drain3 erzielt mit einem ARI von $57{,}9\,\%$ und einem V-Measure von $80{,}5\,\%$ die
+besten Werte unter den algorithmischen Verfahren. Die Homogenität von $96{,}1\,\%$ zeigt,
+dass die erzeugten Template-Cluster nahezu ausschließlich Lognachrichten einer einzigen
+Ground-Truth-Klasse enthalten. Die geringere Vollständigkeit von $69{,}3\,\%$ ist auf eine
+moderate Überpartitionierung zurückzuführen: Im Einzellauf entstehen $52$ Cluster für $44$
+Ground-Truth-Klassen, d.\,h. einzelne semantische Klassen werden auf mehrere, jeweils reine
+Drain3-Cluster aufgeteilt. Die nahezu verschwindende Standardabweichung ($\sigma \leq 0{,}6$
+Prozentpunkte) belegt die hohe Stabilität des Verfahrens gegenüber der Eingangsreihenfolge.
+
+Dieses Verhalten ist mit der in Abschnitt~\ref{sec:drain3} beschriebenen Funktionsweise des
+Parse-Baums erklärbar. Der Ähnlichkeitsschwellenwert \texttt{sim\_th = 0{,}2} ist niedrig
+gewählt, damit strukturell ähnliche Nachrichten demselben Template zugeordnet werden. Dennoch
+erzeugt jede syntaktische Variation, die den Schwellenwert unterschreitet, einen separaten
+Ast im Baum. Als Online-Parser verarbeitet Drain3 jede neue Lognachricht einzeln und
+aktualisiert den Template-Baum inkrementell, ohne den gesamten Datensatz neu einlesen zu
+müssen – eine grundlegende Voraussetzung für den kontinuierlichen Betrieb.
+
+% ----------------------------------------------------------------
 \subsection{Brain}
 \label{sec:eval:brain}
 
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse Brain (\texttt{threshold} $= 5$, $N = 5$ Durchläufe)}
+    \label{tab:eval:brain}
+    \begin{tabular}{lrr}
+        \toprule
+        Metrik & $\bar{x}$ & $\sigma$ \\
+        \midrule
+        ARI            & $39{,}2\,\%$ & $\pm\,0{,}0\,\%$ \\
+        V-Measure      & $72{,}9\,\%$ & $\pm\,0{,}0\,\%$ \\
+        Homogenität    & $98{,}8\,\%$ & $\pm\,0{,}0\,\%$ \\
+        Vollständigkeit& $57{,}8\,\%$ & $\pm\,0{,}0\,\%$ \\
+        \midrule
+        Clusteranzahl  & $151$ & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Brain weist mit $98{,}8\,\%$ die höchste Homogenität aller untersuchten Verfahren auf –
+die gebildeten Cluster sind nahezu perfekt rein. Dem steht eine Vollständigkeit von lediglich
+$57{,}8\,\%$ gegenüber, was auf eine ausgeprägte Überpartitionierung hindeutet: Im Einzellauf
+entstehen $151$ Cluster für $44$ Ground-Truth-Klassen, also im Durchschnitt mehr als drei
+Cluster pro semantischer Klasse. Dieser Effekt erklärt den moderaten ARI von $39{,}2\,\%$
+trotz nahezu perfekter Clusterhomogenität. Die Nullabweichung über alle fünf Durchläufe
+zeigt, dass Brain vollständig deterministisch und reihenfolgeunabhängig ist.
+
+Wie in Abschnitt~\ref{sec:brain} dargelegt, analysiert Brain jede Lognachricht im
+bidirektionalen Parallelbaum sowohl vorwärts als auch rückwärts und bildet dabei sehr
+spezifische Templates. Der \texttt{threshold}-Parameter von $5$ legt fest, ab welcher
+Häufigkeit ein Token als variabler Platzhalter gilt; der gewählte Wert ist für den
+vorliegenden Datensatz zu niedrig, sodass zu viele Token als fest betrachtet und zu
+granulare Templates erzeugt werden. Eine Erhöhung des Schwellenwerts würde die Clusteranzahl
+reduzieren und die Vollständigkeit voraussichtlich verbessern, jedoch auf Kosten der
+Homogenität.
+
+% ----------------------------------------------------------------
 \subsection{MinHash LSH}
 \label{sec:eval:minhash}
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse MinHash LSH (\texttt{threshold} $= 0{,}5$, $n$-Gramm $= 3$, $N = 5$ Durchläufe)}
+    \label{tab:eval:minhash}
+    \begin{tabular}{lrr}
+        \toprule
+        Metrik & $\bar{x}$ & $\sigma$ \\
+        \midrule
+        ARI            & $22{,}8\,\%$ & $\pm\,0{,}0\,\%$ \\
+        V-Measure      & $52{,}2\,\%$ & $\pm\,0{,}0\,\%$ \\
+        Homogenität    & $96{,}4\,\%$ & $\pm\,0{,}0\,\%$ \\
+        Vollständigkeit& $35{,}8\,\%$ & $\pm\,0{,}0\,\%$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+MinHash LSH zeigt im Mehrfachlauf das ausgeprägteste Ungleichgewicht zwischen Homogenität
+und Vollständigkeit aller untersuchten Verfahren: Bei $96{,}4\,\%$ Homogenität liegt die
+Vollständigkeit bei nur $35{,}8\,\%$, was den ARI auf $22{,}8\,\%$ – den zweitniedrigsten
+Wert nach DBSCAN – drückt. Die Nullabweichung ist darauf zurückzuführen, dass das
+Union-Find-basierte Clustering die Ähnlichkeitsrelationen im LSH-Index auswertet, die von
+der Eingangsreihenfolge unabhängig sind.
+
+Die sehr niedrige Vollständigkeit ist mit den Parametern des Mehrfachlaufs (\texttt{threshold}
+$= 0{,}5$, $n$-Gramm $= 3$) erklärbar. Ein Schwellenwert von $0{,}5$ verlangt, dass
+mindestens die Hälfte der Trigramme zweier Lognachrichten übereinstimmt, bevor sie
+zusammengeführt werden. Für Lognachrichten mit variablen Feldern – IP-Adressen, Zeitstempel,
+Nutzernamen – ist diese Anforderung zu streng: Strukturell identische Nachrichten unterscheiden
+sich durch variable Bestandteile stark in ihrer Trigramm-Menge und werden daher nicht als
+ähnlich erkannt, was zur Überpartitionierung führt. Das zugrundeliegende Verfahren zur
+Approximation der Jaccard-Ähnlichkeit ist in Abschnitt~\ref{sec:minhash_lsh} beschrieben.\footnote{%
+Im Einzellauf wurde MinHash LSH mit abweichenden Parametern (\texttt{threshold} $= 0{,}3$,
+$n$-Gramm $= 2$) ausgeführt, was zu einem abweichenden Ergebnisprofil führte
+(ARI $46{,}4\,\%$, Homogenität $49{,}7\,\%$, Vollständigkeit $87{,}6\,\%$). Für die
+vergleichende Bewertung werden die Mehrfachlauf-Parameter als Referenz verwendet.}
 
 % ----------------------------------------------------------------
 \section{Ergebnisse des vektorbasierten Verfahrens}
 \label{sec:eval:vector}
 
-% pgvector + Sentence-Transformer
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse pgvector + Sentence-Transformer
+             (\texttt{initial\_dist} $= 0{,}5$, \texttt{recluster\_dist} $= 0{,}3$,
+             \texttt{initial\_ratio} $= 0{,}5$, $N = 5$ Durchläufe)}
+    \label{tab:eval:pgvector}
+    \begin{tabular}{lrr}
+        \toprule
+        Metrik & $\bar{x}$ & $\sigma$ \\
+        \midrule
+        ARI            & $72{,}0\,\%$ & $\pm\,2{,}4\,\%$ \\
+        V-Measure      & $84{,}8\,\%$ & $\pm\,1{,}6\,\%$ \\
+        Homogenität    & $78{,}0\,\%$ & $\pm\,1{,}6\,\%$ \\
+        Vollständigkeit& $93{,}0\,\%$ & $\pm\,2{,}6\,\%$ \\
+        \midrule
+        Clusteranzahl  & $28$ & -- \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Der vektorbasierte Ansatz erzielt mit einem ARI von $72{,}0\,\%$ und einem V-Measure von
+$84{,}8\,\%$ die höchsten Werte aller untersuchten Verfahren. Das Metrikprofil unterscheidet
+sich dabei strukturell von allen algorithmischen Verfahren: Vollständigkeit ($93{,}0\,\%$)
+übersteigt die Homogenität ($78{,}0\,\%$) deutlich, was auf eine moderate Unterpartitionierung
+hindeutet. Lognachrichten derselben Ground-Truth-Klasse werden zuverlässig in denselben Cluster
+zusammengeführt, jedoch enthalten einzelne Cluster gelegentlich Lognachrichten mehrerer Klassen.
+
+\paragraph{Clusteranzahl im Verhältnis zur Ground Truth.}
+Im Einzellauf erzeugt das Verfahren $28$ Cluster für $44$ Ground-Truth-Klassen. Diese Diskrepanz
+ist auf die zweistufige Struktur des Algorithmus zurückzuführen, wie in
+Abschnitt~\ref{sec:real:pgvector} beschrieben. Phase~1 verarbeitet die erste Hälfte des
+Datensatzes und bildet eine initiale Clusterbasis; Phase~2 ordnet die verbleibenden
+Lognachrichten ausschließlich bestehenden Clustern zu oder legt nur dann einen neuen Cluster
+an, wenn der Cosinus-Abstand zum nächstgelegenen Cluster-Schwerpunkt den Schwellenwert
+\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0{,}3} überschreitet. Im vorliegenden
+Durchlauf erstellte Phase~2 keinen einzigen neuen Cluster, was bedeutet, dass alle
+Lognachrichten der zweiten Hälfte einem der $28$ initialen Cluster zugeordnet werden konnten.
+Semantisch nahe Templates, die in Phase~1 durch den Initalisierungsschwellenwert
+\texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0{,}5} zusammengefasst wurden, bleiben dauerhaft
+gemeinsam in einem Cluster – sie senken die Homogenität, ohne die Vollständigkeit zu gefährden.
+Das Ergebnis von $28$ Clustern nähert sich damit der tatsächlichen Anzahl strukturell
+unterschiedlicher Log-Templates im Datensatz an; die Differenz zu den $44$ nominellen
+Ground-Truth-Klassen erklärt sich daraus, dass mehrere semantisch ähnliche Klassen aus
+der regelbasierten Beschriftung (vgl.\ Abschnitt~\ref{sec:eval:aufbau}) im semantischen
+Vektorraum nicht trennscharf separiert sind.
+
+\paragraph{Reihenfolgeabhängigkeit.}
+Die Standardabweichung von $\pm\,2{,}4$ Prozentpunkten beim ARI ist die höchste aller
+Verfahren mit mehr als null Varianz. Ursache ist der inkrementelle Charakter des
+zweistufigen Algorithmus: Die Eingangsreihenfolge beeinflusst, welche Lognachrichten als
+erste einen Cluster-Schwerpunkt definieren und damit nachfolgende Zuordnungen prägen.
+Dieser Effekt ist für Online-Verfahren typisch und in Abschnitt~\ref{PG_Algorithmn}
+als inhärentes Merkmal des iterativen Cluster-Aufbaus beschrieben.
+
+\paragraph{Einordnung in den semantischen Vektorraum.}
+Das Verfahren nutzt das Sentence-Transformer-Modell \texttt{all-MiniLM-L6-v2}, das jede
+Lognachricht in einen $384$-dimensionalen semantischen Vektor überführt. Im Gegensatz zu
+TF-IDF-Vektoren, die lediglich Termhäufigkeiten gewichten, erfassen Sentence-Embeddings
+kontextuelle Bedeutungsunterschiede und erkennen strukturell ähnliche Nachrichten auch
+dann als nah, wenn sie unterschiedliche variable Felder – wie IP-Adressen oder Zeitstempel –
+enthalten. Die Ähnlichkeitssuche erfolgt auf Basis der Cosinus-Distanz (vgl.\
+Abschnitt~\ref{cos}), die über den HNSW-Index effizient gegen die gespeicherten
+Cluster-Schwerpunkte in der \texttt{avg\_embedding}-Tabelle ausgewertet wird. Diese
+Kombination aus semantischer Repräsentation und persistenter Vektordatenbank ermöglicht
+die kontinuierliche Verarbeitung ohne Neuberechnung auf dem Gesamtdatensatz – eine
+Eigenschaft, die die algorithmischen Stapelverfahren K-Means und DBSCAN grundsätzlich
+nicht besitzen.
 
 % ----------------------------------------------------------------
-\section{Vergleich der Verfahren}
+\section{Gegenüberstellung}
 \label{sec:eval:vergleich}
 
-% Tabelle ARI/V-Measure aller Verfahren, Diskussion
+Tabelle~\ref{tab:eval:gesamt} fasst die Evaluationsergebnisse aller sechs Verfahren zusammen.
+Die Werte sind Mittelwerte mit Standardabweichung über $N = 5$ Permutationsdurchläufe;
+die Clusteranzahl entstammt dem Einzellauf mit Seed $42$.
+
+\begin{table}[h]
+    \centering
+    \caption{Gegenüberstellung aller Verfahren ($N = 5$ Durchläufe, Mittelwert $\pm$ Std.-Abw.)}
+    \label{tab:eval:gesamt}
+    \begin{tabular}{lrrrrl}
+        \toprule
+        Verfahren
+            & ARI\,(\%)
+            & V-Measure\,(\%)
+            & Hom.\,(\%)
+            & Vollst.\,(\%)
+            & Cluster \\
+        \midrule
+        pgvector
+            & $72{,}0 \pm 2{,}4$
+            & $84{,}8 \pm 1{,}6$
+            & $78{,}0 \pm 1{,}6$
+            & $93{,}0 \pm 2{,}6$
+            & $28$ \\
+        Drain3
+            & $57{,}9 \pm 0{,}1$
+            & $80{,}5 \pm 0{,}4$
+            & $96{,}1 \pm 0{,}6$
+            & $69{,}3 \pm 0{,}3$
+            & $52$ \\
+        Brain
+            & $39{,}2 \pm 0{,}0$
+            & $72{,}9 \pm 0{,}0$
+            & $98{,}8 \pm 0{,}0$
+            & $57{,}8 \pm 0{,}0$
+            & $151$ \\
+        K-Means
+            & $33{,}2 \pm 2{,}0$
+            & $70{,}6 \pm 1{,}3$
+            & $93{,}2 \pm 1{,}1$
+            & $56{,}9 \pm 1{,}2$
+            & $32$ \\
+        MinHash LSH$^{*}$
+            & $22{,}8 \pm 0{,}0$
+            & $52{,}2 \pm 0{,}0$
+            & $96{,}4 \pm 0{,}0$
+            & $35{,}8 \pm 0{,}0$
+            & -- \\
+        DBSCAN
+            & $4{,}6  \pm 0{,}0$
+            & $22{,}4 \pm 0{,}0$
+            & $14{,}5 \pm 0{,}0$
+            & $48{,}7 \pm 0{,}0$
+            & $27$ \\
+        \midrule
+        \multicolumn{5}{l}{\footnotesize Ground-Truth-Klassen im Datensatz: $44$} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+{\footnotesize
+$^{*}$ Die Clusteranzahl des Mehrfachlaufs (\texttt{threshold} $= 0{,}5$, $n$-Gramm $= 3$)
+wurde nicht separat erfasst. Der Einzellauf verwendete abweichende Parameter
+(\texttt{threshold} $= 0{,}3$, $n$-Gramm $= 2$) und erzielte $31$ Cluster;
+vgl.\ Abschnitt~\ref{sec:eval:minhash}.
+}
