@@ -47,7 +47,7 @@ Durch diese Normalisierung erlaubt der ARI-Wert eine klare Interpretation: 1,0 s
 
 Zusätzlich dient das V-Measure zur Bewertung. Es ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen. \footnote{Das Paper \cite{inproceedings} beschreibt im Detail die Hintergründe des V-Measure-Wertes} „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße sowie das „Problem of Matching“. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit. Homogenität ist wie folgt definiert:
 \begin{definition}[Homogenität]
-    Ein Clustering-Ergebnis erfüllt das Kriterium der Homogenität, wenn jeder Cluster ausschließlich Datenpunkte enthält, die derselben Klasse angehören. \footnote{Aus \cite{inproceedings} S. 410 Definition für: Completeness}
+    Ein Clustering-Ergebnis erfüllt das Kriterium der Homogenität, wenn jeder Cluster ausschließlich Datenpunkte enthält, die derselben Klasse angehören. \cite[S.~410]{inproceedings}
 \end{definition} Die Vollständigkeit ist wie folgt definiert:
 \begin{definition}[Vollständigkeit]
     Ein Clustering-Ergebnis erfüllt das Kriterium der Vollständigkeit, wenn alle Datenpunkte einer bestimmten Klasse demselben Cluster zugeordnet sind. \footnote{Aus \cite{inproceedings} S. 410 Definition für: Vollständigkeit}
