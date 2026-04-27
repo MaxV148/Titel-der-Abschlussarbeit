@@ -26,15 +26,14 @@ Nov  6 09:11:05 servername sshd[12345]: Failed password for invalid user admin f
 
 Die Beispiele veranschaulichen Log-Nachrichten, die ähnliche Ereignisse beschreiben. Eine Gruppierung solcher Logs ist sinnvoll. Dies gelingt beispielsweise mit regulären Ausdrücken (Regex), die variable Teile filtern und Gruppen bilden. Dieses Verfahren bietet Flexibilität bei der individuellen Suche, erfordert jedoch hohen manuellen Pflegeaufwand, etwa bei neuen Log-Typen. Alternativ gruppieren Algorithmen den Text der Log-Nachrichten automatisch. Diese Arbeit untersucht Möglichkeiten, Log-Nachrichten kontinuierlich und mit minimalem manuellen Aufwand zu clustern.
 
-\section{Zielsetzung: Entwicklung eines kontinuierlichen Clustering-Systems}
-Ziel dieser Arbeit ist die Entwicklung eines Systems, das Lognachrichten kontinuierlich clustert. Die Auswahl des Algorithmus basiert auf folgenden Kriterien:
+\section{Zielsetzung: Vergleich von Verfahren für kontinuierliches Log-Clustering}
+Ziel dieser Arbeit ist der methodische Vergleich von Verfahren zur automatisierten, kontinuierlichen Gruppierung von Lognachrichten. Die Bewertung erfolgt anhand von drei Kriterien:
 \begin{itemize}
-    \item Verarbeitung von 5000 Logs/Minute
-    \item Hohe Cluster-Qualität \footnote{Näheres zur Qualität der Cluster in \ref{Vorgensweise}}
-    \item Geringer Ressourcenverbrauch
+    \item \textbf{Cluster-Qualität:} Die Übereinstimmung der erzeugten Cluster mit einer bekannten Ground-Truth-Klassifikation, gemessen über den Adjusted Rand Index und das V-Measure (vgl.\ Abschnitt~\ref{Vorgensweise}).
+    \item \textbf{Reihenfolge-Stabilität:} Die Robustheit der Verfahren gegenüber unterschiedlichen Eingabereihenfolgen, gemessen über die Standardabweichung der Qualitätsmetriken bei wiederholten Durchläufen mit zufällig permutiertem Datensatz.
+    \item \textbf{Strukturelle Eignung für den kontinuierlichen Betrieb:} Die Fähigkeit eines Verfahrens, neue Lognachrichten inkrementell und mit persistierbarem Zustand zu verarbeiten, ohne den Gesamtdatensatz neu einlesen zu müssen.
 \end{itemize}
-Ein Vergleich diverser Algorithmen bestimmt die Auswahl.
-Das entwickelte System bietet eine benutzerfreundliche Weboberfläche und die Software ruft regelmäßig neue Logs aus Elasticsearch ab und verarbeitet sie. Eine Datenbank speichert Metadaten wie die Clusternummer sowie die Logs. Die Webseite stellt die Daten übersichtlich dar und ermöglicht die Suche nach Logs und Loggruppen.
+Auf Basis dieser Kriterien werden vier algorithmische Verfahren (K-Means, DBSCAN, Drain3, Brain), ein probabilistischer Ansatz (MinHash mit Locality-Sensitive Hashing) sowie ein vektorbasierter Ansatz auf Basis von Sentence-Embeddings und einer PostgreSQL-Datenbank mit \texttt{pgvector}-Erweiterung verglichen.
 
 
 
@@ -62,8 +61,8 @@ Die Kombination dieser Metriken vereint verschiedene mathematische Ansätze. Das
 
 
 
-\section{Abgrenzung: Einsatz etablierter Algorithmen statt Neuentwicklung}
-Die Arbeit entwirft keine neuen Algorithmen, sondern nutzt bestehende, etablierte und getestete Bibliotheken.
+\section{Abgrenzung}
+Die Arbeit entwirft keine neuen Algorithmen, sondern nutzt bestehende, etablierte und getestete Bibliotheken. Im Vordergrund steht der methodische Vergleich der Verfahren hinsichtlich der in Abschnitt~\ref{Vorgensweise} definierten Qualitäts- und Stabilitätskriterien. Quantitative Messungen von Laufzeit und Ressourcenverbrauch werden bewusst ausgeklammert, da eine reproduzierbare Performance-Bewertung eine isolierte Hardware-Umgebung sowie ein dediziertes Benchmark-Setup voraussetzt, deren methodischer Aufwand den Rahmen dieser Arbeit überschreitet. Stattdessen werden Aspekte des Ressourcenverhaltens qualitativ über die strukturelle Eignung für den inkrementellen Betrieb diskutiert. Ebenso ist die Entwicklung eines produktiven Endsystems mit Web-Oberfläche oder Anbindung an eine Log-Aggregations-Pipeline (etwa Elasticsearch) nicht Gegenstand dieser Arbeit; die Implementierung erfolgt ausschließlich in einer Jupyter-Notebook-basierten Evaluationsumgebung.
 
 %\section{Struktur der Arbeit}
 
