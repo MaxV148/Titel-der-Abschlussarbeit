@@ -90,7 +90,7 @@ X_tfidf = vectorizer.fit_transform(logs_clean)
 Die Konfiguration des Vektorisierers zielt darauf ab, die Dimensionalität des entstehenden Feature-Raums zu kontrollieren und Rauschen zu minimieren. Der Parameter \texttt{TFIDF\_MAX\_FEATURES} beschränkt das Vokabular auf die 1000 signifikantesten Terme. Ergänzend filtern die Parameter \texttt{min\_df} und \texttt{max\_df} irrelevante Begriffe: Terme, die in weniger als zwei Log-Einträgen vorkommen (\texttt{min\_df = 2}), werden als Ausreißer ignoriert, während Begriffe, die in mehr als 95\,\% aller Logs erscheinen (\texttt{max\_df = 0.95}), als generische Stopwörter ausgeschlossen werden. Durch den Aufruf von \texttt{fit\_transform} wird das Vokabular gelernt und die Logdaten werden final in die gewichtete Matrix \texttt{X\_tfidf} überführt.
 
 \section{k-Means in der Praxis: Implementierung und Zentroid-Zuweisung}
-m Anschluss an die Vektorisierung erfolgt die semantische Gruppierung der Logdaten mittels des K-Means-Algorithmus. Dieses partitionierende Verfahren unterteilt den Datenraum in eine vordefinierte Anzahl von Clustern, wobei jeder Log-Eintrag dem Cluster mit dem nächstgelegenen Schwerpunkt (Zentroid) zugeordnet wird.
+Im Anschluss an die Vektorisierung erfolgt die semantische Gruppierung der Logdaten mittels des K-Means-Algorithmus. Dieses partitionierende Verfahren unterteilt den Datenraum in eine vordefinierte Anzahl von Clustern, wobei jeder Log-Eintrag dem Cluster mit dem nächstgelegenen Schwerpunkt (Zentroid) zugeordnet wird.
 
 \begin{lstlisting}[caption={Clustern mit k-Means}, label={lst:k-means-cluster}]
 # K-Means Parameter
