@@ -45,12 +45,12 @@ Der ARI korrigiert dies, indem er eine Basis etabliert und den gemessenen Rand-I
 Durch diese Normalisierung erlaubt der ARI-Wert eine klare Interpretation: 1,0 steht für perfekte Übereinstimmung, 0,0 entspricht dem Zufall, und negative Werte zeigen eine Zuordnung schlechter als Zufall an.
 
 
-Zusätzlich dient das V-Measure zur Bewertung. Es ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen. \footnote{Das Paper \cite{inproceedings} beschreibt im Detail die Hintergründe des V-Measure-Wertes} „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße sowie das „Problem of Matching“. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit. Homogenität ist wie folgt definiert:
+Zusätzlich dient das V-Measure zur Bewertung. Es ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen \cite{inproceedings}. „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße sowie das „Problem of Matching“. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit. Homogenität ist wie folgt definiert:
 \begin{definition}[Homogenität]
     Ein Clustering-Ergebnis erfüllt das Kriterium der Homogenität, wenn jeder Cluster ausschließlich Datenpunkte enthält, die derselben Klasse angehören. \cite[S.~410]{inproceedings}
 \end{definition} Die Vollständigkeit ist wie folgt definiert:
 \begin{definition}[Vollständigkeit]
-    Ein Clustering-Ergebnis erfüllt das Kriterium der Vollständigkeit, wenn alle Datenpunkte einer bestimmten Klasse demselben Cluster zugeordnet sind. \footnote{Aus \cite{inproceedings} S. 410 Definition für: Vollständigkeit}
+    Ein Clustering-Ergebnis erfüllt das Kriterium der Vollständigkeit, wenn alle Datenpunkte einer bestimmten Klasse demselben Cluster zugeordnet sind \cite[S.~410]{inproceedings}.
 \end{definition}
 Die Versuche nutzen die V-Measure-Werte der Python-Bibliothek „scikit-learn“, die wie folgt berechnet werden: \footnote{Dokumentation der Funktion v\_measure\_score \url{https://scikit-learn.org/stable/modules/generated/sklearn.metrics.v_measure_score.html}}
 \begin{equation*}

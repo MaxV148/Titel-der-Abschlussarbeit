@@ -13,7 +13,7 @@ ausgelegt sind, ähnliche Datenpunkte in großen Mengen effizient aufzufinden. D
 Verfahren opfert dabei ein geringes Maß an Präzision zugunsten einer erheblichen
 Reduktion des Rechenaufwands. Klassische Einsatzgebiete sind die
 Duplikaterkennung in Dokumentensammlungen sowie kollaborative Filtersysteme im
-großflächigen E-Commerce\footnote{\cite{Leskovec2020Mining} Kapitel 3.1}.
+großflächigen E-Commerce \cite{Leskovec2020_Kap3_1}.
 
 \paragraph{Funktionsprinzip.}
 Das Verfahren gliedert sich in drei aufeinanderfolgende Schritte. Im ersten
@@ -21,7 +21,7 @@ Schritt wird jede Lognachricht durch \textit{Shingling} in eine mathematische
 Menge überführt: Ein $k$-Shingle ist ein beliebiger Teilstring der Länge $k$,
 der in der Nachricht vorkommt. Die Wahl von $k$ beeinflusst dabei maßgeblich
 die Trennschärfe – zu kleine Werte führen zu fälschlich hohen
-Ähnlichkeitswerten\footnote{\cite{Leskovec2020Mining} Kapitel 3.3.2}.
+Ähnlichkeitswerten \cite{Leskovec2020_Kap3_3_2}.
 
 Als Ähnlichkeitsmetrik dient die \textit{Jaccard-Ähnlichkeit}, die das
 Verhältnis von Schnitt- zu Vereinigungsmenge zweier Shingle-Mengen $S$ und $T$
@@ -38,7 +38,7 @@ der booleschen Shingle-Matrix zufällig und speichert je Spalte den Index der
 ersten Zeile mit dem Wert~1. Die Wahrscheinlichkeit, dass zwei Spalten nach
 einer Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer
 Jaccard-Ähnlichkeit. Durch $k$-fache Wiederholung entsteht eine Signatur der
-Länge $k$\footnote{\cite{Leskovec2020Mining} Kapitel 3.3}.
+Länge $k$ \cite{Leskovec2020_Kap3_3}.
 
 \textit{Locality Sensitive Hashing (LSH)} löst das verbleibende
 Skalierungsproblem: Selbst mit Signaturen sind noch $\mathcal{O}(n^2)$
@@ -53,7 +53,7 @@ fallen. Die Kandidatenwahrscheinlichkeit bei Jaccard-Ähnlichkeit $s$ beträgt:
 \end{equation}
 Durch Variation von $b$ und $r$ lässt sich die Schwellwertkurve so steuern, dass
 der Übergang von „kein Kandidat" zu „Kandidat" einem annähernden Stufensprung
-gleicht\footnote{\cite{Leskovec2020Mining} Kapitel 3.4.2}.
+gleicht \cite{Leskovec2020_Kap3_4_2}.
 
 \paragraph{Limitierungen für kontinuierliches Log-Clustering.}
 Trotz der theoretischen Attraktivität des Verfahrens ergeben sich für den
@@ -76,7 +76,9 @@ Shingle-Mengen und senken dadurch die gemessene Ähnlichkeit künstlich ab.
 
 \paragraph{Empirische Einordnung.}
 Im Rahmen dieser Arbeit wurde das Verfahren prototypisch mit der Python-Bibliothek
-\texttt{datasketch} auf dem OpenStack-Datensatz des Loghub-Benchmarks erprobt.
+\texttt{datasketch} auf dem in Abschnitt~\ref{sec:eval:aufbau} beschriebenen
+gemischten Loghub-Datensatz (\texttt{Linux}, \texttt{Apache}, \texttt{OpenSSH})
+erprobt.
 Zur Ermittlung geeigneter Hyperparameter wurde eine empirische Parametersuche
 durchgeführt, deren Verlauf im Folgenden dokumentiert wird.
 

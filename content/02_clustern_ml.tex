@@ -31,8 +31,7 @@ Eine wesentliche Einschränkung dieses Modells liegt zudem in der Vernachlässig
 \subsection{TF-IDF: Kontextbezogene Gewichtung technischer Log-Terme}
 
 
-Im Kontext klassischer Algorithmen hat sich zur Realisierung einer ressourcenschonenden und zugleich präzisen Gewichtung das TF-IDF-Maß etabliert. Diese statistische Methode quantifiziert die Relevanz eines einzelnen Wortes innerhalb eines Dokuments in Relation zur gesamten Dokumentenkollektion.Ein wesentlicher Vorteil dieses Verfahrens liegt in der Überwindung der Schwächen reiner Häufigkeitszählungen: Während allgemein häufige Begriffe in ihrer Gewichtung herabgestuft werden, erfahren seltene, aber inhaltlich signifikante Terme – wie beispielsweise spezifische Fehlercodes – eine stärkere Gewichtung.Basis dieser Berechnung ist die sogenannte „Term Frequency“, welche die Häufigkeit eines Wortes in einem betrachteten Dokument beschreibt. Formal lässt sich dies wie folgt darstellen:
-\footnote{Die Informationen zu TF-IDF stammen aus \cite{jm3} Kapiel 11: Information Retrieval and Retrieval-Augmented Generation}:
+Im Kontext klassischer Algorithmen hat sich zur Realisierung einer ressourcenschonenden und zugleich präzisen Gewichtung das TF-IDF-Maß etabliert. Diese statistische Methode quantifiziert die Relevanz eines einzelnen Wortes innerhalb eines Dokuments in Relation zur gesamten Dokumentenkollektion.Ein wesentlicher Vorteil dieses Verfahrens liegt in der Überwindung der Schwächen reiner Häufigkeitszählungen: Während allgemein häufige Begriffe in ihrer Gewichtung herabgestuft werden, erfahren seltene, aber inhaltlich signifikante Terme – wie beispielsweise spezifische Fehlercodes – eine stärkere Gewichtung.Basis dieser Berechnung ist die sogenannte „Term Frequency“, welche die Häufigkeit eines Wortes in einem betrachteten Dokument beschreibt. Formal lässt sich dies wie folgt darstellen \cite[Kap.~11]{jm3}:
 
 \begin{equation}
   \text{tf}_{t,d} = 
@@ -42,15 +41,15 @@ Im Kontext klassischer Algorithmen hat sich zur Realisierung einer ressourcensch
   \end{cases}
 \end{equation}
 
-Die Logarithmusfunktion vermeidet eine übermäßige Gewichtung von Wörtern mit hoher Vorkommensfrequenz. Der zweite Teil des Tf-IDF heißt IDF (Inverse Document Frequency) \cite{jm3}:
+Die Logarithmusfunktion vermeidet eine übermäßige Gewichtung von Wörtern mit hoher Vorkommensfrequenz. Der zweite Teil des Tf-IDF heißt IDF (Inverse Document Frequency) \cite[Kap.~11]{jm3}:
 \begin{equation}
   \text{idf}_t = \log_{10} \frac{N}{\text{df}_t}
 \end{equation}
 Die IDF reduziert die Gewichtung von Wörtern, die in vielen Dokumenten auftreten, und verstärkt seltene Wörter. Dies trägt zur differenzierten Gewichtung einzelner Wörter bei.Das ist besonders praktisch bei der Verarbeitung von Log-Nachrichten, da dort viele technische Wörter vorkommen, denen jedoch nicht automatisch überdurchschnittlich viel Bedeutung zugesprochen werden muss. Diese ausgewogene Verarbeitung von Text ist der Grund für die weitere Verwendung zum Vektorisieren und Verarbeiten der Log-Nachrichten mit Methoden des maschinellen Lernens.
 
 \subsection{Semantische Textmodelle: Kontextuelle Vektorisierung durch Embeddings}
-Ein zentraler Baustein der modernen Sprachverarbeitung sind Embeddings – Vektorrepräsentationen, die die Bedeutung von sprachlichen Einheiten direkt aus deren Verteilung in Textdaten erlernen. Dieser Ansatz, der als Vektorsemantik bezeichnet wird, basiert auf der Distributionshypothese\footnote{Mehr dazu aus \cite{jm3} Kapitel 5 Embeddings}, nach der Wörter oder Texte, die in ähnlichen Kontexten auftreten, auch eine ähnliche Bedeutung tragen. Technisch betrachtet wird dabei jeder Text als Punkt in einem mehrdimensionalen semantischen Raum abgebildet. Die Stärke dieses Verfahrens liegt darin, dass semantische Ähnlichkeit in mathematische Distanz übersetzt wird: Je näher zwei Vektoren in diesem Raum beieinander liegen, desto ähnlicher ist ihre inhaltliche Bedeutung.
-Während klassische Ansätze oft statische Embeddings für einzelne Wörter generieren, ist es für die Verarbeitung ganzer Textpassagen notwendig, den Kontext dynamisch zu erfassen.\footnote{\cite{jm3} Kapitel 5.5} Zur praktischen Vektorisierung der Eingabedaten wird daher auf das Framework \texttt{sentence-transformers (SBERT)\footnote{Webseite der Python Bibliotek: \url{https://www.sbert.net/} (Zugegriffen: \today)}} zurückgegriffen (vgl. sbert.net). Dieses Framework ermöglicht die Generierung von Satz-Embeddings, die speziell für semantische Ähnlichkeitsvergleiche optimiert sind.
+Ein zentraler Baustein der modernen Sprachverarbeitung sind Embeddings – Vektorrepräsentationen, die die Bedeutung von sprachlichen Einheiten direkt aus deren Verteilung in Textdaten erlernen. Dieser Ansatz, der als Vektorsemantik bezeichnet wird, basiert auf der Distributionshypothese \cite[Kap.~5]{jm3}, nach der Wörter oder Texte, die in ähnlichen Kontexten auftreten, auch eine ähnliche Bedeutung tragen. Technisch betrachtet wird dabei jeder Text als Punkt in einem mehrdimensionalen semantischen Raum abgebildet. Die Stärke dieses Verfahrens liegt darin, dass semantische Ähnlichkeit in mathematische Distanz übersetzt wird: Je näher zwei Vektoren in diesem Raum beieinander liegen, desto ähnlicher ist ihre inhaltliche Bedeutung.
+Während klassische Ansätze oft statische Embeddings für einzelne Wörter generieren, ist es für die Verarbeitung ganzer Textpassagen notwendig, den Kontext dynamisch zu erfassen \cite[Kap.~5.5]{jm3}. Zur praktischen Vektorisierung der Eingabedaten wird daher auf das Framework \texttt{sentence-transformers (SBERT)\footnote{Webseite der Python Bibliotek: \url{https://www.sbert.net/} (Zugegriffen: \today)}} zurückgegriffen (vgl. sbert.net). Dieses Framework ermöglicht die Generierung von Satz-Embeddings, die speziell für semantische Ähnlichkeitsvergleiche optimiert sind.
 Konkret kommt in dieser Arbeit das vortrainierte Modell \texttt{sentence-transformers/all-MiniLM-L6-v2} zum Einsatz. Die Wahl fiel auf dieses Modell, da es eine optimale Ausgewogenheit zwischen der Vektorlänge (hier 384 Dimensionen) und der Verarbeitungsgeschwindigkeit (Inferenzzeit) bietet. Dies gewährleistet eine ressourcenschonende Berechnung, die dennoch eine hohe Präzision bei der Abbildung semantischer Zusammenhänge aufweist. Das gewählte Modell wurde mit verschiedenen Datensätzen angelernt, darunter auch ein großer Anteil an Code von Programmiersprachen. Zu den angestrebten Verwendungen dieses Modells zählt auch das Clustering von Text. Dabei ist jedoch zu beachten, dass das Modell eine maximale Wortlänge von 256 Zeichen hat. Alles, was darüber hinausgeht, wird abgeschnitten.\footnote{\url{https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2} erläutert alle Details zu praktischen Verwendung des Modells} In den späteren Experimenten und Tests zur Gruppierung von Lognachrichten werden die Embedding-Modelle nur für die Verarbeitung mit Vektordatenbanken \ref{clustern_mit_vek} genutzt, da die nachfolgenden Ansätze mit Machine-Learning-Algorithmen sehr leichtgängig sind und durch die aufwendigere Vorverarbeitung ausgebremst werden würden. 
 
 \section{k-Means: Partitionierendes Clustering und dessen Einschränkungen}
@@ -90,7 +89,7 @@ Dabei bezeichnet $\| \mathbf{x} - \mathbf{y} \|$ die euklidische Distanz, ersetz
 
 
 Im folgenden Abschnitt geht es um den Drain Online Log Parser, welcher in den algorithmischen Vergleichen durch die Python-Bibliothek drain3 \footnote{GitHub Repository zur Python Implementierung von drain: \url{https://github.com/logpai/Drain3}} genutzt wird. Die Bibliothek basiert auf dem Drain-Algorithmus. Die „3” im Namen zeigt an, dass es sich um eine Weiterentwicklung der Drain-Bibliothek handelt, welche für Python 3 optimiert wurde. Die Vorgänger-Bibliothek war für Python 2 entwickelt worden. 
-Drain ist in der Lage, Lognachrichten kontinuierlich zu verarbeiten und ihnen dabei ein Logcluster sowie ein Logtemplate zuzuordnen. Ein Online-Logparser wie drain3 kann Logs eines Systems „on-demand“ verarbeiten, er muss nicht vorher auf Daten angelernt werden. Dies geschieht durch einen internen Parse-Baum mit fester Tiefe (Fixed Depth Tree), welcher den Kern des Algorithmus bildet. Statt Lognachrichten erst über einen Zeitraum zu sammeln und nachträglich auszuwerten, leitet Drain jede neu eintreffende Nachricht direkt durch diese Baumstruktur, um sie effizient dem passenden Cluster zuzuordnen. Der Prozess lässt sich vereinfacht in vier Schritte unterteilen \footnote{Die Schritte stammen aus \cite{drain} III. METHODOLOGY}:
+Drain ist in der Lage, Lognachrichten kontinuierlich zu verarbeiten und ihnen dabei ein Logcluster sowie ein Logtemplate zuzuordnen. Ein Online-Logparser wie drain3 kann Logs eines Systems „on-demand“ verarbeiten, er muss nicht vorher auf Daten angelernt werden. Dies geschieht durch einen internen Parse-Baum mit fester Tiefe (Fixed Depth Tree), welcher den Kern des Algorithmus bildet. Statt Lognachrichten erst über einen Zeitraum zu sammeln und nachträglich auszuwerten, leitet Drain jede neu eintreffende Nachricht direkt durch diese Baumstruktur, um sie effizient dem passenden Cluster zuzuordnen. Der Prozess lässt sich vereinfacht in vier Schritte unterteilen \cite[Abschn.~III]{drain}:
 
 \begin{enumerate}
     \item Vorverarbeitung: Zunächst werden mittels einfacher regulärer Ausdrücke offensichtliche Variablen wie IP-Adressen oder Block-IDs aus der Lognachricht entfernt, um die Genauigkeit zu verbessern.
@@ -105,9 +104,8 @@ Nachdem Drain im vierten Schritt den passenden Blattknoten erreicht hat, muss de
 Algorithmus entscheiden, ob eine neu eintreffende Lognachricht einem bereits 
 existierenden Logtemplate zugeordnet werden kann oder ob eine neue Loggruppe 
 anzulegen ist. Diese Entscheidung basiert auf der Ähnlichkeitsfunktion 
-$simSeq$, welche im ursprünglichen Drain-Paper formal definiert ist 
-\footnote{Die Formeln stammen aus \cite{drain} III. METHODOLOGY, E. Step 4: 
-Search by Token Similarity}:
+$simSeq$, welche im ursprünglichen Drain-Paper formal definiert ist
+\cite[Abschn.~III.E]{drain}:
 
 \begin{equation}
     simSeq = \frac{\sum_{i=1}^{n} equ(seq_1(i), seq_2(i))}{n}
@@ -161,8 +159,7 @@ Tokens, sondern auf deren Häufigkeitsmuster zurückgreift.
 
 \subsection{Funktionsweise}
 
-Der Parsing-Prozess von Brain gliedert sich in fünf Schritte \footnote{Die 
-Schritte stammen aus \cite{brain} III. Our Approach}:
+Der Parsing-Prozess von Brain gliedert sich in fünf Schritte \cite[Abschn.~III]{brain}:
 
 \begin{enumerate}
     \item \textbf{Vorverarbeitung:} Zunächst werden die Lognachrichten anhand 

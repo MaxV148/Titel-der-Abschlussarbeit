@@ -13,7 +13,7 @@ methodischen Aspekte der Evaluation und legt damit die Grundlage für die verfah
 Ergebnisse in den nachfolgenden Abschnitten.
 
 \paragraph{Datensatz.}
-Als Datengrundlage dienen drei Quellen des Loghub-2k-Benchmarks~\cite{TODO:loghub}: die
+Als Datengrundlage dienen drei Quellen des Loghub-2k-Benchmarks~\cite{zhu2023loghublargecollectionlog}: die
 Systemlog-Datensätze \texttt{Linux}, \texttt{Apache} und \texttt{OpenSSH}, die jeweils
 $2\,000$ Lognachrichten umfassen. Die drei Quellen werden zu einem gemeinsamen Datensatz
 mit $10\,000$ Einträgen zusammengeführt und zufällig permutiert. Diese Mischung bildet ein
@@ -232,9 +232,7 @@ Erstens sind TF-IDF-Vektoren hochdimensional und dünn besetzt
 (\textit{sparse}); die euklidische Distanz leidet in solchen Räumen unter dem
 sogenannten \textit{Curse of Dimensionality}, da sie alle Dimensionen gleich
 gewichtet und von der absoluten Länge der Vektoren
-abhängt.\footnote{Eine ausführliche Diskussion des \textit{Curse of
-Dimensionality} im Kontext hochdimensionaler Daten findet sich in
-\cite{Leskovec2020Mining} Kapitel~7.1.} Zweitens erfassen Lognachrichten
+abhängt \cite{Leskovec2020_Kap7_1}. Zweitens erfassen Lognachrichten
 desselben Templates häufig dieselben Schlüsselwörter in ähnlicher Gewichtung,
 unterscheiden sich jedoch in der absoluten Häufigkeit dieser Wörter. Die
 Cosinus-Distanz normiert diesen Effekt heraus, indem sie ausschließlich den
@@ -263,8 +261,8 @@ aufsteigend sortiert und in Abbildung~\ref{fig:dbscan-kdist} dargestellt. Der
 Knick der Kurve markiert den Übergang zwischen Punkten in dichten Regionen
 (flacher, niedriger Verlauf) und Ausreißern (steiler Anstieg) und gilt als
 optimaler $\varepsilon$-Wert. Die Lokalisierung des Knicks erfolgt automatisch
-mittels der Bibliothek \texttt{kneed}; die zugehörige Implementierung findet
-sich im Notebook \texttt{ML.ipynb} (Zelle~11).
+mittels der Bibliothek \texttt{kneed} \cite{satopa2011kneedle}; die zugehörige
+Implementierung findet sich im Notebook \texttt{ML.ipynb} (Zelle~11).
 
 \begin{figure}[h]
     \centering
