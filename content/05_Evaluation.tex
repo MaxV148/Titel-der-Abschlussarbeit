@@ -145,9 +145,9 @@ systematisch überschätzten Ergebnissen führen.
 K-Means erfordert die Anzahl der Cluster $k$ als Eingabeparameter. Die Wahl
 erfolgt nicht heuristisch, sondern datengetrieben über zwei in der Literatur
 etablierte, voneinander unabhängige Verfahren: die Elbow-Methode auf Basis
-der Distortion sowie den Silhouette-Score. Beide Metriken operieren
-ausschließlich auf den Eingangsvektoren und sind damit auch im
-kontinuierlichen Betrieb anwendbar.
+der Inertia mit automatischer Knickerkennung sowie den Silhouette-Score. Beide
+Metriken operieren ausschließlich auf den Eingangsvektoren und sind damit
+auch im kontinuierlichen Betrieb anwendbar.
 
 \paragraph{Vorverarbeitung mittels Truncated SVD.}
 Die direkte Berechnung des Silhouette-Scores im hochdimensionalen, dünn
@@ -162,7 +162,7 @@ niedrigdimensionalen Raum, der die signifikanten Varianzanteile der
 ursprünglichen Repräsentation erhält und in dem distanzbasierte Maße wie die
 Silhouette zuverlässige Werte liefern. Auf dieser reduzierten Repräsentation
 wird $k$ über den Bereich $k \in \{2, 3, \dots, 39\}$ variiert; pro Wert
-werden Distortion und Silhouette-Score berechnet. Die zugehörige
+werden Inertia und Silhouette-Score berechnet. Die zugehörige
 Implementierung findet sich in Zelle~10 des Notebooks \texttt{ML.ipynb}.
 
 Die SVD-Reduktion dient ausschließlich der Parameterbestimmung; das
@@ -170,37 +170,46 @@ eigentliche K-Means-Clustering im Implementierungsschritt
 (Listing~\ref{lst:k-means-cluster}) operiert weiterhin auf der vollständigen
 TF-IDF-Matrix.
 
+\paragraph{Automatische Knickerkennung.}
+Der Knickpunkt in der Inertia-Kurve wird automatisch über die
+\texttt{KneeLocator}-Bibliothek bestimmt~\cite{TODO:kneed}. Das Verfahren
+approximiert die Kurve stückweise und lokalisiert den Punkt maximaler
+Krümmung (\textit{Knee}) als Schnittpunkt zwischen der Verbindungslinie der
+Endpunkte und der normierten Kurve. Die Parameter lauten
+\texttt{curve=\textquotesingle convex\textquotesingle},
+\texttt{direction=\textquotesingle decreasing\textquotesingle}, entsprechend
+dem typischen Verlauf einer fallenden Inertia-Kurve. Dieses Verfahren
+entspricht methodisch dem Vorgehen bei DBSCAN
+(Abschnitt~\ref{sec:eval:param:dbscan}).
+
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.85\linewidth]{images/kmeans_elbow.png}
-    \caption{Elbow-Diagramm der Distortion über $k \in [2, 39]$. Der Knick liegt im Bereich $k \in \{10, 11, 12\}$.}
+    \caption{Elbow-Diagramm der Inertia über $k \in [2, 39]$. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
     \label{fig:kmeans-elbow}
 \end{figure}
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.85\linewidth]{images/kmeans_silhouette.png}
-    \caption{Silhouette-Score über $k \in [2, 39]$. Globales Maximum bei $k = 10$ ($\approx 0{,}216$).}
+    \caption{Silhouette-Score über $k \in [2, 39]$. Das globale Maximum liegt bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
     \label{fig:kmeans-silhouette}
 \end{figure}
 
 \paragraph{Auswertung.}
-Abbildung~\ref{fig:kmeans-elbow} zeigt einen deutlichen Knick im Bereich
-$k = 10$ bis $k = 12$: Die Distortion fällt zwischen $k = 2$ und $k = 10$
-steil von $\approx 0{,}67$ auf $\approx 0{,}49$, anschließend nur noch
-marginal. In Abbildung~\ref{fig:kmeans-silhouette} liegt das globale Maximum
-des Silhouette-Scores bei $k = 10$ mit $\approx 0{,}216$. Die späteren
-lokalen Maxima bei $k \approx 37$ entsprechen typischen Artefakten der
-Über-Partitionierung -- das Distortion-Diagramm verläuft in diesem Bereich
-bereits flach -- und stellen kein echtes Optimum dar.
+Abbildung~\ref{fig:kmeans-elbow} zeigt den typischen konvexen Verlauf der
+Inertia-Kurve: Die Inertia fällt von $k = 2$ zunächst steil ab und geht
+anschließend in einen flachen Bereich über. Der \texttt{KneeLocator} lokalisiert
+den Knick bei $k = 13$. In Abbildung~\ref{fig:kmeans-silhouette} liegt das
+globale Maximum des Silhouette-Scores ebenfalls bei $k = 13$.
 
-Beide Heuristiken konvergieren auf $k = 10$. Dieser Wert wird daher für die
+Beide Heuristiken konvergieren auf $k = 13$. Dieser Wert wird daher für die
 in Listing~\ref{lst:k-means-cluster} dokumentierte Implementierung sowie für
 die nachfolgende Evaluation verwendet. Das absolute Niveau des
-Silhouette-Scores ist mit Werten unterhalb von $0{,}25$ gering, was bereits
-an dieser Stelle auf eine schwache geometrische Trennung der Cluster im
-TF-IDF-Raum hinweist; diese Beobachtung wird in der Diskussion der
-K-Means-Ergebnisse (Abschnitt~\ref{sec:eval:kmeans}) erneut aufgegriffen.
+Silhouette-Scores ist gering, was bereits an dieser Stelle auf eine schwache
+geometrische Trennung der Cluster im TF-IDF-Raum hinweist; diese Beobachtung
+wird in der Diskussion der K-Means-Ergebnisse
+(Abschnitt~\ref{sec:eval:kmeans}) erneut aufgegriffen.
 
 % ----------------------------------------------------------------
 \subsection{DBSCAN}
@@ -468,44 +477,43 @@ vergleichende Gesamtbewertung erfolgt in Abschnitt~\ref{sec:eval:vergleich}.
 
 \begin{table}[h]
     \centering
-    \caption{Evaluationsergebnisse K-Means ($k = 10$, $N = 5$ Durchläufe)}
+    \caption{Evaluationsergebnisse K-Means ($k = 13$, $N = 5$ Durchläufe)}
     \label{tab:eval:kmeans}
     \begin{tabular}{lrr}
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $56{,}5\,\%$ & $\pm\,8{,}2\,\%$ \\
-        V-Measure      & $78{,}2\,\%$ & $\pm\,3{,}8\,\%$ \\
-        Homogenität    & $83{,}1\,\%$ & $\pm\,3{,}8\,\%$ \\
-        Vollständigkeit& $74{,}0\,\%$ & $\pm\,3{,}9\,\%$ \\
+        ARI            & $51{,}8\,\%$ & $\pm\,8{,}3\,\%$ \\
+        V-Measure      & $76{,}7\,\%$ & $\pm\,3{,}8\,\%$ \\
+        Homogenität    & $85{,}9\,\%$ & $\pm\,3{,}7\,\%$ \\
+        Vollständigkeit& $69{,}2\,\%$ & $\pm\,3{,}8\,\%$ \\
         \midrule
-        Clusteranzahl  & $10$ & -- \\
+        Clusteranzahl  & $13$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Die Clusteranzahl $k = 10$ wurde, wie in Abschnitt~\ref{sec:real:kmeans}
-beschrieben, datengetrieben über die Elbow-Methode und den Silhouette-Score
-bestimmt; sie entspricht damit dem unsupervised Optimum auf der
+Die Clusteranzahl $k = 13$ wurde, wie in Abschnitt~\ref{sec:eval:param:kmeans}
+beschrieben, datengetrieben über die Elbow-Methode mit automatischer
+Knickerkennung (\texttt{KneeLocator}) und den Silhouette-Score bestimmt;
+beide Heuristiken konvergierten auf $k = 13$ als unsupervised Optimum auf der
 SVD-reduzierten TF-IDF-Repräsentation. Trotz der gegenüber der Ground-Truth
-($44$ Klassen) deutlich geringeren Cluster\-anzahl erreicht das Verfahren mit
-einem ARI von $56{,}5\,\%$ und einem V-Measure von $78{,}2\,\%$ einen der
-höheren Werte unter den algorithmischen Verfahren – knapp unterhalb von
-Drain3 (vgl.\ Abschnitt~\ref{sec:eval:vergleich}).
+($44$ Klassen) deutlich geringeren Clusteranzahl erreicht das Verfahren mit
+einem ARI von $51{,}8\,\%$ und einem V-Measure von $76{,}7\,\%$ solide Werte,
+liegt jedoch unterhalb von DBSCAN und Drain3
+(vgl.\ Abschnitt~\ref{sec:eval:vergleich}).
 
-Bemerkenswert ist die im Vergleich zu Homogenität und Vollständigkeit
-ausgewogenere Verteilung beider Teilmetriken ($83{,}1\,\%$ vs.\ $74{,}0\,\%$).
-Die Cluster sind weder stark übersegmentiert noch in extremem Maße
-zusammengefasst; die Differenz von rund neun Prozentpunkten zugunsten der
-Homogenität deutet aber darauf hin, dass die $10$ Partitionen
-\emph{Makrostrukturen} des gemischten Datensatzes erfassen – etwa die
+Die Teilmetriken zeigen eine ausgeprägte Asymmetrie: Die Homogenität von
+$85{,}9\,\%$ ist hoch, die Vollständigkeit von $69{,}2\,\%$ deutlich geringer
+-- eine Differenz von rund $16{,}7$ Prozentpunkten. Die $13$ Partitionen
+erfassen damit \emph{Makrostrukturen} des gemischten Datensatzes -- etwa die
 sprachlich-typischen Vokabulare der drei Quellsysteme \texttt{Linux},
 \texttt{Apache} und \texttt{OpenSSH} sowie deren häufigste Untergruppen.
 Feingranulare Templates innerhalb dieser Makrobereiche werden hingegen in
 denselben Cluster zusammengezogen, wodurch die Vollständigkeit nach unten
 begrenzt bleibt.
 
-Die Standardabweichung von $\pm\,8{,}2$ Prozentpunkten beim ARI ist die
+Die Standardabweichung von $\pm\,8{,}3$ Prozentpunkten beim ARI ist die
 höchste aller untersuchten Verfahren. Ursache ist die stochastische
 Zentroid-Initialisierung in Verbindung mit dem niedrigen Silhouette-Niveau im
 TF-IDF-Raum (vgl.\ Abb.~\ref{fig:kmeans-silhouette}): Die Cluster liegen
