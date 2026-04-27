@@ -90,11 +90,12 @@ X_tfidf = vectorizer.fit_transform(logs_clean)
 Die Konfiguration des Vektorisierers zielt darauf ab, die Dimensionalität des entstehenden Feature-Raums zu kontrollieren und Rauschen zu minimieren. Der Parameter \texttt{TFIDF\_MAX\_FEATURES} beschränkt das Vokabular auf die 1000 signifikantesten Terme. Ergänzend filtern die Parameter \texttt{min\_df} und \texttt{max\_df} irrelevante Begriffe: Terme, die in weniger als zwei Log-Einträgen vorkommen (\texttt{min\_df = 2}), werden als Ausreißer ignoriert, während Begriffe, die in mehr als 95\,\% aller Logs erscheinen (\texttt{max\_df = 0.95}), als generische Stopwörter ausgeschlossen werden. Durch den Aufruf von \texttt{fit\_transform} wird das Vokabular gelernt und die Logdaten werden final in die gewichtete Matrix \texttt{X\_tfidf} überführt.
 
 \section{k-Means in der Praxis: Implementierung und Zentroid-Zuweisung}
-m Anschluss an die Vektorisierung erfolgt die semantische Gruppierung der Logdaten mittels des K-Means-Algorithmus. Dieses partitionierende Verfahren unterteilt den Datenraum in eine vordefinierte Anzahl von Clustern, wobei jeder Log-Eintrag dem Cluster mit dem nächstgelegenen Schwerpunkt (Zentroid) zugeordnet wird.
+\label{sec:real:kmeans}
+Im Anschluss an die Vektorisierung erfolgt die semantische Gruppierung der Logdaten mittels des K-Means-Algorithmus. Dieses partitionierende Verfahren unterteilt den Datenraum in eine vordefinierte Anzahl von Clustern, wobei jeder Log-Eintrag dem Cluster mit dem nächstgelegenen Schwerpunkt (Zentroid) zugeordnet wird.
 
 \begin{lstlisting}[caption={Clustern mit k-Means}, label={lst:k-means-cluster}]
-# K-Means Parameter
-KMEANS_N_CLUSTERS = 32
+# K-Means Parameter (Begruendung siehe Abschnitt \ref{sec:eval:param:kmeans})
+KMEANS_N_CLUSTERS  = 10
 KMEANS_RANDOM_STATE = 42
 # ===== K-MEANS CLUSTERING =====
 kmeans = KMeans(
@@ -104,9 +105,18 @@ kmeans = KMeans(
 df_labeled['kmeans_cluster_id'] = kmeans.fit_predict(X_tfidf)
 \end{lstlisting}
 
-Die Initialisierung des Algorithmus erfolgt durch die Klasse \texttt{KMeans}, wobei zwei wesentliche Parameter konfiguriert werden. Die Anzahl der zu bildenden Cluster (\texttt{n\_clusters}) wird für diesen Versuch auf 32 festgelegt. Um die Reproduzierbarkeit der Ergebnisse im Rahmen dieser Arbeit zu gewährleisten, wird der Zufallsgenerator über den Parameter \texttt{random\_state} auf den festen Wert $42$ fixiert. Dies stellt sicher, dass bei erneuter Ausführung des Codes trotz der stochastischen Initialisierung der Zentroide identische Zuordnungen entstehen.
-
-Die Ausführung des Clusterings erfolgt durch die Methode \texttt{fit\_predict}, welche auf die zuvor erzeugte TF-IDF-Matrix \texttt{X\_tfidf} angewendet wird. In diesem Schritt berechnet der Algorithmus iterativ die Cluster-Zentren und weist jedem Log-Vektor ein Label zu. Die resultierenden Cluster-IDs werden abschließend als neue Spalte \texttt{'kmeans\_cluster\_id'} im Dataframe gespeichert, wodurch ein direkter Vergleich mit den Ergebnissen der anderen Algorithmen ermöglicht wird.
+Die Initialisierung des Algorithmus erfolgt durch die Klasse \texttt{KMeans}.
+Der Parameter \texttt{n\_clusters} wird auf $10$ gesetzt; die Begründung
+dieser Wahl erfolgt zentral in Abschnitt~\ref{sec:eval:param:kmeans} im
+Rahmen der Parameterwahl aller untersuchten Verfahren. Um die
+Reproduzierbarkeit sicherzustellen, wird der Zufallsgenerator über den
+Parameter \texttt{random\_state} auf den festen Wert $42$ fixiert; dies
+stellt sicher, dass bei erneuter Ausführung trotz der stochastischen
+Initialisierung der Zentroide identische Zuordnungen entstehen. Die
+Ausführung des Clusterings erfolgt durch die Methode \texttt{fit\_predict},
+welche auf die TF-IDF-Matrix \texttt{X\_tfidf} angewendet wird. Die
+resultierenden Cluster-IDs werden als neue Spalte
+\texttt{'kmeans\_cluster\_id'} im Dataframe gespeichert.
 
 \section{DBSCAN in der Praxis: Dichtebasierte Gruppierung und Rauschfilterung}
 
@@ -120,8 +130,8 @@ tatsächliche Anzahl der Log-Templates im Datensatz im Vorfeld nicht bekannt ist
 Die praktische Umsetzung ist in Listing~\ref{lst:dbscan-cluster} dargestellt.
 
 \begin{lstlisting}[caption={Clustern mit DBSCAN}, label={lst:dbscan-cluster}]
-# DBSCAN Parameter
-DBSCAN_EPS         = 0.6
+# DBSCAN Parameter (Begruendung siehe Abschnitt \ref{sec:eval:param:dbscan})
+DBSCAN_EPS         = 0.4
 DBSCAN_MIN_SAMPLES = 2
 DBSCAN_METRIC      = 'cosine'
 
@@ -134,76 +144,54 @@ dbscan = DBSCAN(
 df_labeled['dbscan_cluster_id'] = dbscan.fit_predict(X_tfidf)
 \end{lstlisting}
 
-Die Konfiguration der DBSCAN-Instanz erfolgt über drei zentrale Parameter,
-deren Wahl maßgeblich das Ergebnis beeinflusst.
-
-\paragraph{Distanzmetrik: Cosinus-Distanz.}
-Der Parameter \texttt{DBSCAN\_METRIC} legt die Distanzfunktion fest, anhand
-derer die Nachbarschaft eines Datenpunktes bestimmt wird. In dieser Umsetzung
-wird die Cosinus-Distanz gewählt, die sich aus der Cosinus-Ähnlichkeit ableitet:
-\begin{equation}
-    d_{\cos}(\mathbf{u}, \mathbf{v}) = 1 - \frac{\mathbf{u} \cdot \mathbf{v}}
-    {\|\mathbf{u}\| \cdot \|\mathbf{v}\|}
-\end{equation}
-Die Wahl dieser Metrik ist für TF-IDF-Vektoren aus zwei Gründen besonders
-geeignet. Erstens sind TF-IDF-Vektoren hochdimensional und dünn besetzt
-(\textit{sparse}); die euklidische Distanz leidet in solchen Räumen unter dem
-sogenannten \textit{Curse of Dimensionality}, da sie alle Dimensionen gleich
-gewichtet und von der absoluten Länge der Vektoren abhängt.\footnote{Eine
-ausführliche Diskussion des \textit{Curse of Dimensionality} im Kontext
-hochdimensionaler Daten findet sich in \cite{Leskovec2020Mining} Kapitel~7.1.}
-Zweitens erfassen Lognachrichten desselben Templates häufig dieselben
-Schlüsselwörter in ähnlicher Gewichtung, unterscheiden sich jedoch in der
-absoluten Häufigkeit dieser Wörter. Die Cosinus-Distanz normiert diesen Effekt
-heraus, indem sie ausschließlich den Winkel zwischen zwei Vektoren misst.
-
-\paragraph{Nachbarschaftsradius: \texttt{eps = 0.6}.}
-Der Parameter \texttt{DBSCAN\_EPS} definiert den Radius $\varepsilon$, innerhalb
-dessen zwei Datenpunkte als Nachbarn gelten. Da die Cosinus-Distanz Werte im
-Bereich $[0, 2]$ annimmt – wobei $0$ identische und $2$ vollständig entgegengesetzte
-Vektoren bedeutet – entspricht ein Wert von $\varepsilon = 0{,}6$ einer geforderten
-Cosinus-Ähnlichkeit von mindestens $0{,}4$ zwischen zwei Lognachrichten. Dieser
-Schwellenwert erlaubt es, semantisch ähnliche Lognachrichten eines Templates als
-Nachbarn zu erkennen, ohne dabei strukturell verschiedene Nachrichten fälschlich
-zusammenzuführen.
-
-\paragraph{Mindestanzahl an Nachbarn: \texttt{min\_samples = 2}.}
-Der Parameter \texttt{DBSCAN\_MIN\_SAMPLES} legt fest, wie viele Punkte sich
-mindestens im $\varepsilon$-Radius eines Punktes befinden müssen, damit dieser
-als Kernpunkt klassifiziert wird. Der Wert $2$ ist die kleinstmögliche sinnvolle
-Einstellung und bewirkt, dass bereits zwei sich gegenseitig als Nachbarn erkennende
-Lognachrichten einen Cluster bilden. Da der Datensatz pro Log-Template im Mittel
-lediglich $10\,000 / n_{\text{Templates}}$ Einträge enthält\footnote{Der verwendete
-Datensatz setzt sich aus den Loghub-2k-Quellen \texttt{Linux}, \texttt{Apache} und
-\texttt{OpenSSH} zusammen und umfasst nach der Mischung insgesamt $10\,000$ Lognachrichten,
-verteilt auf $44$ Ground-Truth-Klassen; siehe Abschnitt~\ref{sec:eval:aufbau}.}, sichert
-ein kleiner Wert ab, dass auch selten auftretende Templates nicht fälschlich als Rauschen
-klassifiziert werden.
+Die Konfiguration der DBSCAN-Instanz erfolgt über drei zentrale Parameter:
+die Distanzmetrik \texttt{DBSCAN\_METRIC}, den Nachbarschaftsradius
+\texttt{DBSCAN\_EPS} sowie die Mindestanzahl an Nachbarn
+\texttt{DBSCAN\_MIN\_SAMPLES}. Die Wahl der konkreten Werte wird zentral in
+Abschnitt~\ref{sec:eval:param:dbscan} im Rahmen der Parameterwahl aller
+untersuchten Verfahren begründet; an dieser Stelle wird ausschließlich die
+Implementierung beschrieben.
 
 Angewendet wird das Verfahren über \texttt{fit\_predict} auf die zuvor erzeugte
 TF-IDF-Matrix \texttt{X\_tfidf}. Datenpunkte in Regionen hoher Dichte werden zu
 Clustern zusammengefasst, während Punkte, die keinem Cluster zugeordnet werden
 können, als Rauschen klassifiziert werden und das Label $-1$ erhalten. Die
 resultierenden Cluster-IDs werden als neue Spalte \texttt{dbscan\_cluster\_id}
-im Dataframe gespeichert. Im vorliegenden Testlauf entstanden auf diese Weise
-$27$ Cluster, wobei ein nennenswerter Anteil der Lognachrichten als Rauschen
-eingestuft wurde – ein charakteristisches Verhalten von DBSCAN bei inhomogen
-verteilten Datensätzen.
+im Dataframe gespeichert.
 
 
 \section{Drain3 in der Praxis: Iterative Zuordnung durch den Online-Parser}
+\label{sec:real:drain3}
 
-Die praktische Umsetzung des Clustering-Verfahrens mittels drain3 ist in Listing 4.2 dargestellt. Zunächst erfolgt die Konfiguration des Parsers über das TemplateMinerConfig-Objekt. Ein zentraler Parameter ist hierbei der Ähnlichkeitsschwellenwert (\lstinline{drain_sim_th}), der im vorliegenden Szenario auf $0,2$ festgelegt wird. Dieser Schwellenwert definiert, ab welchem Grad der Ähnlichkeit eine neue Lognachricht einem existierenden Logtemplate im Parse-Baum zugeordnet wird.
-Mit der definierten Konfiguration wird anschließend eine Instanz des TemplateMiner initialisiert, welcher die Kernlogik des Drain-Algorithmus kapselt. Entsprechend der Funktionsweise eines Online-Parsers werden die Daten nicht als statischer Block, sondern iterativ verarbeitet. Die Lognachrichten aus der Spalte 'log' des Dataframes \lstinline{df_labeled} werden in einer Schleife einzeln mittels der Methode \lstinline{add_log_message} an den Miner übergeben.
-Für jede verarbeitete Nachricht liefert der Algorithmus ein Ergebnisobjekt zurück, aus welchem die identifizierte Cluster-ID extrahiert wird. Diese IDs werden zunächst gesammelt und abschließend als neue Spalte \lstinline{drain_cluster_id} dem Dataframe hinzugefügt. Dadurch ist jeder ursprünglichen Lognachricht das entsprechende Cluster zugeordnet, was die Grundlage für weiterführende Analysen bildet.
+Die praktische Umsetzung des Clustering-Verfahrens mittels Drain3 ist in
+Listing~\ref{lst:drain3} dargestellt. Die Konfiguration erfolgt über das
+\texttt{TemplateMinerConfig}-Objekt; die zwei zentralen Parameter sind der
+Ähnlichkeitsschwellenwert \texttt{drain\_sim\_th} und die Baumtiefe
+\texttt{drain\_depth}. Beide werden zentral in
+Abschnitt~\ref{sec:eval:param:drain3} im Rahmen der Parameterwahl begründet;
+an dieser Stelle wird ausschließlich die Implementierung beschrieben.
 
-\begin{lstlisting}[caption={clustern mit drain3}, label={lst:drain3}]
-# Drain3 Parameter
+Mit der definierten Konfiguration wird eine Instanz des
+\texttt{TemplateMiner} initialisiert, welche die Kernlogik des
+Drain-Algorithmus kapselt. Entsprechend der Funktionsweise eines
+Online-Parsers werden die Daten nicht als statischer Block, sondern iterativ
+verarbeitet. Die Lognachrichten aus der Spalte \texttt{log} des Dataframes
+\lstinline{df_labeled} werden in einer Schleife einzeln mittels der Methode
+\lstinline{add_log_message} an den Miner übergeben. Für jede verarbeitete
+Nachricht liefert der Algorithmus ein Ergebnisobjekt zurück, aus welchem die
+identifizierte Cluster-ID extrahiert wird. Diese IDs werden gesammelt und
+abschließend als neue Spalte \lstinline{drain_cluster_id} dem Dataframe
+hinzugefügt.
+
+\begin{lstlisting}[caption={Clustern mit Drain3}, label={lst:drain3}]
+# Drain3 Parameter (Begruendung siehe Abschnitt \ref{sec:eval:param:drain3})
 DRAIN_SIM_TH = 0.2
+DRAIN_DEPTH  = 4
 
 # ===== DRAIN3 CLUSTERING =====
 drain_config = TemplateMinerConfig()
 drain_config.drain_sim_th = DRAIN_SIM_TH
+drain_config.drain_depth  = DRAIN_DEPTH
 
 template_miner = TemplateMiner(config=drain_config)
 
@@ -230,10 +218,15 @@ sind:
 
 \begin{itemize}
     \item \texttt{PGVECTOR\_EMBEDDING\_MODEL = "sentence-transformers/all-MiniLM-L6-v2"}
-    \item \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.5}
-    \item \texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.3}
+    \item \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.3}
+    \item \texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.2}
     \item \texttt{PGVECTOR\_INITIAL\_RATIO = 0.5}
 \end{itemize}
+
+Die Wahl der beiden Cosinus-Schwellen wird zentral in
+Abschnitt~\ref{sec:eval:param:pgvector} im Rahmen der Parameterwahl
+begründet; an dieser Stelle wird ausschließlich die Implementierung
+beschrieben.
 
 \subsection{Embedding-Erzeugung mit Sentence Transformers}
 
@@ -321,7 +314,7 @@ Clusterbasis aufzubauen. Die restlichen Einträge werden zunächst als
 
 \begin{lstlisting}[caption={Phase 1: Initial Clustering},
                    label={lst:pgvector-initial}]
-PGVECTOR_INITIAL_COSINE_DISTANCE = 0.5
+PGVECTOR_INITIAL_COSINE_DISTANCE = 0.3
 PGVECTOR_INITIAL_RATIO           = 0.5
 
 split_idx = int(len(logs_clean) * PGVECTOR_INITIAL_RATIO)
@@ -362,7 +355,7 @@ ON CONFLICT (log_cluster_id) DO UPDATE
 
 Der Algorithmus iteriert sequenziell über alle noch nicht zugewiesenen
 Kandidaten. Für jeden Kandidaten wird über den HNSW-Index eine Nachbarschaftssuche
-mit dem Schwellenwert \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.5} ausgeführt:
+mit dem Schwellenwert \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.3} ausgeführt:
 Alle Logs, deren Cosinus-Distanz zum aktuellen Kandidaten diesen Wert unterschreitet,
 gelten als ähnlich genug für eine gemeinsame Cluster-Zugehörigkeit. Der gesamte
 Ähnlichkeitsbatch erhält eine neue Cluster-ID. Nach Abschluss aller Zuweisungen
@@ -378,7 +371,7 @@ Drei-Strategien-Logik, die in Listing~\ref{lst:pgvector-recluster} dargestellt i
 
 \begin{lstlisting}[caption={Phase 2: Re-Clustering mit drei Strategien},
                    label={lst:pgvector-recluster}]
-PGVECTOR_RECLUSTER_COSINE_DISTANCE = 0.3
+PGVECTOR_RECLUSTER_COSINE_DISTANCE = 0.2
 
 for (log_id,) in unprocessed:
 
@@ -420,8 +413,8 @@ sucht zunächst in der \texttt{avg\_embedding}-Tabelle nach einem ähnlichen
 Cluster-Schwerpunkt; dieser Vergleich ist besonders effizient, da die Tabelle
 nur so viele Einträge enthält, wie Cluster existieren – deutlich weniger als die
 Gesamtzahl der Lognachrichten. Der Schwellenwert von
-\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.3} ist dabei bewusst strenger
-als in Phase 1 ($0{,}5$) gewählt: Ein neues Log soll einem bestehenden Cluster
+\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.2} ist dabei bewusst strenger
+als in Phase 1 ($0{,}3$) gewählt: Ein neues Log soll einem bestehenden Cluster
 nur dann zugeordnet werden, wenn es sich in unmittelbarer Nähe des
 Cluster-Schwerpunktes befindet, um Cluster-Drift durch sukzessive Fehlzuweisungen
 zu vermeiden. Findet Strategie~1 keinen Treffer, weitet Strategie~2 die Suche
@@ -430,8 +423,11 @@ bleibt, legt Strategie~3 einen neuen Cluster an. Nach jeder Zuweisung wird der
 betroffene Durchschnittsvektor in \texttt{avg\_embedding} aktualisiert, sodass
 nachfolgende Zuweisungen auf dem aktuellen Stand der Clusterbasis operieren.
 
-Im vorliegenden Testlauf erzeugte Phase~1 insgesamt 28 Cluster; Phase~2 erstellte
-keine neuen Cluster, da alle verbleibenden Lognachrichten einem der bestehenden
-Cluster zugeordnet werden konnten. Das Endergebnis von 28 Clustern entspricht
-damit in guter Näherung der tatsächlichen Anzahl der Ground-Truth-Klassen im
-verwendeten Loghub-Datensatz.
+Im vorliegenden Testlauf erzeugte Phase~1 die initiale Clusterbasis; Phase~2
+ergänzte sie um wenige weitere Cluster aus Strategie~3, sodass insgesamt $80$
+Cluster entstehen. Diese Zahl liegt deutlich oberhalb der $44$
+Ground-Truth-Klassen des Datensatzes -- ein direkter Effekt des strengen
+Initial-Schwellenwerts $0{,}3$, dessen Begründung in
+Abschnitt~\ref{sec:eval:param:pgvector} erfolgt. Die Auswirkungen der
+Übersegmentierung auf die Evaluationsmetriken werden in
+Abschnitt~\ref{sec:eval:vector} diskutiert.

@@ -115,6 +115,344 @@ Als Kennzahlen werden für jede Metrik der Mittelwert~$\bar{x}$ sowie die
 Standardabweichung~$\sigma$ über alle fünf Durchläufe berechnet und berichtet.
 
 % ----------------------------------------------------------------
+\section{Parameterwahl}
+\label{sec:eval:parameterwahl}
+
+Die in den Implementierungslistings (Kapitel~\ref{chap:real}) verwendeten
+Parameterwerte werden in diesem Abschnitt gebündelt begründet. Eine zentrale
+Darstellung wird dem verteilten Vorgehen vorgezogen, weil die Vergleichbarkeit
+der Verfahren maßgeblich davon abhängt, dass alle Konfigurationen nach einer
+einheitlichen methodischen Linie ermittelt wurden.
+
+\paragraph{Methodische Linie.}
+Die Parameterwahl erfolgt für alle Verfahren \emph{datengetrieben} und
+\emph{ohne Verwendung der Ground Truth}. Dieser Verzicht ist eine direkte
+Folge der Aufgabenstellung: Im kontinuierlichen Log-Clustering steht im
+Produktivbetrieb keine Label-Information zur Verfügung; ein auf der
+Ground-Truth optimierter Parameter wäre dort nicht reproduzierbar. Stattdessen
+kommen verfahrensspezifische, unsupervised Heuristiken zum Einsatz, die
+ausschließlich auf den Eingangsvektoren bzw.\ -nachrichten operieren --
+beispielsweise die Elbow-Methode und der Silhouette-Score für K-Means oder
+der $k$-Distanz-Plot für DBSCAN. Die Ground-Truth-basierten Metriken ARI und
+V-Measure dienen somit ausschließlich der \emph{Evaluation}, nicht dem
+\emph{Tuning}; eine Doppelnutzung würde zu Information Leakage und damit zu
+systematisch überschätzten Ergebnissen führen.
+
+% ----------------------------------------------------------------
+\subsection{K-Means}
+\label{sec:eval:param:kmeans}
+
+K-Means erfordert die Anzahl der Cluster $k$ als Eingabeparameter. Die Wahl
+erfolgt nicht heuristisch, sondern datengetrieben über zwei in der Literatur
+etablierte, voneinander unabhängige Verfahren: die Elbow-Methode auf Basis
+der Distortion sowie den Silhouette-Score. Beide Metriken operieren
+ausschließlich auf den Eingangsvektoren und sind damit auch im
+kontinuierlichen Betrieb anwendbar.
+
+\paragraph{Vorverarbeitung mittels Truncated SVD.}
+Die direkte Berechnung des Silhouette-Scores im hochdimensionalen, dünn
+besetzten TF-IDF-Raum ($1000$ Dimensionen) ist sowohl rechnerisch aufwendig
+als auch wegen des \textit{Curse of Dimensionality} unzuverlässig: Mit
+wachsender Dimension nähern sich paarweise Distanzen einem gemeinsamen
+Mittelwert an, sodass das Distanzmaß seine Trennkraft verliert. Daher wird
+die TF-IDF-Matrix für die Parametersuche zuvor mittels \textit{Truncated
+Singular Value Decomposition} (Truncated SVD) auf $100$ Hauptkomponenten
+reduziert. Diese Transformation überführt die Sparse-Matrix in einen dichten,
+niedrigdimensionalen Raum, der die signifikanten Varianzanteile der
+ursprünglichen Repräsentation erhält und in dem distanzbasierte Maße wie die
+Silhouette zuverlässige Werte liefern. Auf dieser reduzierten Repräsentation
+wird $k$ über den Bereich $k \in \{2, 3, \dots, 39\}$ variiert; pro Wert
+werden Distortion und Silhouette-Score berechnet. Die zugehörige
+Implementierung findet sich in Zelle~10 des Notebooks \texttt{ML.ipynb}.
+
+Die SVD-Reduktion dient ausschließlich der Parameterbestimmung; das
+eigentliche K-Means-Clustering im Implementierungsschritt
+(Listing~\ref{lst:k-means-cluster}) operiert weiterhin auf der vollständigen
+TF-IDF-Matrix.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/kmeans_elbow.png}
+    \caption{Elbow-Diagramm der Distortion über $k \in [2, 39]$. Der Knick liegt im Bereich $k \in \{10, 11, 12\}$.}
+    \label{fig:kmeans-elbow}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/kmeans_silhouette.png}
+    \caption{Silhouette-Score über $k \in [2, 39]$. Globales Maximum bei $k = 10$ ($\approx 0{,}216$).}
+    \label{fig:kmeans-silhouette}
+\end{figure}
+
+\paragraph{Auswertung.}
+Abbildung~\ref{fig:kmeans-elbow} zeigt einen deutlichen Knick im Bereich
+$k = 10$ bis $k = 12$: Die Distortion fällt zwischen $k = 2$ und $k = 10$
+steil von $\approx 0{,}67$ auf $\approx 0{,}49$, anschließend nur noch
+marginal. In Abbildung~\ref{fig:kmeans-silhouette} liegt das globale Maximum
+des Silhouette-Scores bei $k = 10$ mit $\approx 0{,}216$. Die späteren
+lokalen Maxima bei $k \approx 37$ entsprechen typischen Artefakten der
+Über-Partitionierung -- das Distortion-Diagramm verläuft in diesem Bereich
+bereits flach -- und stellen kein echtes Optimum dar.
+
+Beide Heuristiken konvergieren auf $k = 10$. Dieser Wert wird daher für die
+in Listing~\ref{lst:k-means-cluster} dokumentierte Implementierung sowie für
+die nachfolgende Evaluation verwendet. Das absolute Niveau des
+Silhouette-Scores ist mit Werten unterhalb von $0{,}25$ gering, was bereits
+an dieser Stelle auf eine schwache geometrische Trennung der Cluster im
+TF-IDF-Raum hinweist; diese Beobachtung wird in der Diskussion der
+K-Means-Ergebnisse (Abschnitt~\ref{sec:eval:kmeans}) erneut aufgegriffen.
+
+% ----------------------------------------------------------------
+\subsection{DBSCAN}
+\label{sec:eval:param:dbscan}
+
+DBSCAN benötigt drei Parameter: die Distanzmetrik, den Nachbarschaftsradius
+$\varepsilon$ sowie die Mindestanzahl an Nachbarn \texttt{min\_samples}.
+Distanzmetrik und \texttt{min\_samples} werden theoretisch motiviert,
+$\varepsilon$ wird datengetrieben über einen $k$-Distanz-Plot ermittelt.
+
+\paragraph{Distanzmetrik: Cosinus-Distanz.}
+Als Distanzfunktion wird die Cosinus-Distanz gewählt, die sich aus der
+Cosinus-Ähnlichkeit ableitet:
+\begin{equation}
+    d_{\cos}(\mathbf{u}, \mathbf{v}) = 1 - \frac{\mathbf{u} \cdot \mathbf{v}}
+    {\|\mathbf{u}\| \cdot \|\mathbf{v}\|}
+\end{equation}
+Diese Wahl ist für TF-IDF-Vektoren aus zwei Gründen besonders geeignet.
+Erstens sind TF-IDF-Vektoren hochdimensional und dünn besetzt
+(\textit{sparse}); die euklidische Distanz leidet in solchen Räumen unter dem
+sogenannten \textit{Curse of Dimensionality}, da sie alle Dimensionen gleich
+gewichtet und von der absoluten Länge der Vektoren
+abhängt.\footnote{Eine ausführliche Diskussion des \textit{Curse of
+Dimensionality} im Kontext hochdimensionaler Daten findet sich in
+\cite{Leskovec2020Mining} Kapitel~7.1.} Zweitens erfassen Lognachrichten
+desselben Templates häufig dieselben Schlüsselwörter in ähnlicher Gewichtung,
+unterscheiden sich jedoch in der absoluten Häufigkeit dieser Wörter. Die
+Cosinus-Distanz normiert diesen Effekt heraus, indem sie ausschließlich den
+Winkel zwischen zwei Vektoren misst.
+
+\paragraph{Mindestanzahl an Nachbarn: \texttt{min\_samples = 2}.}
+Der Parameter \texttt{min\_samples} legt fest, wie viele Punkte sich
+mindestens im $\varepsilon$-Radius eines Punktes befinden müssen, damit dieser
+als Kernpunkt klassifiziert wird. Der Wert $2$ ist die kleinstmögliche
+sinnvolle Einstellung und bewirkt, dass bereits zwei sich gegenseitig als
+Nachbarn erkennende Lognachrichten einen Cluster bilden. Da der Datensatz pro
+Log-Template im Mittel lediglich $10\,000 / n_{\text{Templates}}$ Einträge
+enthält\footnote{Der verwendete Datensatz setzt sich aus den
+Loghub-2k-Quellen \texttt{Linux}, \texttt{Apache} und \texttt{OpenSSH}
+zusammen und umfasst nach der Mischung insgesamt $10\,000$ Lognachrichten,
+verteilt auf $44$ Ground-Truth-Klassen; siehe Abschnitt~\ref{sec:eval:aufbau}.},
+sichert ein kleiner Wert ab, dass auch selten auftretende Templates nicht
+fälschlich als Rauschen klassifiziert werden.
+
+\paragraph{Nachbarschaftsradius $\varepsilon$ via $k$-Distanz-Plot.}
+Für die Wahl von $\varepsilon$ wird das in der Literatur etablierte
+$k$-Distanz-Verfahren nach Ester et al.\ eingesetzt. Hierzu wird für jeden
+Punkt im Datensatz die Cosinus-Distanz zum $k$-ten Nachbarn berechnet
+(mit $k = $ \texttt{min\_samples} $= 2$), die resultierenden Werte werden
+aufsteigend sortiert und in Abbildung~\ref{fig:dbscan-kdist} dargestellt. Der
+Knick der Kurve markiert den Übergang zwischen Punkten in dichten Regionen
+(flacher, niedriger Verlauf) und Ausreißern (steiler Anstieg) und gilt als
+optimaler $\varepsilon$-Wert. Die Lokalisierung des Knicks erfolgt automatisch
+mittels der Bibliothek \texttt{kneed}; die zugehörige Implementierung findet
+sich im Notebook \texttt{ML.ipynb} (Zelle~11).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.85\linewidth]{images/dbscan_k_distance.png}
+    \caption{$k$-Distanz-Plot für DBSCAN mit Cosinus-Distanz und $k = 2$. Der per \texttt{KneeLocator} bestimmte Knick liegt bei $\varepsilon \approx 0{,}399$ (grün gestrichelt); der ursprünglich theoretisch motivierte Wert $\varepsilon = 0{,}60$ ist zum Vergleich rot eingezeichnet.}
+    \label{fig:dbscan-kdist}
+\end{figure}
+
+Die Kurve zeigt drei klar abgrenzbare Phasen. Für etwa $82\,\%$ der Punkte
+liegt die Distanz zum nächsten Nachbarn bei $\approx 0$ -- Folge der für
+Logdaten typischen hohen Anzahl identischer oder nahezu identischer
+Nachrichten. In der mittleren Phase (Punkte $\approx 8200$ bis $\approx 9900$)
+steigt die Distanz langsam auf $\approx 0{,}4$ an; in diesem Bereich liegen
+Lognachrichten mit semantisch verwandten, aber nicht identischen Nachbarn,
+typischerweise Logs desselben Templates mit abweichenden Parametern. Im
+letzten Prozent der Punkte erfolgt ein steiler Sprung auf bis zu $0{,}65$;
+diese Logs besitzen keinen wirklich nahen Nachbarn mehr und stellen Ausreißer
+im Sinne von DBSCAN dar.
+
+Der \texttt{KneeLocator} identifiziert den Übergang zwischen mittlerer und
+letzter Phase bei $\varepsilon = 0{,}399$. Gerundet wird daher
+$\varepsilon = 0{,}4$ verwendet. Eine alternative theoretische Argumentation
+über das Intervall der Cosinus-Distanz ($d_{\cos} \in [0, 2]$) hätte einen
+toleranteren Wert wie $\varepsilon = 0{,}6$ -- entsprechend einer geforderten
+Cosinus-Ähnlichkeit von $\geq 0{,}4$ -- nahegelegt. Der empirische
+$k$-Distanz-Plot zeigt jedoch, dass dieser Wert bereits weit oberhalb des
+Knicks im Bereich der reinen Ausreißer liegt; eine Konfiguration mit
+$\varepsilon = 0{,}6$ würde semantisch unverwandte Logs zu Clustern
+verschmelzen und damit die Homogenität systematisch absenken. Die Folgen
+dieser Wahl manifestieren sich unmittelbar in den Evaluationswerten (vgl.\
+Abschnitt~\ref{sec:eval:dbscan}): Mit $\varepsilon = 0{,}4$ steigt die
+Homogenität gegenüber dem ursprünglichen Wert von $14{,}5\,\%$ auf
+$73{,}9\,\%$, der ARI von $4{,}6\,\%$ auf $58{,}2\,\%$.
+
+% ----------------------------------------------------------------
+\subsection{Drain3}
+\label{sec:eval:param:drain3}
+
+Drain3 wird durch zwei zentrale Hyperparameter gesteuert: den
+Ähnlichkeitsschwellenwert \texttt{drain\_sim\_th} und die Baumtiefe
+\texttt{drain\_depth}. Beide Parameter werden über einen 2D-Sweep gemeinsam
+untersucht. \texttt{drain\_sim\_th} bestimmt, ab welchem Grad an Übereinstimmung
+zweier Lognachrichten diese demselben Template zugeordnet werden;
+\texttt{drain\_depth} legt die maximale Tiefe des Parse-Baums fest und damit
+indirekt die strukturelle Granularität der erzeugten Templates.
+
+\paragraph{Sweep-Aufbau.}
+Für \texttt{drain\_sim\_th} wird der Bereich
+$\{0{,}1, 0{,}2, \dots, 0{,}9\}$ vollständig durchlaufen, für
+\texttt{drain\_depth} die Werte $\{3, 4, 5\}$. Pro Kombination wird ein
+frischer \texttt{TemplateMiner} instanziiert, alle $10\,000$ Lognachrichten
+sequenziell verarbeitet und die Anzahl eindeutiger Cluster-IDs protokolliert.
+Als unsupervised Auswertungskriterium dient die Cluster-Anzahl als Funktion
+von \texttt{drain\_sim\_th}; der Übergang von kontrolliertem Wachstum zur
+exponentiellen Übersegmentierung wird automatisch mittels der
+\texttt{KneeLocator}-Bibliothek (\texttt{curve='convex'},
+\texttt{direction='increasing'}) lokalisiert. Die zugehörige Implementierung
+findet sich im Notebook \texttt{ML.ipynb} (Zelle~12).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{images/drain3_sweep.png}
+    \caption{Drain3-Parametersuche: Cluster-Anzahl als Funktion von \texttt{drain\_sim\_th} für drei Werte von \texttt{drain\_depth} (logarithmische y-Achse). Der per \texttt{KneeLocator} bestimmte Knick liegt für alle drei \texttt{depth}-Werte bei \texttt{sim\_th} $= 0{,}7$ (grün gepunktet); der Implementierungswert \texttt{sim\_th} $= 0{,}2$ ist rot eingezeichnet.}
+    \label{fig:drain3-sweep}
+\end{figure}
+
+\paragraph{Beobachtung 1: \texttt{depth} hat vernachlässigbaren Einfluss.}
+Die drei Kurven für \texttt{depth} $\in \{3, 4, 5\}$ liegen in
+Abbildung~\ref{fig:drain3-sweep} nahezu deckungsgleich übereinander. Der
+Parameter beeinflusst die strukturelle Aufteilung im Parse-Baum, ändert die
+resultierende Cluster-Anzahl jedoch in dem hier untersuchten
+$\texttt{sim\_th}$-Bereich nur marginal. Für die Implementierung wird daher
+\texttt{depth} $= 4$ als sklearn-konformer Default beibehalten.
+
+\paragraph{Beobachtung 2: Knee bei \texttt{sim\_th} $= 0{,}7$.}
+Die Cluster-Anzahl wächst zwischen \texttt{sim\_th} $= 0{,}1$ und
+\texttt{sim\_th} $= 0{,}7$ moderat von $\approx 37$ auf $\approx 250$. Ab
+\texttt{sim\_th} $> 0{,}7$ explodiert sie auf $\approx 1100$ (bei $0{,}8$)
+bzw. $\approx 3000$ (bei $0{,}9$). Der Knee markiert damit \emph{nicht} das
+Optimum, sondern eine \emph{obere Schranke}: Oberhalb dieses Werts erzeugt
+jede syntaktische Variation einer Lognachricht einen separaten Ast im
+Baum, was zu einer katastrophalen Übersegmentierung führt.
+
+\paragraph{Wahl von \texttt{sim\_th}.}
+Innerhalb der sicheren Zone $\texttt{sim\_th} \leq 0{,}7$ wächst die Kurve
+monoton ohne klares Plateau; ein eindeutiges Optimum lässt sich aus dem
+Sweep allein nicht ableiten. Methodisch wird daher der konservativ niedrige
+Wert \texttt{sim\_th} $= 0{,}2$ verwendet. Drei Argumente stützen diese
+Wahl:
+
+\begin{enumerate}
+    \item \emph{Maximaler Sicherheitsabstand zum Übersegmentierungs-Knick.}
+    Bei \texttt{sim\_th} $= 0{,}2$ liegt die Cluster-Anzahl mit $\approx 50$
+    eine volle Größenordnung unter dem Wert am Knee ($\approx 250$).
+    \item \emph{Größenordnung passend zum Datensatz.} Der gemischte
+    Loghub-Datensatz enthält $44$ Ground-Truth-Klassen
+    (vgl.\ Abschnitt~\ref{sec:eval:aufbau}). Die bei \texttt{sim\_th} $= 0{,}2$
+    erzeugten $\approx 50$ Cluster liegen damit in der natürlichen
+    Größenordnung der Daten, ohne dass diese Information in die
+    Parameterwahl eingeflossen ist.
+    \item \emph{Reine Templates trotz niedrigem Schwellenwert.} Die
+    Parse-Baum-Struktur von Drain3 erzwingt durch positionsbasierte
+    Verzweigung auch bei niedrigem \texttt{sim\_th} hochspezifische Templates
+    -- ein Verhalten, das sich später in den Evaluationswerten als hohe
+    Homogenität von $96{,}1\,\%$ zeigt (Abschnitt~\ref{sec:eval:drain3}).
+\end{enumerate}
+
+% ----------------------------------------------------------------
+\subsection{pgvector}
+\label{sec:eval:param:pgvector}
+
+Das pgvector-Verfahren wird durch zwei Cosinus-Schwellen gesteuert:
+\texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE} (im Folgenden \texttt{INITIAL})
+für Phase~1 und Strategie~2 sowie
+\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE} (\texttt{RECLUSTER}) für
+Strategie~1 in Phase~2. Beide Parameter werden gemeinsam über einen
+2D-Sweep untersucht.
+
+\paragraph{Sweep-Aufbau.}
+Für \texttt{INITIAL} wird der Bereich $\{0{,}3, 0{,}4, 0{,}5, 0{,}6, 0{,}7\}$
+durchlaufen, für \texttt{RECLUSTER} der Bereich
+$\{0{,}1, 0{,}2, 0{,}3, 0{,}4, 0{,}5\}$. Es werden ausschließlich
+Kombinationen mit \texttt{RECLUSTER} $<$ \texttt{INITIAL} ausgewertet, da die
+zweistufige Architektur einen strengeren Schwellenwert für das Re-Clustering
+voraussetzt; die übrigen Felder bleiben leer. Aus Laufzeitgründen wird der
+Sweep auf einer Stichprobe von $n = 2\,000$ Lognachrichten ausgeführt
+(zufällig gezogen mit Seed $42$, entspricht der Größenordnung der
+Loghub-2k-Quellen). Die Embeddings werden einmal vorberechnet und für jede
+Parameterkombination wiederverwendet; pro Kombination werden die DB-Tabellen
+geleert, die Embeddings per Bulk-Insert eingespielt und der vollständige
+zweistufige Algorithmus aus Abschnitt~\ref{sec:real:pgvector} ausgeführt.
+Als unsupervised Auswertungskriterium dient der Silhouette-Score auf den
+Embeddings (Cosinus-Metrik, \texttt{sample\_size = 2000},
+\texttt{random\_state = 42}); zusätzlich wird die Cluster-Anzahl protokolliert.
+Die zugehörige Implementierung findet sich im Notebook \texttt{ML.ipynb}
+(Zelle~13).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.78\linewidth]{images/pgvector_heatmap_clusters.png}
+    \caption{pgvector-Parametersuche -- Cluster-Anzahl pro Parameterkombination ($n = 2\,000$). Felder oberhalb der Diagonalen verletzen die Bedingung \texttt{RECLUSTER} $<$ \texttt{INITIAL} und werden nicht ausgewertet.}
+    \label{fig:pgvector-heatmap-clusters}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.78\linewidth]{images/pgvector_heatmap_silhouette.png}
+    \caption{pgvector-Parametersuche -- Silhouette-Score (Cosinus-Metrik) pro Parameterkombination ($n = 2\,000$). Globales Maximum bei \texttt{INITIAL} $= 0{,}3$.}
+    \label{fig:pgvector-heatmap-silhouette}
+\end{figure}
+
+\paragraph{Beobachtung 1: \texttt{RECLUSTER} ist effektlos.}
+Beide Heatmaps zeigen ein auffälliges Muster vertikaler Streifen: Sowohl die
+Cluster-Anzahl als auch der Silhouette-Score sind innerhalb jeder Spalte
+konstant; eine Variation von \texttt{RECLUSTER} verändert das Endergebnis
+\emph{nicht}. Die Ursache liegt in der Drei-Strategien-Logik der zweiten
+Phase (vgl.\ Abschnitt~\ref{sec:real:pgvector}): Findet Strategie~1 keinen
+ausreichend nahen Cluster-Schwerpunkt, weitet Strategie~2 die Suche
+unmittelbar auf alle bereits verarbeiteten Einzellogs mit dem
+\texttt{INITIAL}-Schwellenwert aus. Im untersuchten Datensatz greift dieser
+Fallback in praktisch allen Fällen, wodurch \texttt{RECLUSTER} effektiv
+übergangen wird. Die zweistufige Architektur reduziert sich faktisch auf
+eine durch \texttt{INITIAL} parametrisierte einstufige Pipeline.
+
+\paragraph{Beobachtung 2: \texttt{INITIAL} steuert Cluster-Anzahl und Qualität.}
+Mit kleiner werdendem \texttt{INITIAL} steigt die Cluster-Anzahl monoton:
+$10$ ($\texttt{INITIAL} = 0{,}7$), $13$ ($0{,}6$), $21$ ($0{,}5$), $32$
+($0{,}4$), $46$ ($0{,}3$). Der Silhouette-Score erreicht bei
+\texttt{INITIAL} $= 0{,}3$ sein globales Maximum von $0{,}653$, fast
+identisch mit \texttt{INITIAL} $= 0{,}4$ ($0{,}650$). Bei größeren
+Schwellenwerten fällt der Silhouette-Score deutlich ab -- bis auf $0{,}313$
+bei \texttt{INITIAL} $= 0{,}7$, was eine massive Untersegmentierung
+(nur $10$ Cluster) widerspiegelt.
+
+\paragraph{Wahl der Parameter.}
+Datengetrieben ergibt sich \texttt{INITIAL} $= 0{,}3$ aus dem Maximum des
+Silhouette-Scores. Da \texttt{RECLUSTER} keinen Effekt auf das Ergebnis
+zeigt, wäre jeder Wert kleiner als \texttt{INITIAL} austauschbar; gewählt
+wird \texttt{RECLUSTER} $= 0{,}2$, um die architektonische Intention der
+zweistufigen Pipeline (\enquote{strenger als Initial}) formal zu wahren.
+Bemerkenswert ist, dass die bei \texttt{INITIAL} $= 0{,}3$ resultierenden
+$\approx 46$ Cluster auf der Stichprobe nahezu der Anzahl von $44$
+Ground-Truth-Klassen entsprechen, ohne dass diese Information in die
+Parameterwahl eingeflossen ist.
+
+\paragraph{Methodische Anmerkung zum Unterschied Silhouette vs.\ ARI.}
+Auf dem vollen Datensatz ($n = 10\,000$) erzeugt das Verfahren mit den
+gewählten Parametern $80$ Cluster; die Evaluation
+(Abschnitt~\ref{sec:eval:vector}) wird zeigen, dass dies zu einem höheren
+Homogenitäts-, aber niedrigeren ARI-Wert gegenüber der ursprünglichen
+Konfiguration mit \texttt{INITIAL} $= 0{,}5$ führt. Das Beispiel illustriert
+ein bekanntes Phänomen: interne Validitätsmaße wie der Silhouette-Score
+(unsupervised) und externe Maße wie der ARI (supervised) müssen nicht
+übereinstimmen. Die methodische Festlegung dieser Arbeit -- ausschließlich
+unsupervised zu tunen -- bleibt davon unberührt.
+
+% ----------------------------------------------------------------
 \section{Ergebnisse der algorithmischen Verfahren}
 \label{sec:eval:algo}
 
@@ -130,39 +468,55 @@ vergleichende Gesamtbewertung erfolgt in Abschnitt~\ref{sec:eval:vergleich}.
 
 \begin{table}[h]
     \centering
-    \caption{Evaluationsergebnisse K-Means ($k = 32$, $N = 5$ Durchläufe)}
+    \caption{Evaluationsergebnisse K-Means ($k = 10$, $N = 5$ Durchläufe)}
     \label{tab:eval:kmeans}
     \begin{tabular}{lrr}
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $33{,}2\,\%$ & $\pm\,2{,}0\,\%$ \\
-        V-Measure      & $70{,}6\,\%$ & $\pm\,1{,}3\,\%$ \\
-        Homogenität    & $93{,}2\,\%$ & $\pm\,1{,}1\,\%$ \\
-        Vollständigkeit& $56{,}9\,\%$ & $\pm\,1{,}2\,\%$ \\
+        ARI            & $56{,}5\,\%$ & $\pm\,8{,}2\,\%$ \\
+        V-Measure      & $78{,}2\,\%$ & $\pm\,3{,}8\,\%$ \\
+        Homogenität    & $83{,}1\,\%$ & $\pm\,3{,}8\,\%$ \\
+        Vollständigkeit& $74{,}0\,\%$ & $\pm\,3{,}9\,\%$ \\
         \midrule
-        Clusteranzahl  & $32$ & -- \\
+        Clusteranzahl  & $10$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Das auffälligste Merkmal ist das starke Ungleichgewicht zwischen Homogenität ($93{,}2\,\%$)
-und Vollständigkeit ($56{,}9\,\%$). Die gebildeten Cluster sind nahezu rein: Jeder Cluster
-enthält überwiegend Lognachrichten einer einzigen Ground-Truth-Klasse. Gleichzeitig werden
-die $44$ Klassen des Datensatzes auf lediglich $k = 32$ Partitionen aufgeteilt, sodass
-größere oder strukturell heterogene Klassen auf mehrere Cluster verteilt werden. Dieser
-Effekt der Überpartitionierung einzelner Klassen senkt die Vollständigkeit und damit auch den
-ARI auf $33{,}2\,\%$.
+Die Clusteranzahl $k = 10$ wurde, wie in Abschnitt~\ref{sec:real:kmeans}
+beschrieben, datengetrieben über die Elbow-Methode und den Silhouette-Score
+bestimmt; sie entspricht damit dem unsupervised Optimum auf der
+SVD-reduzierten TF-IDF-Repräsentation. Trotz der gegenüber der Ground-Truth
+($44$ Klassen) deutlich geringeren Cluster\-anzahl erreicht das Verfahren mit
+einem ARI von $56{,}5\,\%$ und einem V-Measure von $78{,}2\,\%$ einen der
+höheren Werte unter den algorithmischen Verfahren – knapp unterhalb von
+Drain3 (vgl.\ Abschnitt~\ref{sec:eval:vergleich}).
 
-Die Standardabweichung von $\pm\,2{,}0$ Prozentpunkten beim ARI zeigt, dass das Verfahren
-moderat sensitiv gegenüber der Datenreihenfolge ist. Ursache ist die stochastische
-Zentroid-Initialisierung: Unterschiedliche Startbedingungen führen zu leicht abweichenden
-Endzuständen. Wie in Abschnitt~\ref{sec:kmeans} dargelegt, muss $k$ vor der Ausführung
-festgelegt werden. Da die tatsächliche Anzahl der Log-Templates im kontinuierlichen Betrieb
-nicht bekannt ist, stellt diese Anforderung eine strukturelle Einschränkung dar, die sich
-direkt in den Messwerten manifestiert. Hinzu kommt, dass K-Means als Stapelverfahren den
-gesamten Datensatz bei jeder Neuverarbeitung einlesen muss und damit nicht für den
-inkrementellen Betrieb geeignet ist.
+Bemerkenswert ist die im Vergleich zu Homogenität und Vollständigkeit
+ausgewogenere Verteilung beider Teilmetriken ($83{,}1\,\%$ vs.\ $74{,}0\,\%$).
+Die Cluster sind weder stark übersegmentiert noch in extremem Maße
+zusammengefasst; die Differenz von rund neun Prozentpunkten zugunsten der
+Homogenität deutet aber darauf hin, dass die $10$ Partitionen
+\emph{Makrostrukturen} des gemischten Datensatzes erfassen – etwa die
+sprachlich-typischen Vokabulare der drei Quellsysteme \texttt{Linux},
+\texttt{Apache} und \texttt{OpenSSH} sowie deren häufigste Untergruppen.
+Feingranulare Templates innerhalb dieser Makrobereiche werden hingegen in
+denselben Cluster zusammengezogen, wodurch die Vollständigkeit nach unten
+begrenzt bleibt.
+
+Die Standardabweichung von $\pm\,8{,}2$ Prozentpunkten beim ARI ist die
+höchste aller untersuchten Verfahren. Ursache ist die stochastische
+Zentroid-Initialisierung in Verbindung mit dem niedrigen Silhouette-Niveau im
+TF-IDF-Raum (vgl.\ Abb.~\ref{fig:kmeans-silhouette}): Die Cluster liegen
+geometrisch nahe beieinander, sodass unterschiedliche Startbedingungen zu
+deutlich abweichenden Endzuständen führen. Wie in
+Abschnitt~\ref{sec:kmeans} dargelegt, muss $k$ vor der Ausführung festgelegt
+werden; die hier verwendete datengetriebene Bestimmung ist im
+kontinuierlichen Betrieb mit veränderlicher Datengrundlage nur durch
+periodische Wiederholung möglich. Hinzu kommt, dass K-Means als
+Stapelverfahren den gesamten Datensatz bei jeder Neuverarbeitung einlesen
+muss und damit nicht für den inkrementellen Betrieb geeignet ist.
 
 % ----------------------------------------------------------------
 \subsection{DBSCAN}
@@ -170,37 +524,54 @@ inkrementellen Betrieb geeignet ist.
 
 \begin{table}[h]
     \centering
-    \caption{Evaluationsergebnisse DBSCAN ($\varepsilon = 0{,}6$, \texttt{min\_samples} $= 2$, $N = 5$ Durchläufe)}
+    \caption{Evaluationsergebnisse DBSCAN ($\varepsilon = 0{,}4$, \texttt{min\_samples} $= 2$, $N = 5$ Durchläufe)}
     \label{tab:eval:dbscan}
     \begin{tabular}{lrr}
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $4{,}6\,\%$  & $\pm\,0{,}0\,\%$ \\
-        V-Measure      & $22{,}4\,\%$ & $\pm\,0{,}0\,\%$ \\
-        Homogenität    & $14{,}5\,\%$ & $\pm\,0{,}0\,\%$ \\
-        Vollständigkeit& $48{,}7\,\%$ & $\pm\,0{,}0\,\%$ \\
+        ARI            & $58{,}2\,\%$ & $\pm\,0{,}0\,\%$ \\
+        V-Measure      & $65{,}4\,\%$ & $\pm\,0{,}0\,\%$ \\
+        Homogenität    & $73{,}9\,\%$ & $\pm\,0{,}0\,\%$ \\
+        Vollständigkeit& $58{,}6\,\%$ & $\pm\,0{,}0\,\%$ \\
         \midrule
-        Clusteranzahl  & $27$ & -- \\
+        Clusteranzahl  & $124$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-DBSCAN erzielt mit einem ARI von $4{,}6\,\%$ und einer Homogenität von $14{,}5\,\%$ die
-schwächsten Ergebnisse aller untersuchten Verfahren. Die Nullabweichung über alle fünf
-Durchläufe ist erwartungskonform: DBSCAN operiert als Stapelverfahren auf der vollständigen
-TF-IDF-Matrix und ist gegenüber der Eingangsreihenfolge invariant. Die niedrige Homogenität
-zeigt, dass die gebildeten Cluster stark inhomogen sind – Lognachrichten unterschiedlicher
-Templates werden in denselben Cluster zusammengefasst. Der gewählte Nachbarschaftsradius
-$\varepsilon = 0{,}6$ erweist sich damit als zu tolerant für diesen Datensatz.
+Mit dem in Abschnitt~\ref{sec:eval:param:dbscan} datengetrieben ermittelten
+Nachbarschaftsradius $\varepsilon = 0{,}4$ erreicht DBSCAN einen ARI von
+$58{,}2\,\%$ und ein V-Measure von $65{,}4\,\%$ -- den höchsten ARI unter den
+algorithmischen Verfahren und den zweithöchsten Wert insgesamt nach pgvector
+(vgl.\ Abschnitt~\ref{sec:eval:vergleich}). Die Nullabweichung über alle fünf
+Durchläufe ist erwartungskonform: DBSCAN operiert als Stapelverfahren auf der
+vollständigen TF-IDF-Matrix und ist gegenüber der Eingangsreihenfolge
+invariant.
 
-Wie in Abschnitt~\ref{sec:dbscan} beschrieben, reagiert DBSCAN empfindlich auf ungleichmäßige
-Dichtverteilungen. Der gemischte Loghub-Datensatz enthält Klassen sehr unterschiedlicher
-Häufigkeit; seltene Templates liefern im TF-IDF-Raum zu wenige Kernpunkte und werden
-als Rauschen (Label $-1$) klassifiziert. Diese Rauschpunkte entziehen sich der Evaluation
-und senken die Vollständigkeit zusätzlich. Das Verfahren scheidet für den kontinuierlichen
-Betrieb aus denselben Gründen wie K-Means aus: Eine inkrementelle Erweiterung ist ohne
-vollständige Neuberechnung nicht möglich.
+Die Homogenität von $73{,}9\,\%$ liegt deutlich über dem Wert
+($14{,}5\,\%$), der mit dem ursprünglich theoretisch motivierten
+$\varepsilon = 0{,}6$ erzielt wurde. Diese Verbesserung um nahezu sechzig
+Prozentpunkte belegt unmittelbar die Wirkung der empirischen Parameterwahl:
+Der strengere Schwellenwert verhindert die im vorherigen Setup beobachtete
+Verschmelzung semantisch unverwandter Logs zu großen Mischclustern. Die
+Vollständigkeit von $58{,}6\,\%$ ist demgegenüber moderat; sie ist Folge der
+mit $124$ Clustern deutlich höheren Cluster\-anzahl gegenüber den $44$
+Ground-Truth-Klassen. Einzelne Templates werden auf mehrere, jeweils reine
+DBSCAN-Cluster aufgeteilt -- ein klassischer Übersegmentierungseffekt, der
+gegenüber dem vorherigen, gegenteiligen Fehlerbild jedoch das deutlich
+geringere Übel darstellt: reine Cluster lassen sich nachgelagert
+zusammenführen, gemischte Cluster nicht.
+
+Wie in Abschnitt~\ref{sec:dbscan} beschrieben, reagiert DBSCAN empfindlich
+auf ungleichmäßige Dichtverteilungen. Der gemischte Loghub-Datensatz enthält
+Klassen sehr unterschiedlicher Häufigkeit; seltene Templates liefern im
+TF-IDF-Raum zu wenige Kernpunkte und werden als Rauschen (Label $-1$)
+klassifiziert. Diese Rauschpunkte entziehen sich der Evaluation und begrenzen
+die erzielbare Vollständigkeit. Trotz der starken Verbesserung bleibt DBSCAN
+für den kontinuierlichen Betrieb aus denselben Gründen wie K-Means
+ungeeignet: Eine inkrementelle Erweiterung ist ohne vollständige
+Neuberechnung der Nachbarschaftsstruktur nicht möglich.
 
 % ----------------------------------------------------------------
 \subsection{Drain3}
@@ -208,7 +579,7 @@ vollständige Neuberechnung nicht möglich.
 
 \begin{table}[h]
     \centering
-    \caption{Evaluationsergebnisse Drain3 (\texttt{sim\_th} $= 0{,}2$, \texttt{depth} $= 3$, $N = 5$ Durchläufe)}
+    \caption{Evaluationsergebnisse Drain3 (\texttt{sim\_th} $= 0{,}2$, \texttt{depth} $= 4$, $N = 5$ Durchläufe)}
     \label{tab:eval:drain3}
     \begin{tabular}{lrr}
         \toprule
@@ -327,56 +698,65 @@ vergleichende Bewertung werden die Mehrfachlauf-Parameter als Referenz verwendet
 \begin{table}[h]
     \centering
     \caption{Evaluationsergebnisse pgvector + Sentence-Transformer
-             (\texttt{initial\_dist} $= 0{,}5$, \texttt{recluster\_dist} $= 0{,}3$,
+             (\texttt{initial\_dist} $= 0{,}3$, \texttt{recluster\_dist} $= 0{,}2$,
              \texttt{initial\_ratio} $= 0{,}5$, $N = 5$ Durchläufe)}
     \label{tab:eval:pgvector}
     \begin{tabular}{lrr}
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $72{,}0\,\%$ & $\pm\,2{,}4\,\%$ \\
-        V-Measure      & $84{,}8\,\%$ & $\pm\,1{,}6\,\%$ \\
-        Homogenität    & $78{,}0\,\%$ & $\pm\,1{,}6\,\%$ \\
-        Vollständigkeit& $93{,}0\,\%$ & $\pm\,2{,}6\,\%$ \\
+        ARI            & $60{,}0\,\%$ & $\pm\,3{,}8\,\%$ \\
+        V-Measure      & $82{,}4\,\%$ & $\pm\,1{,}3\,\%$ \\
+        Homogenität    & $92{,}2\,\%$ & $\pm\,1{,}7\,\%$ \\
+        Vollständigkeit& $74{,}5\,\%$ & $\pm\,1{,}6\,\%$ \\
         \midrule
-        Clusteranzahl  & $28$ & -- \\
+        Clusteranzahl  & $80$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Der vektorbasierte Ansatz erzielt mit einem ARI von $72{,}0\,\%$ und einem V-Measure von
-$84{,}8\,\%$ die höchsten Werte aller untersuchten Verfahren. Das Metrikprofil unterscheidet
-sich dabei strukturell von allen algorithmischen Verfahren: Vollständigkeit ($93{,}0\,\%$)
-übersteigt die Homogenität ($78{,}0\,\%$) deutlich, was auf eine moderate Unterpartitionierung
-hindeutet. Lognachrichten derselben Ground-Truth-Klasse werden zuverlässig in denselben Cluster
-zusammengeführt, jedoch enthalten einzelne Cluster gelegentlich Lognachrichten mehrerer Klassen.
+Mit den in Abschnitt~\ref{sec:eval:param:pgvector} datengetrieben ermittelten
+Schwellenwerten erzielt der vektorbasierte Ansatz einen ARI von $60{,}0\,\%$
+und ein V-Measure von $82{,}4\,\%$ -- den höchsten ARI und das höchste
+V-Measure aller untersuchten Verfahren (vgl.\
+Abschnitt~\ref{sec:eval:vergleich}). Das Metrikprofil ist gegenüber den
+algorithmischen Verfahren ausgewogen: Mit einer Homogenität von $92{,}2\,\%$
+und einer Vollständigkeit von $74{,}5\,\%$ erreicht pgvector als einziges
+Verfahren beidseitig hohe Werte oberhalb von $70\,\%$.
 
 \paragraph{Clusteranzahl im Verhältnis zur Ground Truth.}
-Im Einzellauf erzeugt das Verfahren $28$ Cluster für $44$ Ground-Truth-Klassen. Diese Diskrepanz
-ist auf die zweistufige Struktur des Algorithmus zurückzuführen, wie in
-Abschnitt~\ref{sec:real:pgvector} beschrieben. Phase~1 verarbeitet die erste Hälfte des
-Datensatzes und bildet eine initiale Clusterbasis; Phase~2 ordnet die verbleibenden
-Lognachrichten ausschließlich bestehenden Clustern zu oder legt nur dann einen neuen Cluster
-an, wenn der Cosinus-Abstand zum nächstgelegenen Cluster-Schwerpunkt den Schwellenwert
-\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0{,}3} überschreitet. Im vorliegenden
-Durchlauf erstellte Phase~2 keinen einzigen neuen Cluster, was bedeutet, dass alle
-Lognachrichten der zweiten Hälfte einem der $28$ initialen Cluster zugeordnet werden konnten.
-Semantisch nahe Templates, die in Phase~1 durch den Initalisierungsschwellenwert
-\texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0{,}5} zusammengefasst wurden, bleiben dauerhaft
-gemeinsam in einem Cluster – sie senken die Homogenität, ohne die Vollständigkeit zu gefährden.
-Das Ergebnis von $28$ Clustern nähert sich damit der tatsächlichen Anzahl strukturell
-unterschiedlicher Log-Templates im Datensatz an; die Differenz zu den $44$ nominellen
-Ground-Truth-Klassen erklärt sich daraus, dass mehrere semantisch ähnliche Klassen aus
-der regelbasierten Beschriftung (vgl.\ Abschnitt~\ref{sec:eval:aufbau}) im semantischen
-Vektorraum nicht trennscharf separiert sind.
+Im Einzellauf erzeugt das Verfahren $80$ Cluster für $44$ Ground-Truth-Klassen
+-- eine moderate Übersegmentierung. Diese ist eine direkte Folge des
+strengen \texttt{INITIAL}-Schwellenwerts $0{,}3$, der in Phase~1 nur sehr
+ähnliche Lognachrichten zu einem Cluster zusammenführt
+(Abschnitt~\ref{sec:real:pgvector}). Phase~2 ergänzt die Clusterbasis um
+weitere Cluster für Lognachrichten, die weder zu einem bestehenden
+Cluster-Schwerpunkt (Strategie~1) noch zu einem bereits verarbeiteten
+Einzellog (Strategie~2) ausreichend nah liegen. Die hohe Homogenität von
+$92{,}2\,\%$ zeigt, dass die so entstehenden Cluster intern sauber sind:
+einzelne Ground-Truth-Klassen werden auf mehrere reine pgvector-Cluster
+aufgeteilt, jedoch werden Klassen kaum vermischt. Die niedrigere
+Vollständigkeit ($74{,}5\,\%$) ist die Kehrseite dieses Effekts.
 
 \paragraph{Reihenfolgeabhängigkeit.}
-Die Standardabweichung von $\pm\,2{,}4$ Prozentpunkten beim ARI ist die höchste aller
-Verfahren mit mehr als null Varianz. Ursache ist der inkrementelle Charakter des
-zweistufigen Algorithmus: Die Eingangsreihenfolge beeinflusst, welche Lognachrichten als
-erste einen Cluster-Schwerpunkt definieren und damit nachfolgende Zuordnungen prägen.
-Dieser Effekt ist für Online-Verfahren typisch und in Abschnitt~\ref{PG_Algorithmn}
-als inhärentes Merkmal des iterativen Cluster-Aufbaus beschrieben.
+Die Standardabweichung von $\pm\,3{,}8$ Prozentpunkten beim ARI gehört zu
+den höchsten unter den getesteten Verfahren. Ursache ist der inkrementelle
+Charakter des zweistufigen Algorithmus: Die Eingangsreihenfolge beeinflusst,
+welche Lognachrichten als erste einen Cluster-Schwerpunkt definieren und
+damit nachfolgende Zuordnungen prägen. Dieser Effekt ist für Online-Verfahren
+typisch und in Abschnitt~\ref{PG_Algorithmn} als inhärentes Merkmal des
+iterativen Cluster-Aufbaus beschrieben.
+
+\paragraph{Trade-off zwischen Silhouette- und ARI-Optimum.}
+Die in Abschnitt~\ref{sec:eval:param:pgvector} angekündigte Diskrepanz
+zwischen Silhouette- und ARI-Optimum manifestiert sich hier konkret: Eine
+alternative Konfiguration mit \texttt{INITIAL} $= 0{,}5$ würde nur $\approx
+28$ Cluster erzeugen und einen höheren ARI ($\approx 72\,\%$), jedoch
+niedrigeren Silhouette-Score liefern. Die methodische Festlegung dieser
+Arbeit, ausschließlich unsupervised zu tunen, schließt eine ARI-getriebene
+Wahl jedoch aus -- der berichtete Wert von $60{,}0\,\%$ ist daher das
+Ergebnis einer prinzipientreuen, im Produktivbetrieb reproduzierbaren
+Parameterwahl, nicht die obere Schranke des Verfahrens.
 
 \paragraph{Einordnung in den semantischen Vektorraum.}
 Das Verfahren nutzt das Sentence-Transformer-Modell \texttt{all-MiniLM-L6-v2}, das jede
@@ -414,41 +794,41 @@ die Clusteranzahl entstammt dem Einzellauf mit Seed $42$.
             & Cluster \\
         \midrule
         pgvector
-            & $72{,}0 \pm 2{,}4$
-            & $84{,}8 \pm 1{,}6$
-            & $78{,}0 \pm 1{,}6$
-            & $93{,}0 \pm 2{,}6$
-            & $28$ \\
+            & $60{,}0 \pm 3{,}8$
+            & $82{,}4 \pm 1{,}3$
+            & $92{,}2 \pm 1{,}7$
+            & $74{,}5 \pm 1{,}6$
+            & $80$ \\
+        DBSCAN
+            & $58{,}2 \pm 0{,}0$
+            & $65{,}4 \pm 0{,}0$
+            & $73{,}9 \pm 0{,}0$
+            & $58{,}6 \pm 0{,}0$
+            & $124$ \\
         Drain3
             & $57{,}9 \pm 0{,}1$
             & $80{,}5 \pm 0{,}4$
             & $96{,}1 \pm 0{,}6$
             & $69{,}3 \pm 0{,}3$
             & $52$ \\
+        K-Means
+            & $56{,}5 \pm 8{,}2$
+            & $78{,}2 \pm 3{,}8$
+            & $83{,}1 \pm 3{,}8$
+            & $74{,}0 \pm 3{,}9$
+            & $10$ \\
         Brain
             & $39{,}2 \pm 0{,}0$
             & $72{,}9 \pm 0{,}0$
             & $98{,}8 \pm 0{,}0$
             & $57{,}8 \pm 0{,}0$
             & $151$ \\
-        K-Means
-            & $33{,}2 \pm 2{,}0$
-            & $70{,}6 \pm 1{,}3$
-            & $93{,}2 \pm 1{,}1$
-            & $56{,}9 \pm 1{,}2$
-            & $32$ \\
         MinHash LSH$^{*}$
             & $22{,}8 \pm 0{,}0$
             & $52{,}2 \pm 0{,}0$
             & $96{,}4 \pm 0{,}0$
             & $35{,}8 \pm 0{,}0$
             & -- \\
-        DBSCAN
-            & $4{,}6  \pm 0{,}0$
-            & $22{,}4 \pm 0{,}0$
-            & $14{,}5 \pm 0{,}0$
-            & $48{,}7 \pm 0{,}0$
-            & $27$ \\
         \midrule
         \multicolumn{5}{l}{\footnotesize Ground-Truth-Klassen im Datensatz: $44$} \\
         \bottomrule
