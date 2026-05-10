@@ -57,7 +57,7 @@ zufälligen Zuordnung; negative Werte zeigen eine schlechtere Übereinstimmung a
 
 \textit{V-Measure.}
 Das V-Measure bewertet die Clustering-Güte aus zwei orthogonalen Perspektiven und vereint
-diese als harmonisches Mittel~\cite{TODO:vmeasure}. \textit{Homogenität}~$h$ misst, ob jeder
+diese als harmonisches Mittel~\cite{inproceedings}. \textit{Homogenität}~$h$ misst, ob jeder
 gebildete Cluster ausschließlich Lognachrichten einer einzigen Ground-Truth-Klasse enthält;
 \textit{Vollständigkeit}~$c$ misst, ob alle Lognachrichten einer Ground-Truth-Klasse demselben
 Cluster zugeordnet sind:
@@ -172,7 +172,7 @@ TF-IDF-Matrix.
 
 \paragraph{Automatische Knickerkennung.}
 Der Knickpunkt in der Inertia-Kurve wird automatisch über die
-\texttt{KneeLocator}-Bibliothek bestimmt~\cite{TODO:kneed}. Das Verfahren
+\texttt{KneeLocator}-Bibliothek bestimmt~\cite{satopa2011kneedle}. Das Verfahren
 approximiert die Kurve stückweise und lokalisiert den Punkt maximaler
 Krümmung (\textit{Knee}) als Schnittpunkt zwischen der Verbindungslinie der
 Endpunkte und der normierten Kurve. Die Parameter lauten
