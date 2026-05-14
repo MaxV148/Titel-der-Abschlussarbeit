@@ -12,39 +12,22 @@ Das folgende Kapitel fasst die Ergebnisse dieser Versuche vergleichend zusammen,
 \section{Vergleichende Auswertung der Clustering-Verfahren}
 \label{sec:abschluss:auswertung}
 
-% Hier: komprimierte Gegenüberstellung der Ergebnisse aus Tabelle~\ref{tab:eval:gesamt}.
-% Kein Wiederholen der Einzelergebnisse, sondern Synthese und Einordnung.
+Die in Kapitel~\ref{chap:eval} erhobenen Einzelergebnisse werden im Folgenden entlang der drei in Kapitel~\ref{chap:einf} definierten Bewertungskriterien -- Cluster-Qualität, Reihenfolge-Stabilität und strukturelle Eignung für den kontinuierlichen Betrieb -- vergleichend eingeordnet. Als Referenz dient Tabelle~\ref{tab:eval:gesamt}.
 
 \paragraph{Gesamtranking nach ARI und V-Measure.}
-% pgvector (ARI 60,0 / V 82,4) > DBSCAN (58,2 / 65,4) ≈ Drain3 (57,9 / 80,5) > K-Means (51,8 / 76,7) > Brain (39,2 / 72,9) > MinHash (22,8 / 52,2)
-% Beobachtung: pgvector führt in beiden Metriken, Drain3 hat das zweitbeste V-Measure aber nur dritthöchsten ARI.
-% Interpretation: Semantische Embeddings übertreffen rein syntaktische Verfahren.
+Gemessen am ARI ergibt sich die Rangfolge pgvector ($60{,}0\,\%$), DBSCAN ($58{,}2\,\%$), Drain3 ($57{,}9\,\%$), K-Means ($56{,}5\,\%$), Brain ($39{,}2\,\%$) und MinHash~LSH ($22{,}8\,\%$). Beim V-Measure verschiebt sich das Bild: pgvector führt mit $82{,}4\,\%$, gefolgt von Drain3 ($80{,}5\,\%$), K-Means ($78{,}2\,\%$), Brain ($72{,}9\,\%$), DBSCAN ($65{,}4\,\%$) und MinHash~LSH ($52{,}2\,\%$). Der Rangunterschied von DBSCAN zwischen beiden Metriken ist bemerkenswert: Obwohl das Verfahren den zweithöchsten ARI erzielt, fällt sein V-Measure auf den fünften Platz. Die Ursache liegt in der niedrigen Vollständigkeit von $58{,}6\,\%$, die durch die $124$ erzeugten Cluster -- fast dreimal so viele wie Ground-Truth-Klassen vorhanden -- bedingt ist. Der ARI bestraft diese Art der Übersegmentierung weniger stark als das V-Measure, da er ausschließlich die paarweise Übereinstimmung bewertet, während das V-Measure über die Vollständigkeitskomponente explizit erfasst, ob zusammengehörige Lognachrichten auf mehrere Cluster verteilt werden. Insgesamt belegt der vektorbasierte Ansatz in beiden Metriken den ersten Rang; die semantische Repräsentation über Sentence-Embeddings erweist sich damit als leistungsfähiger als rein syntaktische Verfahren.
 
 \paragraph{Homogenität vs.\ Vollständigkeit: das zentrale Trade-off.}
-% Brain (98,8 / 57,8) und MinHash (96,4 / 35,8) = extrem hohe Homogenität, sehr niedrige Vollständigkeit → Übersegmentierung
-% pgvector (92,2 / 74,5) = bestes Gleichgewicht beider Metriken
-% DBSCAN (73,9 / 58,6) = niedrigste Homogenität aller Verfahren trotz strengem eps
-% Schlussfolgerung: Hohe Homogenität allein garantiert keine gute Clustering-Güte.
+Vier der sechs Verfahren erreichen eine Homogenität oberhalb von $90\,\%$: Brain ($98{,}8\,\%$), MinHash~LSH ($96{,}4\,\%$), Drain3 ($96{,}1\,\%$) und pgvector ($92{,}2\,\%$). Die zugehörigen Vollständigkeitswerte unterscheiden sich jedoch erheblich -- von $35{,}8\,\%$ bei MinHash~LSH bis $74{,}5\,\%$ bei pgvector. Die Differenz zwischen Homogenität und Vollständigkeit beträgt bei Brain $41{,}0$~Prozentpunkte und bei MinHash~LSH $60{,}6$~Prozentpunkte; beide Verfahren erzeugen sehr viele, jeweils reine Cluster, die jedoch semantisch zusammengehörige Lognachrichten auf zahlreiche Partitionen aufteilen. pgvector weist mit $17{,}7$~Prozentpunkten Differenz das ausgeglichenste Profil auf und ist das einzige Verfahren, bei dem beide Teilmetriken oberhalb von $70\,\%$ liegen. DBSCAN bildet den Sonderfall einer vergleichsweise niedrigen Homogenität ($73{,}9\,\%$) bei ebenfalls niedriger Vollständigkeit ($58{,}6\,\%$) -- ein Profil, das weder klar auf Über- noch auf Untersegmentierung hindeutet, sondern auf die heterogene Dichtestruktur des TF-IDF-Raums zurückzuführen ist. Die Ergebnisse zeigen, dass hohe Homogenität allein keine hinreichende Bedingung für eine gute Clustering-Güte darstellt; entscheidend ist das Gleichgewicht beider Teilmetriken.
 
 \paragraph{Stabilität über Permutationsdurchläufe.}
-% K-Means: σ(ARI) = ±8,3 % → höchste Varianz, stochastische Initialisierung
-% pgvector: σ(ARI) = ±3,8 % → moderate Varianz, reihenfolgeabhängiges Online-Verfahren
-% Drain3: σ(ARI) = ±0,1 % → nahezu deterministisch trotz Online-Verarbeitung
-% DBSCAN, Brain, MinHash: σ = 0 → Batch-Verfahren bzw. deterministisch
-% Schlussfolgerung für Produktivbetrieb.
+Die Standardabweichung des ARI über die fünf Permutationsdurchläufe offenbart deutliche Unterschiede in der Reihenfolge-Stabilität. DBSCAN, Brain und MinHash~LSH weisen eine Standardabweichung von $\pm\,0{,}0\,\%$ auf -- bei den beiden erstgenannten aufgrund deterministischer Verarbeitung, bei DBSCAN aufgrund der Reihenfolge-Invarianz des Stapelverfahrens. Drain3 erreicht trotz seiner Online-Verarbeitung eine nahezu verschwindende Abweichung von $\pm\,0{,}1\,\%$; die positionsbasierte Verzweigung im Parse-Baum stabilisiert die Zuordnungen auch bei variierender Eingangsreihenfolge. pgvector zeigt mit $\pm\,3{,}8\,\%$ eine moderate Varianz, die aus dem inkrementellen Cluster-Aufbau resultiert: Die Reihenfolge, in der Lognachrichten eintreffen, beeinflusst die initialen Cluster-Schwerpunkte und damit nachfolgende Zuordnungsentscheidungen (vgl.\ Abschnitt~\ref{PG_Algorithmn}). K-Means weist mit $\pm\,8{,}2\,\%$ die höchste Varianz auf, bedingt durch die stochastische Zentroid-Initialisierung in Verbindung mit dem niedrigen Silhouette-Niveau im TF-IDF-Raum (vgl.\ Abschnitt~\ref{sec:eval:param:kmeans}). Für den produktiven Einsatz ist eine geringe Varianz wünschenswert, da wechselnde Ergebnisse bei identischem Datenbestand das Vertrauen in die Zuordnung untergraben.
 
 \paragraph{Clusteranzahl und Ground-Truth-Nähe.}
-% K-Means: 13 Cluster (GT: 44) → Untersegmentierung, Makrostruktur
-% Drain3: 52 → leichte Übersegmentierung, nächste Annäherung an GT
-% pgvector: 80 → moderate Übersegmentierung
-% DBSCAN: 124, Brain: 151 → starke Übersegmentierung
-% Zusammenhang zwischen Clusteranzahl und Vollständigkeit/ARI erläutern.
+Die erzeugten Clusteranzahlen spannen ein breites Spektrum auf: K-Means bildet mit $13$~Clustern die gröbste Partitionierung, gefolgt von Drain3 ($52$), pgvector ($80$), DBSCAN ($124$) und Brain ($151$). Bei $44$~Ground-Truth-Klassen im Datensatz erzeugt K-Means somit eine Untersegmentierung um den Faktor~$3{,}4$, während Brain um den Faktor~$3{,}4$ in die entgegengesetzte Richtung übersegmentiert. Drain3 liegt mit $52$~Clustern der Ground Truth am nächsten; die moderate Abweichung von acht zusätzlichen Clustern spiegelt sich in der hohen Homogenität ($96{,}1\,\%$) bei gleichzeitig akzeptabler Vollständigkeit ($69{,}3\,\%$) wider. Die Ergebnisse bestätigen den erwarteten Zusammenhang: Verfahren mit deutlich zu wenigen Clustern erzielen hohe Vollständigkeit auf Kosten der Homogenität (K-Means), während Verfahren mit deutlich zu vielen Clustern die umgekehrte Tendenz zeigen (Brain, MinHash~LSH). pgvector und Drain3 treffen jeweils einen Kompromiss, der in beiden Teilmetriken oberhalb von $69\,\%$ liegt.
 
 \paragraph{Eignung für kontinuierlichen Betrieb.}
-% Batch-Verfahren (K-Means, DBSCAN, MinHash): Neuberechnung bei jedem neuen Log nötig → nicht geeignet
-% Online-Verfahren (Drain3, Brain): inkrementell, Template-Baum wächst mit → geeignet
-% pgvector: inkrementell via persistierter Embeddings und Cluster-Schwerpunkte → geeignet
-% Fazit: Nur Drain3, Brain und pgvector erfüllen die Grundanforderung der Aufgabenstellung.
+Das in Kapitel~\ref{chap:einf} formulierte dritte Bewertungskriterium -- die Fähigkeit zur inkrementellen Verarbeitung mit persistierbarem Zustand -- trennt die untersuchten Verfahren in zwei Klassen. K-Means, DBSCAN und MinHash~LSH sind Stapelverfahren, die den gesamten Datensatz bei jeder Ausführung neu einlesen und verarbeiten müssen. Eine kontinuierliche Erweiterung um einzelne Lognachrichten ist ohne vollständige Neuberechnung nicht möglich; im produktiven Betrieb mit wachsendem Datenvolumen steigt der Rechenaufwand damit linear mit der Gesamtgröße des Log-Bestands. Drain3 und Brain verarbeiten Lognachrichten dagegen sequenziell und aktualisieren ihren Template-Baum inkrementell. Neue Nachrichten werden einem bestehenden Template zugeordnet oder erzeugen einen neuen Ast, ohne dass der bisherige Baumzustand neu berechnet werden muss; der Zustand kann zudem persistiert und über Neustarts hinweg wiederhergestellt werden. pgvector folgt einem vergleichbaren Prinzip: Jede neue Lognachricht wird in einen Embedding-Vektor überführt und gegen die in der PostgreSQL-Datenbank gespeicherten Cluster-Schwerpunkte abgeglichen; bei ausreichender Ähnlichkeit erfolgt die Zuordnung zu einem bestehenden Cluster, andernfalls wird ein neuer angelegt. Die Persistierung in der Datenbank ist systeminhärent. Von den sechs untersuchten Verfahren erfüllen somit nur Drain3, Brain und pgvector die Grundanforderung der Aufgabenstellung an den kontinuierlichen Betrieb.
 
 % ----------------------------------------------------------------
 \section{Beantwortung der Forschungsfrage}
