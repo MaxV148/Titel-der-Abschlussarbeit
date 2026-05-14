@@ -153,7 +153,7 @@ Elementextraktion mit einem heuristischen Baumverfahren und adressiert dabei
 eine zentrale Schwäche von Drain: Da Drain seinen Parse-Baum anhand der ersten 
 Tokens einer Nachricht navigiert, versagt er bei Logs, deren erstes Token eine 
 Variable ist – ein in der Praxis häufig auftretendes Muster, etwa bei 
-Build-Systemen wie Jenkins, wo der Projektname den Anfang einer Logzeile bildet. 
+Build-Systemen wie Jenkins, wo der Projektname den Anfang einer Logzeile bildet.\cite[C. Limitations of Existing Work]{brain}
 Brain umgeht dieses Problem grundlegend, indem es nicht auf die Position der 
 Tokens, sondern auf deren Häufigkeitsmuster zurückgreift.
 
