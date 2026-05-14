@@ -10,11 +10,90 @@ Die praktische Realisierung aller Verfahren erfolgte in einer reproduzierbaren D
 Das folgende Kapitel fasst die Ergebnisse dieser Versuche vergleichend zusammen, diskutiert die Stärken und Schwächen der einzelnen Verfahren und leitet daraus Empfehlungen für den produktiven Einsatz ab.
 
 \section{Vergleichende Auswertung der Clustering-Verfahren}
+\label{sec:abschluss:auswertung}
 
-\section{Weitere Ansätze}
+% Hier: komprimierte Gegenüberstellung der Ergebnisse aus Tabelle~\ref{tab:eval:gesamt}.
+% Kein Wiederholen der Einzelergebnisse, sondern Synthese und Einordnung.
 
+\paragraph{Gesamtranking nach ARI und V-Measure.}
+% pgvector (ARI 60,0 / V 82,4) > DBSCAN (58,2 / 65,4) ≈ Drain3 (57,9 / 80,5) > K-Means (51,8 / 76,7) > Brain (39,2 / 72,9) > MinHash (22,8 / 52,2)
+% Beobachtung: pgvector führt in beiden Metriken, Drain3 hat das zweitbeste V-Measure aber nur dritthöchsten ARI.
+% Interpretation: Semantische Embeddings übertreffen rein syntaktische Verfahren.
 
+\paragraph{Homogenität vs.\ Vollständigkeit: das zentrale Trade-off.}
+% Brain (98,8 / 57,8) und MinHash (96,4 / 35,8) = extrem hohe Homogenität, sehr niedrige Vollständigkeit → Übersegmentierung
+% pgvector (92,2 / 74,5) = bestes Gleichgewicht beider Metriken
+% DBSCAN (73,9 / 58,6) = niedrigste Homogenität aller Verfahren trotz strengem eps
+% Schlussfolgerung: Hohe Homogenität allein garantiert keine gute Clustering-Güte.
 
-\section{Nächste Schritte}
+\paragraph{Stabilität über Permutationsdurchläufe.}
+% K-Means: σ(ARI) = ±8,3 % → höchste Varianz, stochastische Initialisierung
+% pgvector: σ(ARI) = ±3,8 % → moderate Varianz, reihenfolgeabhängiges Online-Verfahren
+% Drain3: σ(ARI) = ±0,1 % → nahezu deterministisch trotz Online-Verarbeitung
+% DBSCAN, Brain, MinHash: σ = 0 → Batch-Verfahren bzw. deterministisch
+% Schlussfolgerung für Produktivbetrieb.
 
+\paragraph{Clusteranzahl und Ground-Truth-Nähe.}
+% K-Means: 13 Cluster (GT: 44) → Untersegmentierung, Makrostruktur
+% Drain3: 52 → leichte Übersegmentierung, nächste Annäherung an GT
+% pgvector: 80 → moderate Übersegmentierung
+% DBSCAN: 124, Brain: 151 → starke Übersegmentierung
+% Zusammenhang zwischen Clusteranzahl und Vollständigkeit/ARI erläutern.
+
+\paragraph{Eignung für kontinuierlichen Betrieb.}
+% Batch-Verfahren (K-Means, DBSCAN, MinHash): Neuberechnung bei jedem neuen Log nötig → nicht geeignet
+% Online-Verfahren (Drain3, Brain): inkrementell, Template-Baum wächst mit → geeignet
+% pgvector: inkrementell via persistierter Embeddings und Cluster-Schwerpunkte → geeignet
+% Fazit: Nur Drain3, Brain und pgvector erfüllen die Grundanforderung der Aufgabenstellung.
+
+% ----------------------------------------------------------------
+\section{Beantwortung der Forschungsfrage}
+\label{sec:abschluss:forschungsfrage}
+
+% Rückgriff auf die in Kapitel~\ref{chap:einf} formulierte Fragestellung.
+% Können Log-Nachrichten kontinuierlich und ohne manuellen Pflegeaufwand geclustert werden?
+% Antwort anhand der Ergebnisse: Ja, mit Einschränkungen.
+% pgvector als leistungsfähigstes Verfahren (ARI 60 %, V-Measure 82,4 %) -- aber σ(ARI) = 3,8 %
+% Drain3 als stabilste Alternative (σ ≤ 0,6 %) mit nur leicht geringerem V-Measure (80,5 %)
+% Semantische Embeddings vs. syntaktische Muster: komplementäre Stärken.
+
+% ----------------------------------------------------------------
+\section{Limitierungen}
+\label{sec:abschluss:limitierungen}
+
+\paragraph{Datensatz.}
+% Nur 3 Quellen (Linux, Apache, OpenSSH), 10.000 Nachrichten, 44 Klassen
+% Keine industriellen Logs (z. B. Kubernetes, Microservices)
+% Loghub-2k ist ein etablierter Benchmark, aber synthetisch geordnet
+
+\paragraph{Parameterwahl.}
+% Unsupervised-Tuning schließt ARI-Optimierung aus → pgvector mit INITIAL=0,5 hätte ARI ≈ 72 % erreicht
+% Trade-off zwischen methodischer Sauberkeit und erreichbarer Güte
+
+\paragraph{Embedding-Modell.}
+% all-MiniLM-L6-v2 ist ein generisches Modell, kein domänenspezifisches Log-Embedding
+% Finetuning oder spezialisierte Modelle könnten die Ergebnisse verbessern
+
+\paragraph{Skalierbarkeit.}
+% Evaluation auf 10.000 Nachrichten; Verhalten bei 10⁶+ Logs nicht untersucht
+% HNSW-Index und Sentence-Transformer-Inferenz: Laufzeitanalyse fehlt
+
+% ----------------------------------------------------------------
 \section{Ausblick}
+\label{sec:abschluss:ausblick}
+
+\paragraph{Domänenspezifische Embeddings.}
+% Finetuning von Sentence-Transformern auf Log-Korpora (z. B. LogBERT, LogRoberta)
+% Erwartung: höhere Trennschärfe bei variablen Feldern
+
+\paragraph{Hybride Verfahren.}
+% Kombination von Drain3 (syntaktische Vorfilterung) + pgvector (semantische Nachverfeinerung)
+% Drain3 als schneller First-Pass, pgvector für unsichere Zuordnungen
+
+\paragraph{Skalierungstests.}
+% Evaluation auf größeren Datensätzen (Loghub-2.0, industrielle Logs)
+% Laufzeit- und Speicherbenchmarks für den kontinuierlichen Betrieb
+
+\paragraph{Integration in Log-Management-Systeme.}
+% Anbindung an bestehende Systeme (Elasticsearch, Grafana Loki)
+% Echtzeit-Pipeline mit Kafka/Flink als Ingestion-Layer
