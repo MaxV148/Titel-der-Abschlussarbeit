@@ -27,13 +27,7 @@ Nov  6 09:11:05 servername sshd[12345]: Failed password for invalid user admin f
 Die Beispiele veranschaulichen Log-Nachrichten, die ähnliche Ereignisse beschreiben. Eine Gruppierung solcher Logs ist sinnvoll. Dies gelingt beispielsweise mit regulären Ausdrücken (Regex), die variable Teile filtern und Gruppen bilden. Dieses Verfahren bietet Flexibilität bei der individuellen Suche, erfordert jedoch hohen manuellen Pflegeaufwand, etwa bei neuen Log-Typen. Alternativ gruppieren Algorithmen den Text der Log-Nachrichten automatisch. Diese Arbeit untersucht Möglichkeiten, Log-Nachrichten kontinuierlich und mit minimalem manuellen Aufwand zu clustern.
 
 \section{Zielsetzung: Vergleich von Verfahren für kontinuierliches Log-Clustering}
-Ziel dieser Arbeit ist der methodische Vergleich von Verfahren zur automatisierten, kontinuierlichen Gruppierung von Lognachrichten. Die Bewertung erfolgt anhand von drei Kriterien:
-\begin{itemize}
-    \item \textbf{Cluster-Qualität:} Die Übereinstimmung der erzeugten Cluster mit einer bekannten Ground-Truth-Klassifikation, gemessen über den Adjusted Rand Index und das V-Measure (vgl.\ Abschnitt~\ref{Vorgensweise}).
-    \item \textbf{Reihenfolge-Stabilität:} Die Robustheit der Verfahren gegenüber unterschiedlichen Eingabereihenfolgen, gemessen über die Standardabweichung der Qualitätsmetriken bei wiederholten Durchläufen mit zufällig permutiertem Datensatz.
-    \item \textbf{Strukturelle Eignung für den kontinuierlichen Betrieb:} Die Fähigkeit eines Verfahrens, neue Lognachrichten inkrementell und mit persistierbarem Zustand zu verarbeiten, ohne den Gesamtdatensatz neu einlesen zu müssen.
-\end{itemize}
-Auf Basis dieser Kriterien werden vier algorithmische Verfahren (K-Means, DBSCAN, Drain3, Brain), ein probabilistischer Ansatz (MinHash mit Locality-Sensitive Hashing) sowie ein vektorbasierter Ansatz auf Basis von Sentence-Embeddings und einer PostgreSQL-Datenbank mit \texttt{pgvector}-Erweiterung verglichen.
+Ziel dieser Arbeit ist die Beantwortung der Frage, welches Verfahren sich für die automatisierte, kontinuierliche Gruppierung von Lognachrichten am besten eignet. Dazu werden sechs Ansätze -- vier algorithmische Verfahren (K-Means, DBSCAN, Drain3, Brain), ein probabilistischer Ansatz (MinHash mit Locality-Sensitive Hashing) sowie ein vektorbasierter Ansatz auf Basis von Sentence-Embeddings und PostgreSQL mit \texttt{pgvector}-Erweiterung -- hinsichtlich Cluster-Qualität, Reihenfolge-Stabilität und struktureller Eignung für den kontinuierlichen Betrieb verglichen.
 
 
 

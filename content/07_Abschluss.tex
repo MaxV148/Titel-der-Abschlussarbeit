@@ -33,12 +33,17 @@ Das in Kapitel~\ref{chap:einf} formulierte dritte Bewertungskriterium -- die Fä
 \section{Beantwortung der Forschungsfrage}
 \label{sec:abschluss:forschungsfrage}
 
-% Rückgriff auf die in Kapitel~\ref{chap:einf} formulierte Fragestellung.
-% Können Log-Nachrichten kontinuierlich und ohne manuellen Pflegeaufwand geclustert werden?
-% Antwort anhand der Ergebnisse: Ja, mit Einschränkungen.
-% pgvector als leistungsfähigstes Verfahren (ARI 60 %, V-Measure 82,4 %) -- aber σ(ARI) = 3,8 %
-% Drain3 als stabilste Alternative (σ ≤ 0,6 %) mit nur leicht geringerem V-Measure (80,5 %)
-% Semantische Embeddings vs. syntaktische Muster: komplementäre Stärken.
+Die in Kapitel~\ref{chap:einf} formulierte Forschungsfrage lautet, welches Verfahren sich für die automatisierte, kontinuierliche Gruppierung von Lognachrichten am besten eignet. Zur Beantwortung wurden drei Bewertungskriterien definiert: Cluster-Qualität (gemessen über ARI und V-Measure), Reihenfolge-Stabilität (gemessen über die Standardabweichung bei permutierter Eingangsreihenfolge) und strukturelle Eignung für den kontinuierlichen Betrieb (inkrementelle Verarbeitung mit persistierbarem Zustand). Im Folgenden wird die Forschungsfrage anhand dieser Kriterien beantwortet.
+
+Von den sechs untersuchten Verfahren scheiden K-Means, DBSCAN und MinHash~LSH bereits am dritten Kriterium aus: Als Stapelverfahren erfordern sie eine vollständige Neuberechnung bei jeder hinzukommenden Lognachricht und verfügen über keinen persistierbaren Zustand für den inkrementellen Betrieb. Unabhängig von ihrer Cluster-Qualität sind sie damit für den in der Aufgabenstellung geforderten kontinuierlichen Einsatz strukturell nicht geeignet. Die Bewertung reduziert sich somit auf die drei verbleibenden Kandidaten: Drain3, Brain und pgvector.
+
+Brain erzielt zwar die höchste Homogenität aller Verfahren ($98{,}8\,\%$), weist jedoch mit einem ARI von $39{,}2\,\%$ und einer Vollständigkeit von $57{,}8\,\%$ die schwächste Gesamtgüte unter den drei Online-fähigen Verfahren auf. Die $151$~erzeugten Cluster übersteigen die $44$~Ground-Truth-Klassen um mehr als das Dreifache; die resultierende Übersegmentierung begrenzt den praktischen Nutzen, da ein nachgelagertes Zusammenführen der Cluster zusätzlichen Aufwand erfordert. Brain scheidet daher als bevorzugtes Verfahren aus.
+
+Die Entscheidung zwischen Drain3 und pgvector fällt differenzierter aus, da beide Verfahren komplementäre Stärken aufweisen. pgvector erzielt mit einem ARI von $60{,}0\,\%$ und einem V-Measure von $82{,}4\,\%$ die höchsten Werte aller sechs Verfahren und ist das einzige, bei dem Homogenität ($92{,}2\,\%$) und Vollständigkeit ($74{,}5\,\%$) gleichermaßen oberhalb von $70\,\%$ liegen. Dieses ausgeglichene Profil ist auf die semantische Repräsentation über Sentence-Embeddings zurückzuführen, die auch bei variierenden Feldern wie IP-Adressen oder Zeitstempeln die strukturelle Verwandtschaft von Lognachrichten erkennt. Dem steht eine Standardabweichung von $\pm\,3{,}8\,\%$ beim ARI gegenüber, die aus der Reihenfolgeabhängigkeit des inkrementellen Cluster-Aufbaus resultiert.
+
+Drain3 erreicht mit einem ARI von $57{,}9\,\%$ und einem V-Measure von $80{,}5\,\%$ geringfügig niedrigere Gesamtwerte, übertrifft pgvector jedoch in zwei Punkten: Die Homogenität von $96{,}1\,\%$ ist um vier Prozentpunkte höher, und die Standardabweichung liegt mit $\pm\,0{,}1\,\%$ nahe null. Drain3 liefert damit nahezu deterministische Ergebnisse unabhängig von der Eingangsreihenfolge -- eine Eigenschaft, die im produktiven Betrieb das Vertrauen in die Zuordnung stärkt. Die $52$~erzeugten Cluster liegen zudem näher an den $44$~Ground-Truth-Klassen als die $80$~Cluster von pgvector.
+
+Auf Basis der drei Bewertungskriterien ergibt sich folgende Antwort auf die Forschungsfrage: Der vektorbasierte Ansatz mit pgvector erzielt die höchste Cluster-Qualität und eignet sich strukturell für den kontinuierlichen Betrieb, weist jedoch eine moderate Reihenfolgeabhängigkeit auf. Drain3 erreicht eine nur geringfügig niedrigere Cluster-Qualität bei nahezu perfekter Stabilität und geringerem infrastrukturellem Aufwand -- es benötigt weder ein vortrainiertes Embedding-Modell noch eine Vektordatenbank. Wird die Cluster-Qualität als primäres Kriterium gewichtet, ist pgvector das leistungsfähigste Verfahren. Wird die Stabilität oder die Einfachheit der Infrastruktur priorisiert, stellt Drain3 die robustere Alternative dar. Eine pauschale Empfehlung für eines der beiden Verfahren lässt sich aus den Ergebnissen dieser Arbeit nicht ableiten; die Wahl hängt von den Anforderungen des konkreten Einsatzszenarios ab.
 
 % ----------------------------------------------------------------
 \section{Limitierungen}
