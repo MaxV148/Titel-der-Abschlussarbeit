@@ -50,21 +50,13 @@ Auf Basis der drei Bewertungskriterien ergibt sich folgende Antwort auf die Fors
 \label{sec:abschluss:limitierungen}
 
 \paragraph{Datensatz.}
-% Nur 3 Quellen (Linux, Apache, OpenSSH), 10.000 Nachrichten, 44 Klassen
-% Keine industriellen Logs (z. B. Kubernetes, Microservices)
-% Loghub-2k ist ein etablierter Benchmark, aber synthetisch geordnet
-
-\paragraph{Parameterwahl.}
-% Unsupervised-Tuning schließt ARI-Optimierung aus → pgvector mit INITIAL=0,5 hätte ARI ≈ 72 % erreicht
-% Trade-off zwischen methodischer Sauberkeit und erreichbarer Güte
+Die Evaluation basiert auf drei Quellen des Loghub-2k-Benchmarks~\cite{zhu2023loghublargecollectionlog} -- \texttt{Linux}, \texttt{Apache} und \texttt{OpenSSH} -- mit insgesamt $10\,000$ Lognachrichten und $44$~Ground-Truth-Klassen. Der Datensatz deckt damit ausschließlich klassische Systemlogs ab, die dem Syslog-Format nahestehen und ein vergleichsweise homogenes Vokabular aufweisen. Lognachrichten aus industriellen Umgebungen -- etwa Kubernetes-Orchestrierungslogs, Microservice-Traces oder applikationsspezifische JSON-Logs -- unterscheiden sich in Struktur, Länge und Variabilität erheblich von den verwendeten Quellen. Ob die beobachteten Rangfolgen auf solche Szenarien übertragbar sind, lässt sich aus den vorliegenden Ergebnissen nicht ableiten. Hinzu kommt, dass die Ground-Truth-Klassifikation durch regelbasierte Zuordnung erzeugt wurde (vgl.\ Abschnitt~\ref{sec:eval:aufbau}); Lognachrichten, die keinem Muster entsprechen, erhalten ein Residuallabel und bilden eine heterogene Restklasse, deren Einfluss auf die Metrikwerte nicht isoliert untersucht wurde.
 
 \paragraph{Embedding-Modell.}
-% all-MiniLM-L6-v2 ist ein generisches Modell, kein domänenspezifisches Log-Embedding
-% Finetuning oder spezialisierte Modelle könnten die Ergebnisse verbessern
+Der vektorbasierte Ansatz verwendet das vortrainierte Sentence-Transformer-Modell \texttt{all-MiniLM-L6-v2}, das auf allgemeinsprachlichen Textkorpora trainiert wurde (vgl.\ Abschnitt~\ref{sec:real:pgvector}). Lognachrichten weichen in Syntax und Semantik deutlich von natürlicher Sprache ab: Sie enthalten technische Bezeichner, hexadezimale Werte, Dateipfade und wiederkehrende Schlüsselwörter, die in allgemeinsprachlichen Korpora unterrepräsentiert sind. Ein domänenspezifisch feinjustiertes Modell -- etwa ein auf Log-Korpora nachtrainierter Transformer -- könnte die Trennschärfe der Embeddings insbesondere bei strukturell ähnlichen, aber semantisch unterschiedlichen Templates erhöhen. Die vorliegende Arbeit untersucht diesen Einfluss nicht; die berichteten Ergebnisse des pgvector-Verfahrens stellen damit eine untere Schranke für die mit Sentence-Embeddings erreichbare Clustering-Güte dar.
 
 \paragraph{Skalierbarkeit.}
-% Evaluation auf 10.000 Nachrichten; Verhalten bei 10⁶+ Logs nicht untersucht
-% HNSW-Index und Sentence-Transformer-Inferenz: Laufzeitanalyse fehlt
+Alle Verfahren wurden auf einem Datensatz mit $10\,000$ Lognachrichten evaluiert. Produktive Log-Aggregatoren verarbeiten Datenvolumina, die um mehrere Größenordnungen darüber liegen -- typischerweise $10^6$ bis $10^8$ Nachrichten pro Tag. Für die Stapelverfahren K-Means und DBSCAN wächst der Rechenaufwand mit der Datensatzgröße; bei K-Means skaliert die Laufzeit linear mit der Anzahl der Datenpunkte und Cluster, bei DBSCAN dominiert die Nachbarschaftssuche mit einem Aufwand von $\mathcal{O}(n \log n)$ bei Verwendung räumlicher Indexstrukturen. Die Online-Verfahren Drain3 und Brain verarbeiten jede Nachricht in konstanter Zeit relativ zur Baumtiefe, wobei die Baumgröße mit der Anzahl unterschiedlicher Templates wächst. Beim pgvector-Ansatz bestimmen zwei Faktoren die Skalierbarkeit: die Inferenzzeit des Sentence-Transformer-Modells pro Lognachricht sowie die Suchzeit im HNSW-Index, die logarithmisch mit der Anzahl gespeicherter Vektoren skaliert~\cite{githubGitHubPgvectorpgvector}. Eine systematische Laufzeitanalyse, die das Verhalten der Verfahren bei wachsendem Datenvolumen quantifiziert, wurde im Rahmen dieser Arbeit nicht durchgeführt und bleibt als offene Fragestellung bestehen.
 
 % ----------------------------------------------------------------
 \section{Ausblick}
