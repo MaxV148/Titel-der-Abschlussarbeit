@@ -199,9 +199,44 @@ Der Parsing-Prozess von Brain gliedert sich in fünf Schritte \cite[Abschn.~III]
     Wildcards \texttt{<*>} repräsentiert.
 \end{enumerate}
 
-Durch die bidirektionale Baumstruktur erreicht Brain eine zeitliche Komplexität 
-von nahezu $\mathcal{O}(n)$, wobei $n$ die Anzahl der Lognachrichten bezeichnet. 
-In Experimenten auf 16 Benchmark-Datensätzen verarbeitet Brain eine Million 
-Lognachrichten in durchschnittlich 46 Sekunden, gegenüber 146 Sekunden bei 
-Drain \cite{brain}. Die durchschnittliche Group Accuracy beträgt dabei 0,981 
+Durch die bidirektionale Baumstruktur erreicht Brain eine zeitliche Komplexität
+von nahezu $\mathcal{O}(n)$, wobei $n$ die Anzahl der Lognachrichten bezeichnet.
+In Experimenten auf 16 Benchmark-Datensätzen verarbeitet Brain eine Million
+Lognachrichten in durchschnittlich 46 Sekunden, gegenüber 146 Sekunden bei
+Drain \cite{brain}. Die durchschnittliche Group Accuracy beträgt dabei 0,981
 gegenüber 0,865 bei Drain – eine Verbesserung um 11,6~\% \cite{brain}.
+
+\section{MinHash und Locality Sensitive Hashing}
+\label{sec:minhash_lsh}
+
+MinHash und Locality Sensitive Hashing (LSH) bilden eine Kombination probabilistischer Algorithmen zur effizienten Auffindung ähnlicher Datenpunkte in großen Mengen. Das Verfahren opfert ein geringes Maß an Präzision zugunsten einer erheblichen Reduktion des Rechenaufwands. Klassische Einsatzgebiete sind die Duplikaterkennung in Dokumentensammlungen sowie kollaborative Filtersysteme im großflächigen E-Commerce \cite{Leskovec2020_Kap3_1}. Im Vergleich zu den vorgestellten partitionierenden und dichtebasierten Verfahren stellt MinHash\,+\,LSH einen rein signaturbasierten Ansatz dar, dessen Eignung für das kontinuierliche Log-Clustering im Folgenden theoretisch eingeordnet und in Abschnitt~\ref{sec:eval:param:minhash} sowie Abschnitt~\ref{sec:eval:minhash} empirisch überprüft wird.
+
+\paragraph{Shingling.}
+Im ersten Schritt wird jede Log-Nachricht durch \textit{Shingling} in eine mathematische Menge überführt. Ein $k$-Shingle bezeichnet einen beliebigen Teilstring der Länge $k$, der in der Nachricht vorkommt. Eine Lognachricht $d$ wird damit auf die Menge $S_d \subseteq \Sigma^{k}$ aller in ihr enthaltenen $k$-Shingles abgebildet, wobei $\Sigma$ das zugrundeliegende Token-Alphabet bezeichnet. Die Wahl von $k \in \mathbb{N}_{>0}$ beeinflusst die Trennschärfe des Verfahrens maßgeblich: Zu kleine Werte führen zu fälschlich hohen Ähnlichkeitswerten, da bereits einzelne gemeinsame Tokens eine große Überschneidung erzeugen \cite{Leskovec2020_Kap3_3_2}.
+
+\paragraph{Jaccard-Ähnlichkeit.}
+Als Ähnlichkeitsmetrik dient die Jaccard-Ähnlichkeit, die das Verhältnis von Schnitt- zu Vereinigungsmenge zweier Shingle-Mengen $S$ und $T$ beschreibt:
+\begin{equation}
+    \mathrm{SIM}(S, T) = \frac{|S \cap T|}{|S \cup T|}
+    \label{eq:jaccard}
+\end{equation}
+Dabei sind $S, T$ endliche Mengen von $k$-Shingles und $|\cdot|$ bezeichnet die Kardinalität. Der Wertebereich beträgt $\mathrm{SIM}(S, T) \in [0, 1]$: Der Wert $0$ entspricht disjunkten Mengen ($S \cap T = \emptyset$), der Wert $1$ identischen Mengen ($S = T$).
+
+\paragraph{MinHashing.}
+Der direkte mengenbasierte Vergleich erzeugt bei $n$ Lognachrichten einen Aufwand von $\mathcal{O}(n^2)$. \textit{MinHashing} reduziert die Mengen daher auf kompakte Signaturen fester Länge. Der Algorithmus permutiert die Zeilen der booleschen Shingle-Matrix zufällig und speichert je Spalte den Index der ersten Zeile mit dem Wert~1. Die Wahrscheinlichkeit, dass zwei Spalten nach einer Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer Jaccard-Ähnlichkeit:
+\begin{equation}
+    P\!\left[h_{\pi}(S) = h_{\pi}(T)\right] = \mathrm{SIM}(S, T)
+    \label{eq:minhash_prob}
+\end{equation}
+Hierbei bezeichnet $\pi$ eine zufällige Permutation der Zeilen und $h_{\pi}(\cdot)$ die zugehörige MinHash-Funktion. Durch $p$-fache Wiederholung mit unabhängigen Permutationen entsteht eine Signatur der Länge $p \in \mathbb{N}_{>0}$. Die mittlere Anzahl übereinstimmender Positionen zweier Signaturen approximiert die Jaccard-Ähnlichkeit erwartungstreu \cite{Leskovec2020_Kap3_3}. In der späteren Implementierung entspricht $p$ dem Parameter \texttt{MINHASH\_NUM\_PERM} (vgl.\ Abschnitt~\ref{sec:eval:minhash}).
+
+\paragraph{Locality Sensitive Hashing.}
+Auch mit Signaturen verbleiben bei vollständigem Vergleich $\mathcal{O}(n^2)$ paarweise Operationen. Das Banding-Verfahren des LSH unterteilt die Signaturmatrix horizontal in $b$ Bänder zu je $r$ Zeilen, sodass $p = b \cdot r$ gilt. Jeder Band-Teilvektor wird per Hashfunktion auf einen Bucket abgebildet. Zwei Signaturen gelten als Kandidatenpaar, sobald sie in mindestens einem Band in denselben Bucket fallen. Die Kandidatenwahrscheinlichkeit bei Jaccard-Ähnlichkeit $s$ beträgt:
+\begin{equation}
+    P(\text{Kandidat}) = 1 - (1 - s^{r})^{b}
+    \label{eq:lsh_prob}
+\end{equation}
+Die Parameter sind $s \in [0, 1]$ (Jaccard-Ähnlichkeit des Paares), $r \in \mathbb{N}_{>0}$ (Zeilen pro Band) und $b \in \mathbb{N}_{>0}$ (Anzahl der Bänder); die Funktion liefert einen Wert in $[0, 1]$. Durch Variation von $b$ und $r$ lässt sich die Schwellwertkurve so steuern, dass der Übergang von „kein Kandidat" zu „Kandidat" einem annähernden Stufensprung gleicht \cite{Leskovec2020_Kap3_4_2}.
+
+\paragraph{Limitierungen für kontinuierliches Clustering.}
+Aus der Konstruktion ergeben sich zwei strukturelle Einschränkungen für den vorliegenden Anwendungsfall. Erstens ist MinHash\,+\,LSH ein Batch-Verfahren: Die Signaturmatrix und der LSH-Index werden über den vollständigen Datensatz aufgebaut; ein persistierbares Gedächtnis -- wie es Drain3 (vgl.\ Abschnitt~\ref{sec:drain3}) durch den serialisierten Parse-Baum bereitstellt -- existiert nicht. Zweitens misst die Jaccard-Ähnlichkeit über Wort-N-Gramme die strukturelle Zeichenüberschneidung, nicht die semantische Verwandtschaft von Log-Templates. Variable Bestandteile wie IP-Adressen, Zeitstempel oder numerische Identifier erzeugen bei Logs desselben Templates unterschiedliche Shingle-Mengen und senken die gemessene Ähnlichkeit ab. Die empirische Auswirkung dieser beiden Einschränkungen auf den verwendeten Loghub-Datensatz wird in Abschnitt~\ref{sec:eval:param:minhash} (Parametersuche) und Abschnitt~\ref{sec:eval:minhash} (Ergebnisse) dokumentiert.
