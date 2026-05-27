@@ -29,7 +29,32 @@ Die Beispiele veranschaulichen Log-Nachrichten, die ähnliche Ereignisse beschre
 \section{Zielsetzung: Vergleich von Verfahren für kontinuierliches Log-Clustering} \label{forschungs_frage}
 Ziel dieser Arbeit ist die Beantwortung der Frage, welches Verfahren sich für die automatisierte, kontinuierliche Gruppierung von Lognachrichten am besten eignet. Dazu werden sechs Ansätze -- vier algorithmische Verfahren (K-Means, DBSCAN, Drain3, Brain), ein probabilistischer Ansatz (MinHash mit Locality-Sensitive Hashing) sowie ein vektorbasierter Ansatz auf Basis von Sentence-Embeddings und PostgreSQL mit \texttt{pgvector}-Erweiterung -- hinsichtlich Cluster-Qualität, Reihenfolge-Stabilität und struktureller Eignung für den kontinuierlichen Betrieb verglichen.
 
+\section{Auswahl der untersuchten Verfahren}
+\label{sec:auswahl}
+Die untersuchten Verfahren wurden entlang der für das Log-Clustering 
+relevanten methodischen Paradigmen ausgewählt, um eine möglichst breite 
+Abdeckung des Lösungsraums zu gewährleisten. Berücksichtigt wurden 
+sowohl klassische Verfahren des unüberwachten Lernens als auch 
+domänenspezifische Logparser sowie ein vektorbasierter Ansatz auf 
+Grundlage neuronaler Sprachmodelle.
 
+Aus dem Bereich des klassischen Clusterings repräsentiert K-Means 
+(Abschnitt~\ref{sec:kmeans}) das partitionierende Paradigma. DBSCAN (Abschnitt~\ref{sec:dbscan}) ergänzt 
+diese Perspektive um ein dichtebasiertes Verfahren, das ohne die 
+Vorgabe einer Cluster-Anzahl auskommt.
+
+Aus dem Bereich der domänenspezifischen Logparser wurden Drain3 
+(Abschnitt~\ref{sec:drain3}) und Brain (Abschnitt~\ref{sec:brain}) 
+ausgewählt. Drain3 gilt in der Literatur als etablierter Online-Parser 
+mit fester Baumtiefe, während Brain eine konzeptionelle Schwäche von 
+Drain -- die Abhängigkeit von der Token-Position -- explizit adressiert. 
+
+MinHash mit Locality-Sensitive Hashing repräsentiert das probabilistische 
+Paradigma und ermöglicht sublineare Ähnlichkeitssuche auf großen 
+Datenmengen. Der vektorbasierte Ansatz auf Basis von 
+Sentence-Embeddings und der PostgreSQL-Erweiterung \texttt{pgvector} 
+bildet schließlich den Übergang zu modernen, semantisch arbeitenden 
+Verfahren ab (Kapitel~\ref{chap:vek}).
 
 \section{Methodik: Evaluierung mittels ARI-Wert und V-Measure} \label{Vorgensweise}
 
@@ -37,6 +62,15 @@ Nach dem Vergleich der vier Clustering-Algorithmen bewerten zwei Metriken die Qu
 Für jedes Paar prüft der Algorithmus, ob beide Punkte im vorhergesagten Clustering und im Referenz-Clustering derselben Gruppe angehören. Der ursprüngliche Rand-Index berechnet den Anteil der übereinstimmenden Paare. Dabei nutzt er den Wertebereich zwischen 0 und 1 ineffizient: Selbst bei zufälligen Clusterings liegt der Wert oft nahe 1, was die Interpretation erschwert.
 Der ARI korrigiert dies, indem er eine Basis etabliert und den gemessenen Rand-Index mit dem Erwartungswert bei zufälliger Verteilung vergleicht.
 Durch diese Normalisierung erlaubt der ARI-Wert eine klare Interpretation: 1,0 steht für perfekte Übereinstimmung, 0,0 entspricht dem Zufall, und negative Werte zeigen eine Zuordnung schlechter als Zufall an.
+
+\textit{Adjusted Rand Index.}
+Der Adjusted Rand Index~(ARI) \cite{YANG201719} misst, wie gut zwei Partitionierungen – die vorhergesagte
+Clusterzugehörigkeit und die Ground Truth – auf Ebene von Datenpunktpaaren übereinstimmen.
+Dazu wird berechnet, welcher Anteil aller Paare in beiden Partitionierungen übereinstimmend
+in denselben oder in verschiedene Cluster eingeteilt ist.
+Ein ARI von $1{,}0$
+bedeutet vollständige Übereinstimmung mit der Ground Truth; ein Wert nahe $0$ entspricht einer
+zufälligen Zuordnung; negative Werte zeigen eine schlechtere Übereinstimmung als der Zufall an.
 
 
 Zusätzlich dient das V-Measure zur Bewertung. Es ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen \cite{inproceedings}. „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße sowie das „Problem of Matching“. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit. Homogenität ist wie folgt definiert:

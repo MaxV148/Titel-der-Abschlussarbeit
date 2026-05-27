@@ -117,52 +117,8 @@ Referenz für alle nachfolgenden Metriken.
 Zur Beurteilung der Clustering-Güte werden zwei komplementäre Metriken eingesetzt, die
 unterschiedliche Aspekte der Übereinstimmung mit der Ground Truth erfassen. Ergänzend werden
 die Teilgrößen Homogenität und Vollständigkeit separat berichtet.
+Die Details der Metriken wurden in \ref{Vorgensweise} beschrieben. 
 
-\textit{Adjusted Rand Index.}
-Der Adjusted Rand Index~(ARI) misst, wie gut zwei Partitionierungen – die vorhergesagte
-Clusterzugehörigkeit und die Ground Truth – auf Ebene von Datenpunktpaaren übereinstimmen.
-Dazu wird berechnet, welcher Anteil aller Paare in beiden Partitionierungen übereinstimmend
-in denselben oder in verschiedene Cluster eingeteilt ist; dieser Wert wird anschließend um
-den zufallsbedingten Erwartungswert korrigiert:
-
-\begin{equation}
-    \label{eq:ari}
-    \mathrm{ARI} =
-    \frac{\displaystyle\sum_{ij}\binom{n_{ij}}{2}
-          - \dfrac{\bigl[\sum_{i}\binom{a_i}{2}\bigr]
-                   \bigl[\sum_{j}\binom{b_j}{2}\bigr]}{\binom{n}{2}}}
-    {\dfrac{1}{2}\Bigl[\sum_{i}\binom{a_i}{2}+\sum_{j}\binom{b_j}{2}\Bigr]
-     - \dfrac{\bigl[\sum_{i}\binom{a_i}{2}\bigr]
-              \bigl[\sum_{j}\binom{b_j}{2}\bigr]}{\binom{n}{2}}}
-\end{equation}
-
-Dabei bezeichnet $n_{ij}$ die Anzahl der Datenpunkte, die sowohl Cluster~$i$ der einen als
-auch Cluster~$j$ der anderen Partition angehören; $a_i$ und $b_j$ sind die jeweiligen
-Randgrößen der Kontingenztafel, $n$ die Gesamtzahl der Datenpunkte. Ein ARI von $1{,}0$
-bedeutet vollständige Übereinstimmung mit der Ground Truth; ein Wert nahe $0$ entspricht einer
-zufälligen Zuordnung; negative Werte zeigen eine schlechtere Übereinstimmung als der Zufall an.
-
-\textit{V-Measure.}
-Das V-Measure bewertet die Clustering-Güte aus zwei orthogonalen Perspektiven und vereint
-diese als harmonisches Mittel~\cite{inproceedings}. \textit{Homogenität}~$h$ misst, ob jeder
-gebildete Cluster ausschließlich Lognachrichten einer einzigen Ground-Truth-Klasse enthält;
-\textit{Vollständigkeit}~$c$ misst, ob alle Lognachrichten einer Ground-Truth-Klasse demselben
-Cluster zugeordnet sind:
-
-\begin{equation}
-    \label{eq:vmeasure}
-    V = \frac{(1 + \beta^2)\cdot h \cdot c}{\beta^2 \cdot h + c},
-    \qquad
-    h = 1 - \frac{H(C \mid K)}{H(C)},
-    \qquad
-    c = 1 - \frac{H(K \mid C)}{H(K)}
-\end{equation}
-
-Für $\beta = 1$ gehen Homogenität und Vollständigkeit gleichgewichtig ein. Die separate
-Betrachtung beider Teilmetriken erlaubt eine differenzierte Fehlerdiagnose: ein hoher
-Homogenitätswert bei niedriger Vollständigkeit deutet auf zu feinkörnige Cluster hin
-(Over-Clustering), während der umgekehrte Fall auf zu grobe Zusammenfassungen hindeutet
-(Under-Clustering).
 
 \paragraph{Testumgebung.}
 Die Laufzeitumgebung besteht aus zwei Docker-Containern, deren Konfiguration in
