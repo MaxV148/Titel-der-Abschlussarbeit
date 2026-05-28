@@ -107,11 +107,25 @@ mit $10\,000$ Einträgen zusammengeführt und zufällig permutiert. Diese Mischu
 realitätsnäheres Szenario ab, in dem ein Log-Aggregator Nachrichten aus heterogenen
 Systemquellen mit unterschiedlichen Format- und Vokabularkonventionen verarbeiten muss.
 
-Die Ground-Truth-Klassifikation wird durch einen regelbasierten Beschriftungsschritt erzeugt.
-Jede Lognachricht wird mittels regulärer Ausdrücke und Teilstring-Suche einer von $44$
-definierten Template-Klassen zugeordnet. Lognachrichten, die keinem Muster entsprechen,
-erhalten das Label $-20$ und gelten als nicht klassifiziert. Diese Einteilung bildet die
-Referenz für alle nachfolgenden Metriken.
+\paragraph{Motivation und Vorgehen der manuellen Beschriftung.}
+Die Erstellung der Referenzklassifikation orientiert sich am Vorgehen aus
+der industriellen Praxis, bei der Log-Cluster in einem ersten Analyseschritt
+manuell anhand semantischer Ähnlichkeit gebildet werden: Lognachrichten,
+die dasselbe Ereignis beschreiben -- etwa fehlgeschlagene
+Authentifizierungsversuche, Initialisierungen eines Webserver-Workers oder
+Verbindungsabbau\-meldungen einer SSH-Sitzung --, werden zu einer Klasse
+zusammengefasst, unabhängig von varianten Bestandteilen wie Zeitstempel,
+Hostname, Prozess-ID oder Benutzername. Eine vollautomatische Übernahme der
+mit Loghub ausgelieferten Templates wurde verworfen, da diese rein
+syntaktisch über Tokenstrukturen definiert sind und semantisch
+zusammen\-gehörige Nachrichten in mehrere Templates aufteilen.
+
+Die Beschriftung erfolgt regelbasiert durch reguläre Ausdrücke und
+Teilstring-Suchen, die auf charakteristische, varianzarme Bestandteile der
+Nachrichten zielen (vgl.\ Listing~\ref{lst:gt-labeling}). Insgesamt sind
+$44$~Klassen definiert; Nachrichten, die keiner Regel entsprechen, erhalten
+das Sammellabel $-20$ und werden bei der Berechnung der Metriken nicht
+ausgeschlossen, sondern als eigene Klasse behandelt. 
 
 \paragraph{Evaluationsmetriken.}
 Zur Beurteilung der Clustering-Güte werden zwei komplementäre Metriken eingesetzt, die

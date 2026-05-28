@@ -46,3 +46,52 @@ def load_state(self) -> None:
         self.persistence_handler.save_state(state)
 
 \end{lstlisting}
+
+\begin{lstlisting}[caption={Label der Groud-Truth Klassen}, label={lst:gt-labeling}]
+
+df_labeled.loc[df_labeled['log'].str.contains("getpeername (ftpd): Transport endpoint is not connected", case=False, na=False, regex=False), 'cluster_id'] = 25
+df_labeled.loc[df_labeled['log'].str.contains("combo .* authentication failure; logname= uid=", case=False, na=False, regex=True), 'cluster_id'] = 24
+df_labeled.loc[df_labeled['log'].str.contains("LabSZ .* authentication failure; logname= uid=", case=False, na=False, regex=True), 'cluster_id'] = 23
+df_labeled.loc[df_labeled['log'].str.contains("device node", case=False, na=False, regex=False), 'cluster_id'] = 22
+df_labeled.loc[df_labeled['log'].str.contains("notify question section contains no SOA", case=False, na=False, regex=False), 'cluster_id'] = 21
+df_labeled.loc[df_labeled['log'].str.contains("combo ftpd\[.*\]: connection from", case=False, na=False, regex=True), 'cluster_id'] = 19
+df_labeled.loc[df_labeled['log'].str.contains("combo logrotate: ALERT exited abnormally with", case=False, na=False, regex=False), 'cluster_id'] = 18
+df_labeled.loc[df_labeled['log'].str.contains("Kerberos authentication failed", case=False, na=False, regex=False), 'cluster_id'] = 17
+df_labeled.loc[df_labeled['log'].str.contains("jk2_init()", case=False, na=False, regex=False), 'cluster_id'] = 16
+df_labeled.loc[df_labeled['log'].str.contains("mod_jk child", case=False, na=False, regex=False), 'cluster_id'] = 15
+df_labeled.loc[df_labeled['log'].str.contains("workerEnv.init()", case=False, na=False, regex=False), 'cluster_id'] = 14
+df_labeled.loc[df_labeled['log'].str.contains("Bye Bye", case=False, na=False, regex=False), 'cluster_id'] = 13
+df_labeled.loc[df_labeled['log'].str.contains("Failed password for root", case=False, na=False, regex=False), 'cluster_id'] = 12
+df_labeled.loc[df_labeled['log'].str.contains("PAM service(sshd)", case=False, na=False, regex=False), 'cluster_id'] = 11
+df_labeled.loc[df_labeled['log'].str.contains("combo .* check pass; user unknown", case=False, na=False, regex=True), 'cluster_id'] = 10
+df_labeled.loc[df_labeled['log'].str.contains("LabSZ .* check pass; user unknown", case=False, na=False, regex=True), 'cluster_id'] = 9
+df_labeled.loc[df_labeled['log'].str.contains("input_userauth_request: invalid user", case=False, na=False, regex=False), 'cluster_id'] = 8
+df_labeled.loc[df_labeled['log'].str.contains("reverse mapping checking getaddrinfo", case=False, na=False, regex=False), 'cluster_id'] = 7
+df_labeled.loc[df_labeled['log'].str.contains("Failed password for ftp", case=False, na=False, regex=False), 'cluster_id'] = 6
+df_labeled.loc[df_labeled['log'].str.contains("Failed password for invalid user", case=False, na=False, regex=False), 'cluster_id'] = 5
+df_labeled.loc[df_labeled['log'].str.contains("combo kernel", case=False, na=False, regex=False), 'cluster_id'] = 4
+df_labeled.loc[df_labeled['log'].str.contains("combo su(pam_unix)", case=False, na=False, regex=False), 'cluster_id'] = 3
+df_labeled.loc[df_labeled['log'].str.contains("combo sshd(pam_unix)", case=False, na=False, regex=False), 'cluster_id'] = 2
+df_labeled.loc[df_labeled['log'].str.contains("LabSZ sshd\[\d*\]", case=False, na=False, regex=True), 'cluster_id'] = 1
+df_labeled.loc[df_labeled['log'].str.contains("Directory index forbidden by rule", case=False, na=False, regex=True), 'cluster_id'] = 0
+df_labeled.loc[df_labeled['log'].str.contains("combo klogind\[\d*\]: Kerberos authentication failed", case=False, na=False, regex=True), 'cluster_id'] = -1
+df_labeled.loc[df_labeled['log'].str.contains("combo klogind\[\d*\]: Authentication failed from", case=False, na=False, regex=True), 'cluster_id'] = -2
+df_labeled.loc[df_labeled['log'].str.contains("combo cups:", case=False, na=False, regex=False), 'cluster_id'] = -3
+df_labeled.loc[df_labeled['log'].str.contains("combo bluetooth:", case=False, na=False, regex=False), 'cluster_id'] = -4
+df_labeled.loc[df_labeled['log'].str.contains("combo syslogd", case=False, na=False, regex=False), 'cluster_id'] = -5
+df_labeled.loc[df_labeled['log'].str.contains("combo network", case=False, na=False, regex=False), 'cluster_id'] = -6
+df_labeled.loc[df_labeled['log'].str.contains("combo syslog", case=False, na=False, regex=False), 'cluster_id'] = -7
+df_labeled.loc[df_labeled['log'].str.contains("combo sdpd", case=False, na=False, regex=False), 'cluster_id'] = -8
+df_labeled.loc[df_labeled['log'].str.contains("combo ftpd", case=False, na=False, regex=False), 'cluster_id'] = -9
+df_labeled.loc[df_labeled['log'].str.contains("combo hcid", case=False, na=False, regex=False), 'cluster_id'] = -10
+df_labeled.loc[df_labeled['log'].str.contains("combo xinetd", case=False, na=False, regex=False), 'cluster_id'] = -11
+df_labeled.loc[df_labeled['log'].str.contains("combo gpm", case=False, na=False, regex=False), 'cluster_id'] = -12
+df_labeled.loc[df_labeled['log'].str.contains("combo login", case=False, na=False, regex=False), 'cluster_id'] = -13
+df_labeled.loc[df_labeled['log'].str.contains("combo nfslock", case=False, na=False, regex=False), 'cluster_id'] = -14
+df_labeled.loc[df_labeled['log'].str.contains("combo random", case=False, na=False, regex=False), 'cluster_id'] = -15
+df_labeled.loc[df_labeled['log'].str.contains("combo gdm-binary", case=False, na=False, regex=False), 'cluster_id'] = -16
+df_labeled.loc[df_labeled['log'].str.contains("combo portmap", case=False, na=False, regex=False), 'cluster_id'] = -17
+df_labeled.loc[df_labeled['log'].str.contains("combo rpcidmapd", case=False, na=False, regex=False), 'cluster_id'] = -18
+df_labeled.loc[df_labeled['log'].str.contains("combo rc", case=False, na=False, regex=False), 'cluster_id'] = -19
+
+\end{lstlisting}
