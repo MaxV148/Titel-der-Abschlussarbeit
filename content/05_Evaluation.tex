@@ -182,7 +182,7 @@ verschmelzen und damit die Homogenität systematisch absenken. Die Folgen
 dieser Wahl manifestieren sich unmittelbar in den Evaluationswerten (vgl.\
 Abschnitt~\ref{sec:eval:dbscan}): Mit $\varepsilon = 0{,}4$ steigt die
 Homogenität gegenüber dem ursprünglichen Wert von $14{,}5\,\%$ auf
-$73{,}9\,\%$, der ARI von $4{,}6\,\%$ auf $58{,}2\,\%$.
+$57{,}391\,\%$, der ARI von $4{,}6\,\%$ auf $26{,}085\,\%$.
 
 % ----------------------------------------------------------------
 \subsection{Drain3}
@@ -254,7 +254,7 @@ Wahl:
     Parse-Baum-Struktur von Drain3 erzwingt durch positionsbasierte
     Verzweigung auch bei niedrigem \texttt{sim\_th} hochspezifische Templates
     -- ein Verhalten, das sich später in den Evaluationswerten als hohe
-    Homogenität von $96{,}1\,\%$ zeigt (Abschnitt~\ref{sec:eval:drain3}).
+    Homogenität von $91{,}851\,\%$ zeigt (Abschnitt~\ref{sec:eval:drain3}).
 \end{enumerate}
 
 % ----------------------------------------------------------------
@@ -416,10 +416,10 @@ vergleichende Gesamtbewertung erfolgt in Abschnitt~\ref{sec:eval:vergleich}.
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $51{,}8\,\%$ & $\pm\,8{,}3\,\%$ \\
-        V-Measure      & $76{,}7\,\%$ & $\pm\,3{,}8\,\%$ \\
-        Homogenität    & $85{,}9\,\%$ & $\pm\,3{,}7\,\%$ \\
-        Vollständigkeit& $69{,}2\,\%$ & $\pm\,3{,}8\,\%$ \\
+        ARI            & $70{,}585\,\%$ & $\pm\,8{,}369\,\%$ \\
+        V-Measure      & $84{,}913\,\%$ & $\pm\,2{,}644\,\%$ \\
+        Homogenität    & $80{,}762\,\%$ & $\pm\,2{,}874\,\%$ \\
+        Vollständigkeit& $89{,}524\,\%$ & $\pm\,2{,}446\,\%$ \\
         \midrule
         Clusteranzahl  & $13$ & -- \\
         \bottomrule
@@ -432,21 +432,22 @@ Knickerkennung (\texttt{KneeLocator}) und den Silhouette-Score bestimmt;
 beide Heuristiken konvergierten auf $k = 13$ als unsupervised Optimum auf der
 SVD-reduzierten TF-IDF-Repräsentation. Trotz der gegenüber der Ground-Truth
 ($44$ Klassen) deutlich geringeren Clusteranzahl erreicht das Verfahren mit
-einem ARI von $51{,}8\,\%$ und einem V-Measure von $76{,}7\,\%$ solide Werte,
-liegt jedoch unterhalb von DBSCAN und Drain3
+einem ARI von $70{,}585\,\%$ und einem V-Measure von $84{,}913\,\%$ solide
+Werte, liegt jedoch unterhalb von Drain3 und pgvector
 (vgl.\ Abschnitt~\ref{sec:eval:vergleich}).
 
-Die Teilmetriken zeigen eine ausgeprägte Asymmetrie: Die Homogenität von
-$85{,}9\,\%$ ist hoch, die Vollständigkeit von $69{,}2\,\%$ deutlich geringer
--- eine Differenz von rund $16{,}7$ Prozentpunkten. Die $13$ Partitionen
-erfassen damit \emph{Makrostrukturen} des gemischten Datensatzes -- etwa die
-sprachlich-typischen Vokabulare der drei Quellsysteme \texttt{Linux},
-\texttt{Apache} und \texttt{OpenSSH} sowie deren häufigste Untergruppen.
-Feingranulare Templates innerhalb dieser Makrobereiche werden hingegen in
-denselben Cluster zusammengezogen, wodurch die Vollständigkeit nach unten
-begrenzt bleibt.
+Die Teilmetriken zeigen eine Asymmetrie zugunsten der Vollständigkeit: Die
+Vollständigkeit von $89{,}524\,\%$ liegt rund $8{,}8$ Prozentpunkte über der
+Homogenität von $80{,}762\,\%$. Mit lediglich $13$ Partitionen für
+$44$~Ground-Truth-Klassen erzwingt das Verfahren eine Unterpartitionierung:
+Mehrere semantische Klassen werden in dieselben \emph{Makrocluster}
+zusammengeführt -- etwa entlang der sprachlich-typischen Vokabulare der drei
+Quellsysteme \texttt{Linux}, \texttt{Apache} und \texttt{OpenSSH} -- was die
+Homogenität reduziert. Die Mitglieder einer Klasse verbleiben dabei
+überwiegend in einem gemeinsamen Makrocluster, was den hohen
+Vollständigkeitswert erklärt.
 
-Die Standardabweichung von $\pm\,8{,}3$ Prozentpunkten beim ARI ist die
+Die Standardabweichung von $\pm\,8{,}369$ Prozentpunkten beim ARI ist die
 höchste aller untersuchten Verfahren. Ursache ist die stochastische
 Zentroid-Initialisierung in Verbindung mit dem niedrigen Silhouette-Niveau im
 TF-IDF-Raum (vgl.\ Abb.~\ref{fig:kmeans-silhouette}): Die Cluster liegen
@@ -471,10 +472,10 @@ muss und damit nicht für den inkrementellen Betrieb geeignet ist.
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $58{,}2\,\%$ & $\pm\,0{,}0\,\%$ \\
-        V-Measure      & $65{,}4\,\%$ & $\pm\,0{,}0\,\%$ \\
-        Homogenität    & $73{,}9\,\%$ & $\pm\,0{,}0\,\%$ \\
-        Vollständigkeit& $58{,}6\,\%$ & $\pm\,0{,}0\,\%$ \\
+        ARI            & $26{,}085\,\%$ & $\pm\,0{,}000\,\%$ \\
+        V-Measure      & $59{,}905\,\%$ & $\pm\,0{,}000\,\%$ \\
+        Homogenität    & $57{,}391\,\%$ & $\pm\,0{,}000\,\%$ \\
+        Vollständigkeit& $62{,}649\,\%$ & $\pm\,0{,}000\,\%$ \\
         \midrule
         Clusteranzahl  & $124$ & -- \\
         \bottomrule
@@ -483,21 +484,20 @@ muss und damit nicht für den inkrementellen Betrieb geeignet ist.
 
 Mit dem in Abschnitt~\ref{sec:eval:param:dbscan} datengetrieben ermittelten
 Nachbarschaftsradius $\varepsilon = 0{,}4$ erreicht DBSCAN einen ARI von
-$58{,}2\,\%$ und ein V-Measure von $65{,}4\,\%$ -- den höchsten ARI unter den
-algorithmischen Verfahren und den zweithöchsten Wert insgesamt nach pgvector
-(vgl.\ Abschnitt~\ref{sec:eval:vergleich}). Die Nullabweichung über alle fünf
-Durchläufe ist erwartungskonform: DBSCAN operiert als Stapelverfahren auf der
-vollständigen TF-IDF-Matrix und ist gegenüber der Eingangsreihenfolge
-invariant.
+$26{,}085\,\%$ und ein V-Measure von $59{,}905\,\%$ -- den niedrigsten ARI
+aller untersuchten Verfahren (vgl.\ Abschnitt~\ref{sec:eval:vergleich}). Die
+Nullabweichung über alle fünf Durchläufe ist erwartungskonform: DBSCAN
+operiert als Stapelverfahren auf der vollständigen TF-IDF-Matrix und ist
+gegenüber der Eingangsreihenfolge invariant.
 
-Die Homogenität von $73{,}9\,\%$ liegt deutlich über dem Wert
+Die Homogenität von $57{,}391\,\%$ liegt deutlich über dem Wert
 ($14{,}5\,\%$), der mit dem ursprünglich theoretisch motivierten
-$\varepsilon = 0{,}6$ erzielt wurde. Diese Verbesserung um nahezu sechzig
+$\varepsilon = 0{,}6$ erzielt wurde. Diese Verbesserung um rund $43$
 Prozentpunkte belegt unmittelbar die Wirkung der empirischen Parameterwahl:
 Der strengere Schwellenwert verhindert die im vorherigen Setup beobachtete
 Verschmelzung semantisch unverwandter Logs zu großen Mischclustern. Die
-Vollständigkeit von $58{,}6\,\%$ ist demgegenüber moderat; sie ist Folge der
-mit $124$ Clustern deutlich höheren Cluster\-anzahl gegenüber den $44$
+Vollständigkeit von $62{,}649\,\%$ ist demgegenüber moderat; sie ist Folge
+der mit $124$ Clustern deutlich höheren Cluster\-anzahl gegenüber den $44$
 Ground-Truth-Klassen. Einzelne Templates werden auf mehrere, jeweils reine
 DBSCAN-Cluster aufgeteilt -- ein klassischer Übersegmentierungseffekt, der
 gegenüber dem vorherigen, gegenteiligen Fehlerbild jedoch das deutlich
@@ -526,24 +526,27 @@ Neuberechnung der Nachbarschaftsstruktur nicht möglich.
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $57{,}9\,\%$ & $\pm\,0{,}1\,\%$ \\
-        V-Measure      & $80{,}5\,\%$ & $\pm\,0{,}4\,\%$ \\
-        Homogenität    & $96{,}1\,\%$ & $\pm\,0{,}6\,\%$ \\
-        Vollständigkeit& $69{,}3\,\%$ & $\pm\,0{,}3\,\%$ \\
+        ARI            & $91{,}084\,\%$ & $\pm\,0{,}120\,\%$ \\
+        V-Measure      & $91{,}528\,\%$ & $\pm\,0{,}370\,\%$ \\
+        Homogenität    & $91{,}851\,\%$ & $\pm\,0{,}448\,\%$ \\
+        Vollständigkeit& $91{,}208\,\%$ & $\pm\,0{,}296\,\%$ \\
         \midrule
         Clusteranzahl  & $52$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Drain3 erzielt mit einem ARI von $57{,}9\,\%$ und einem V-Measure von $80{,}5\,\%$ die
-besten Werte unter den algorithmischen Verfahren. Die Homogenität von $96{,}1\,\%$ zeigt,
-dass die erzeugten Template-Cluster nahezu ausschließlich Lognachrichten einer einzigen
-Ground-Truth-Klasse enthalten. Die geringere Vollständigkeit von $69{,}3\,\%$ ist auf eine
-moderate Überpartitionierung zurückzuführen: Im Einzellauf entstehen $52$ Cluster für $44$
-Ground-Truth-Klassen, d.\,h. einzelne semantische Klassen werden auf mehrere, jeweils reine
-Drain3-Cluster aufgeteilt. Die nahezu verschwindende Standardabweichung ($\sigma \leq 0{,}6$
-Prozentpunkte) belegt die hohe Stabilität des Verfahrens gegenüber der Eingangsreihenfolge.
+Drain3 erzielt mit einem ARI von $91{,}084\,\%$ und einem V-Measure von
+$91{,}528\,\%$ die besten Werte aller untersuchten Verfahren. Mit einer
+Homogenität von $91{,}851\,\%$ und einer Vollständigkeit von $91{,}208\,\%$
+liegt zugleich das ausgewogenste Metrikprofil vor: Die erzeugten
+Template-Cluster sind nahezu ausschließlich aus Lognachrichten einer
+einzigen Ground-Truth-Klasse zusammengesetzt und decken diese Klassen
+gleichzeitig nahezu vollständig ab. Die mit $52$ Clustern für $44$
+Ground-Truth-Klassen geringfügig erhöhte Partitionierung wirkt sich auf die
+Vollständigkeit nur marginal aus. Die nahezu verschwindende
+Standardabweichung ($\sigma \leq 0{,}5$ Prozentpunkte) belegt die hohe
+Stabilität des Verfahrens gegenüber der Eingangsreihenfolge.
 
 Dieses Verhalten ist mit der in Abschnitt~\ref{sec:drain3} beschriebenen Funktionsweise des
 Parse-Baums erklärbar. Der Ähnlichkeitsschwellenwert \texttt{sim\_th = 0{,}2} ist niedrig
@@ -565,23 +568,25 @@ müssen – eine grundlegende Voraussetzung für den kontinuierlichen Betrieb.
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $39{,}2\,\%$ & $\pm\,0{,}0\,\%$ \\
-        V-Measure      & $72{,}9\,\%$ & $\pm\,0{,}0\,\%$ \\
-        Homogenität    & $98{,}8\,\%$ & $\pm\,0{,}0\,\%$ \\
-        Vollständigkeit& $57{,}8\,\%$ & $\pm\,0{,}0\,\%$ \\
+        ARI            & $73{,}280\,\%$ & $\pm\,0{,}000\,\%$ \\
+        V-Measure      & $88{,}102\,\%$ & $\pm\,0{,}001\,\%$ \\
+        Homogenität    & $98{,}731\,\%$ & $\pm\,0{,}000\,\%$ \\
+        Vollständigkeit& $79{,}540\,\%$ & $\pm\,0{,}002\,\%$ \\
         \midrule
         Clusteranzahl  & $151$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Brain weist mit $98{,}8\,\%$ die höchste Homogenität aller untersuchten Verfahren auf –
-die gebildeten Cluster sind nahezu perfekt rein. Dem steht eine Vollständigkeit von lediglich
-$57{,}8\,\%$ gegenüber, was auf eine ausgeprägte Überpartitionierung hindeutet: Im Einzellauf
-entstehen $151$ Cluster für $44$ Ground-Truth-Klassen, also im Durchschnitt mehr als drei
-Cluster pro semantischer Klasse. Dieser Effekt erklärt den moderaten ARI von $39{,}2\,\%$
-trotz nahezu perfekter Clusterhomogenität. Die Nullabweichung über alle fünf Durchläufe
-zeigt, dass Brain vollständig deterministisch und reihenfolgeunabhängig ist.
+Brain weist mit $98{,}731\,\%$ die höchste Homogenität aller untersuchten
+Verfahren auf -- die gebildeten Cluster sind nahezu perfekt rein. Dem steht
+eine Vollständigkeit von $79{,}540\,\%$ gegenüber, was auf eine
+Überpartitionierung hindeutet: Im Einzellauf entstehen $151$ Cluster für
+$44$ Ground-Truth-Klassen, also im Durchschnitt mehr als drei Cluster pro
+semantischer Klasse. Dieser Effekt drückt den ARI auf $73{,}280\,\%$ trotz
+nahezu perfekter Clusterhomogenität. Die nahezu verschwindende Abweichung
+($\sigma \leq 0{,}002$ Prozentpunkte) zeigt, dass Brain praktisch
+deterministisch und reihenfolgeunabhängig ist.
 
 Wie in Abschnitt~\ref{sec:brain} dargelegt, analysiert Brain jede Lognachricht im
 bidirektionalen Parallelbaum sowohl vorwärts als auch rückwärts und bildet dabei sehr
@@ -604,18 +609,18 @@ Homogenität.
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $22{,}8\,\%$ & $\pm\,0{,}0\,\%$ \\
-        V-Measure      & $52{,}2\,\%$ & $\pm\,0{,}0\,\%$ \\
-        Homogenität    & $96{,}4\,\%$ & $\pm\,0{,}0\,\%$ \\
-        Vollständigkeit& $35{,}8\,\%$ & $\pm\,0{,}0\,\%$ \\
+        ARI            & $43{,}378\,\%$ & $\pm\,0{,}000\,\%$ \\
+        V-Measure      & $64{,}890\,\%$ & $\pm\,0{,}000\,\%$ \\
+        Homogenität    & $95{,}875\,\%$ & $\pm\,0{,}000\,\%$ \\
+        Vollständigkeit& $49{,}041\,\%$ & $\pm\,0{,}000\,\%$ \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-MinHash LSH zeigt im Mehrfachlauf das ausgeprägteste Ungleichgewicht zwischen Homogenität
-und Vollständigkeit aller untersuchten Verfahren: Bei $96{,}4\,\%$ Homogenität liegt die
-Vollständigkeit bei nur $35{,}8\,\%$, was den ARI auf $22{,}8\,\%$ – den zweitniedrigsten
-Wert nach DBSCAN – drückt. Die Nullabweichung ist darauf zurückzuführen, dass das
+MinHash LSH zeigt im Mehrfachlauf ein ausgeprägtes Ungleichgewicht zwischen
+Homogenität und Vollständigkeit: Bei $95{,}875\,\%$ Homogenität liegt die
+Vollständigkeit bei nur $49{,}041\,\%$, was den ARI auf $43{,}378\,\%$ --
+den zweitniedrigsten Wert nach DBSCAN -- drückt. Die Nullabweichung ist darauf zurückzuführen, dass das
 Union-Find-basierte Clustering die Ähnlichkeitsrelationen im LSH-Index auswertet, die von
 der Eingangsreihenfolge unabhängig sind.
 
@@ -635,8 +640,8 @@ persistierbarer Indexzustand noch eine gegenüber variablen Tokens robuste Ähnl
 bereitsteht, ist MinHash\,+\,LSH im Rahmen des verwendeten Loghub-Datensatzes nicht als
 eigenständiger Clustering-Ansatz für den kontinuierlichen Betrieb geeignet.\footnote{%
 Im Einzellauf mit abweichenden Parametern (\texttt{threshold} $= 0{,}3$, $n$-Gramm $= 2$)
-ergibt sich ein abweichendes Ergebnisprofil (ARI $46{,}4\,\%$, Homogenität $49{,}7\,\%$,
-Vollständigkeit $87{,}6\,\%$). Für die vergleichende Bewertung werden die
+ergibt sich ein abweichendes Ergebnisprofil (ARI $20{,}9\,\%$, Homogenität $36{,}5\,\%$,
+Vollständigkeit $88{,}6\,\%$). Für die vergleichende Bewertung werden die
 Mehrfachlauf-Parameter als Referenz verwendet.}
 
 % ----------------------------------------------------------------
@@ -653,10 +658,10 @@ Mehrfachlauf-Parameter als Referenz verwendet.}
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $60{,}0\,\%$ & $\pm\,3{,}8\,\%$ \\
-        V-Measure      & $82{,}4\,\%$ & $\pm\,1{,}3\,\%$ \\
-        Homogenität    & $92{,}2\,\%$ & $\pm\,1{,}7\,\%$ \\
-        Vollständigkeit& $74{,}5\,\%$ & $\pm\,1{,}6\,\%$ \\
+        ARI            & $79{,}273\,\%$ & $\pm\,5{,}293\,\%$ \\
+        V-Measure      & $88{,}451\,\%$ & $\pm\,1{,}876\,\%$ \\
+        Homogenität    & $83{,}998\,\%$ & $\pm\,2{,}638\,\%$ \\
+        Vollständigkeit& $93{,}433\,\%$ & $\pm\,1{,}201\,\%$ \\
         \midrule
         Clusteranzahl  & $80$ & -- \\
         \bottomrule
@@ -664,13 +669,13 @@ Mehrfachlauf-Parameter als Referenz verwendet.}
 \end{table}
 
 Mit den in Abschnitt~\ref{sec:eval:param:pgvector} datengetrieben ermittelten
-Schwellenwerten erzielt der vektorbasierte Ansatz einen ARI von $60{,}0\,\%$
-und ein V-Measure von $82{,}4\,\%$ -- den höchsten ARI und das höchste
-V-Measure aller untersuchten Verfahren (vgl.\
-Abschnitt~\ref{sec:eval:vergleich}). Das Metrikprofil ist gegenüber den
-algorithmischen Verfahren ausgewogen: Mit einer Homogenität von $92{,}2\,\%$
-und einer Vollständigkeit von $74{,}5\,\%$ erreicht pgvector als einziges
-Verfahren beidseitig hohe Werte oberhalb von $70\,\%$.
+Schwellenwerten erzielt der vektorbasierte Ansatz einen ARI von $79{,}273\,\%$
+und ein V-Measure von $88{,}451\,\%$ -- den zweithöchsten ARI und das
+zweithöchste V-Measure aller untersuchten Verfahren nach Drain3 (vgl.\
+Abschnitt~\ref{sec:eval:vergleich}). Mit einer Homogenität von $83{,}998\,\%$
+und einer Vollständigkeit von $93{,}433\,\%$ liegen beide Teilmetriken
+deutlich oberhalb von $80\,\%$; die Vollständigkeit ist die zweithöchste
+aller Verfahren nach Drain3.
 
 \paragraph{Clusteranzahl im Verhältnis zur Ground Truth.}
 Im Einzellauf erzeugt das Verfahren $80$ Cluster für $44$ Ground-Truth-Klassen
@@ -680,14 +685,15 @@ strengen \texttt{INITIAL}-Schwellenwerts $0{,}3$, der in Phase~1 nur sehr
 (Abschnitt~\ref{sec:real:pgvector}). Phase~2 ergänzt die Clusterbasis um
 weitere Cluster für Lognachrichten, die weder zu einem bestehenden
 Cluster-Schwerpunkt (Strategie~1) noch zu einem bereits verarbeiteten
-Einzellog (Strategie~2) ausreichend nah liegen. Die hohe Homogenität von
-$92{,}2\,\%$ zeigt, dass die so entstehenden Cluster intern sauber sind:
-einzelne Ground-Truth-Klassen werden auf mehrere reine pgvector-Cluster
-aufgeteilt, jedoch werden Klassen kaum vermischt. Die niedrigere
-Vollständigkeit ($74{,}5\,\%$) ist die Kehrseite dieses Effekts.
+Einzellog (Strategie~2) ausreichend nah liegen. Die Homogenität von
+$83{,}998\,\%$ zeigt, dass die so entstehenden Cluster intern überwiegend
+sauber sind; gleichzeitig erreicht die Vollständigkeit mit $93{,}433\,\%$
+einen hohen Wert, da der semantische Vektorraum auch syntaktisch abweichende
+Vertreter derselben Ground-Truth-Klasse zuverlässig in dieselben Cluster
+führt.
 
 \paragraph{Reihenfolgeabhängigkeit.}
-Die Standardabweichung von $\pm\,3{,}8$ Prozentpunkten beim ARI gehört zu
+Die Standardabweichung von $\pm\,5{,}293$ Prozentpunkten beim ARI gehört zu
 den höchsten unter den getesteten Verfahren. Ursache ist der inkrementelle
 Charakter des zweistufigen Algorithmus: Die Eingangsreihenfolge beeinflusst,
 welche Lognachrichten als erste einen Cluster-Schwerpunkt definieren und
@@ -702,7 +708,7 @@ alternative Konfiguration mit \texttt{INITIAL} $= 0{,}5$ würde nur $\approx
 28$ Cluster erzeugen und einen höheren ARI ($\approx 72\,\%$), jedoch
 niedrigeren Silhouette-Score liefern. Die methodische Festlegung dieser
 Arbeit, ausschließlich unsupervised zu tunen, schließt eine ARI-getriebene
-Wahl jedoch aus -- der berichtete Wert von $60{,}0\,\%$ ist daher das
+Wahl jedoch aus -- der berichtete Wert von $79{,}273\,\%$ ist daher das
 Ergebnis einer prinzipientreuen, im Produktivbetrieb reproduzierbaren
 Parameterwahl, nicht die obere Schranke des Verfahrens.
 
@@ -741,42 +747,42 @@ die Clusteranzahl entstammt dem Einzellauf mit Seed $42$.
             & Vollst.\,(\%)
             & Cluster \\
         \midrule
-        pgvector
-            & $60{,}0 \pm 3{,}8$
-            & $82{,}4 \pm 1{,}3$
-            & $92{,}2 \pm 1{,}7$
-            & $74{,}5 \pm 1{,}6$
-            & $80$ \\
-        DBSCAN
-            & $58{,}2 \pm 0{,}0$
-            & $65{,}4 \pm 0{,}0$
-            & $73{,}9 \pm 0{,}0$
-            & $58{,}6 \pm 0{,}0$
-            & $124$ \\
         Drain3
-            & $57{,}9 \pm 0{,}1$
-            & $80{,}5 \pm 0{,}4$
-            & $96{,}1 \pm 0{,}6$
-            & $69{,}3 \pm 0{,}3$
+            & $91{,}084 \pm 0{,}120$
+            & $91{,}528 \pm 0{,}370$
+            & $91{,}851 \pm 0{,}448$
+            & $91{,}208 \pm 0{,}296$
             & $52$ \\
-        K-Means
-            & $56{,}5 \pm 8{,}2$
-            & $78{,}2 \pm 3{,}8$
-            & $83{,}1 \pm 3{,}8$
-            & $74{,}0 \pm 3{,}9$
-            & $10$ \\
+        pgvector
+            & $79{,}273 \pm 5{,}293$
+            & $88{,}451 \pm 1{,}876$
+            & $83{,}998 \pm 2{,}638$
+            & $93{,}433 \pm 1{,}201$
+            & $80$ \\
         Brain
-            & $39{,}2 \pm 0{,}0$
-            & $72{,}9 \pm 0{,}0$
-            & $98{,}8 \pm 0{,}0$
-            & $57{,}8 \pm 0{,}0$
+            & $73{,}280 \pm 0{,}000$
+            & $88{,}102 \pm 0{,}001$
+            & $98{,}731 \pm 0{,}000$
+            & $79{,}540 \pm 0{,}002$
             & $151$ \\
+        K-Means
+            & $70{,}585 \pm 8{,}369$
+            & $84{,}913 \pm 2{,}644$
+            & $80{,}762 \pm 2{,}874$
+            & $89{,}524 \pm 2{,}446$
+            & $13$ \\
         MinHash LSH$^{*}$
-            & $22{,}8 \pm 0{,}0$
-            & $52{,}2 \pm 0{,}0$
-            & $96{,}4 \pm 0{,}0$
-            & $35{,}8 \pm 0{,}0$
+            & $43{,}378 \pm 0{,}000$
+            & $64{,}890 \pm 0{,}000$
+            & $95{,}875 \pm 0{,}000$
+            & $49{,}041 \pm 0{,}000$
             & -- \\
+        DBSCAN
+            & $26{,}085 \pm 0{,}000$
+            & $59{,}905 \pm 0{,}000$
+            & $57{,}391 \pm 0{,}000$
+            & $62{,}649 \pm 0{,}000$
+            & $124$ \\
         \midrule
         \multicolumn{5}{l}{\footnotesize Ground-Truth-Klassen im Datensatz: $44$} \\
         \bottomrule
