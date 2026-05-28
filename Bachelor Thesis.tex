@@ -129,13 +129,22 @@
 % Damit die Begriffe hinzugefügt werden muss in Texmaker unter Optionen - Konfiguren 
 % Der Makeindex Befehl folgendermaßen geändert werden: "/usr/texbin/makeindex" %.nlo -s nomencl.ist -o %.nls
 \IfDefined{printindex}{\printindex}
-\IfDefined{printnomenclature}{\printnomenclature}
 % 'Symbolverzeichnis' ins Inhaltsverzeichnis
 \addcontentsline{toc}{chapter}{Abkürzungsverzeichnis}
-% Abbildungs- und Tabellenverzeichnis
+\input{content/00_Abkuerzungen}
+\cleardoublepage
+% Abbildungsverzeichnis
+\phantomsection
 \listoffigures
+\cleardoublepage
+% Tabellenverzeichnis
+\phantomsection
 \listoftables
-\lstlistoflistings.
+\cleardoublepage
+% Listings-Verzeichnis
+\phantomsection
+\addcontentsline{toc}{chapter}{\lstlistlistingname}
+\lstlistoflistings
 % Anhang
 \appendix
 % 'Anhang' ins Inhaltsverzeichnis

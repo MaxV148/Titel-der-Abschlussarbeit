@@ -43,7 +43,7 @@ als auch wegen des \textit{Curse of Dimensionality} unzuverlässig: Mit
 wachsender Dimension nähern sich paarweise Distanzen einem gemeinsamen
 Mittelwert an, sodass das Distanzmaß seine Trennkraft verliert. Daher wird
 die TF-IDF-Matrix für die Parametersuche zuvor mittels \textit{Truncated
-Singular Value Decomposition} (Truncated SVD) auf $100$ Hauptkomponenten
+Singular Value Decomposition} (Truncated \acs{SVD}) auf $100$ Hauptkomponenten
 reduziert. Diese Transformation überführt die Sparse-Matrix in einen dichten,
 niedrigdimensionalen Raum, der die signifikanten Varianzanteile der
 ursprünglichen Repräsentation erhält und in dem distanzbasierte Maße wie die
@@ -279,7 +279,7 @@ Als Ausgangskonfiguration dienen eine wortbasierte Trigramm-Tokenisierung
 $1\,809$~Cluster -- eine massive Übersegmentierung gegenüber den
 $44$~Ground-Truth-Klassen. Die Ursache ist die in
 Abschnitt~\ref{sec:minhash_lsh} beschriebene Schwäche der Jaccard-Ähnlichkeit:
-Variable Token-Positionen (IP-Adressen, UUIDs, numerische Werte) reduzieren die
+Variable Token-Positionen (IP-Adressen, \acsp{UUID}, numerische Werte) reduzieren die
 Trigramm-Überschneidung strukturell identischer Logs so stark, dass der
 Schwellenwert von $0{,}5$ systematisch unterschritten wird.
 
