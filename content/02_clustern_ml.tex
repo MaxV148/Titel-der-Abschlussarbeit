@@ -10,14 +10,14 @@ Die Clusteranalyse mittels Machine-Learning-Algorithmen unterteilt sich in zwei 
 \section{Numerische Textrepräsentation für maschinelle Verarbeitung}
 Für die nachfolgende Verarbeitung ist es zunächst erforderlich, den Text in eine numerische Darstellung zu überführen. Hierbei stehen verschiedene Verfahren zur Auswahl, die sich hinsichtlich ihrer Komplexität und der Art der Informationserfassung unterscheiden.
 
-\subsection{Bag-of-Words: Vorteile und Grenzen dimensionaler Vektorräume}
+\subsection{Bag-of-Words: Vorteile und Grenzen hochdimensionaler Vektorräume}
 
-Ein grundlegender Ansatz ist das Bag-of-Words-Modell.\footnote{Der Artikel von IBM klärt über das Bag-of-Words-Modell auf: \url{https://www.ibm.com/de-de/think/topics/bag-of-words} (Zugriff: \today)} . Es basiert auf der Konstruktion eines Vektorraums, in dem jedes eindeutige Wort, das im Textkorpus vorkommt, eine eigene Dimension bildet. Umfasst das Vokabular beispielsweise n unterschiedliche Wörter, so weist der resultierende Vektorraum ebenfalls $n$ Dimensionen auf. Innerhalb dieses mehrdimensionalen Raums wird jedes Textdokument als einzelner Datenpunkt verortet. Die Position des Punktes entlang einer bestimmten Achse (Dimension) wird dabei durch die Häufigkeit des entsprechenden Wortes im Dokument bestimmt. Das bedeutet, dass Begriffe, die besonders oft auftreten, einen stärkeren Einfluss auf die Positionierung des Dokuments im Vektorraum haben. Dies führt insbesondere bei umfangreichen Textsammlungen zu einer sehr hohen Dimensionalität, die sowohl Chancen als auch Herausforderungen für die weiterführende Analyse mit sich bringt. 
+Ein grundlegender Ansatz ist das Bag-of-Words-Modell.\footnote{Der Artikel von IBM klärt über das Bag-of-Words-Modell auf: \url{https://www.ibm.com/de-de/think/topics/bag-of-words} (Zugriff: \today)} Es basiert auf der Konstruktion eines Vektorraums, in dem jedes eindeutige Wort, das im Textkorpus vorkommt, eine eigene Dimension bildet. Umfasst das Vokabular des gesamten Korpus beispielsweise $n$ unterschiedliche Wörter, so weist der resultierende Vektorraum ebenfalls $n$ Dimensionen auf. Die Dimensionalität hängt somit von der Größe des Vokabulars ab, also von der Anzahl unterschiedlicher Wörter über alle Dokumente hinweg, und nicht direkt von der Anzahl oder dem Umfang der Dokumente: Ein Korpus aus vielen, aber sprachlich ähnlichen Dokumenten -- etwa sich wiederholenden Log-Nachrichten -- kann ein kleineres Vokabular und damit eine geringere Dimensionalität aufweisen als ein Korpus aus wenigen, aber sprachlich vielfältigen Dokumenten. Innerhalb dieses mehrdimensionalen Raums wird jedes Textdokument als einzelner Datenpunkt verortet. Die Position des Punktes entlang einer bestimmten Achse (Dimension) wird dabei durch die Häufigkeit des entsprechenden Wortes im Dokument bestimmt: Begriffe, die besonders oft auftreten, haben einen stärkeren Einfluss auf die Positionierung des Dokuments im Vektorraum, ohne dass sich dadurch die Anzahl der Dimensionen selbst ändert. Bei umfangreichen, vokabularreichen Textsammlungen führt dies in Summe zu einer sehr hohen Dimensionalität, die sowohl Chancen als auch Herausforderungen für die weiterführende Analyse mit sich bringt.
 
 
 Risiken sind dabei:
 \begin{itemize}
-    \item Überanpassung (Overfitting): Wenn ein Dokument aus vielen unterschiedlichen Wörtern besteht, werden die Vektorräume sehr groß (viele Dimensionen), das führt zu Performance einbüßen und hohen Speicherverbrauch. 
+    \item Überanpassung (Overfitting): Ein großes, vielfältiges Vokabular führt zu sehr vielen Dimensionen, was Performance einbüßen und hohen Speicherverbrauch zur Folge hat.
     \item Verlust von Zusammenhängen: Je höher die Dimensionen durch Einzelwörter, desto schwieriger wird es ohne Zusatztechniken, semantische Zusammenhänge (Wort-Korrelationen) zu erkennen.
 \end{itemize}
 
@@ -56,15 +56,16 @@ Konkret kommt in dieser Arbeit das vortrainierte Modell \texttt{sentence-transfo
 \label{sec:kmeans}
 Nachdem die Nutzung der passenden Textvektorisierung geklärt ist, werden im Folgenden die Algorithmen zum Gruppieren bzw. Clustern der Log-Nachrichten beschrieben.
 
-Der K-Means-Clusteralgorithmus umfasst drei Schritte. Die Nutzung erfordert zunächst die Wahl eines Wertes für k.
+Der K-Means-Clusteralgorithmus umfasst drei Schritte. Die Nutzung erfordert zunächst die Wahl eines Wertes für k. Dabei gilt $K \leq N$, wobei $N$ die Anzahl der Datenpunkte (Log-Nachrichten) im Datensatz bezeichnet, da jedem Cluster mindestens ein Datenpunkt zugeordnet sein muss.
 
 \begin{enumerate}
     \item Der Algorithmus bestimmt zunächst K Masseschwerpunkte im Datensatz. Diese Schwerpunkte heißen Centroide $c(k)$ für $k = 1$ bis $K$.
-    \item Im zweiten Schritt berechnet er für jeden Vektor $x^n$ die Distanz zu den $K$ Masseschwerpunkten. Die Distanzfunktion hängt von der Problemstellung ab. Oft nutzt man die euklidische Distanz \cite{Wilmott2020-rx}:
+    \item Im zweiten Schritt berechnet er für jeden Vektor $x^{(n)}$ die Distanz zu den $K$ Masseschwerpunkten. Die Distanzfunktion hängt von der Problemstellung ab. Oft nutzt man die euklidische Distanz, im Folgenden einheitlich mit dem Normsymbol $\|\cdot\|$ bezeichnet \cite{Wilmott2020-rx}:
     \begin{equation}
-      \text{Distanz}^{(n,k)} = \sqrt{ \sum_{m=1}^{M} \left( x_m^{(n)} - c_m^{(k)} \right)^2 } \quad \text{für } k=1 \text{ bis } K
+      \text{Distanz}(n,k) = \left\| x^{(n)} - c^{(k)} \right\| = \sqrt{ \sum_{m=1}^{M} \left( x_m^{(n)} - c_m^{(k)} \right)^2 } \quad \text{für } k=1 \text{ bis } K
+      \label{eq:distanz}
     \end{equation}
-    Jeder Datenpunkt erhält den nächstgelegenen Masseschwerpunkt als Zuordnung.
+    Dabei bezeichnet $M$ die Dimensionalität des verwendeten Vektorraums (vgl. Abschnitt~\ref{sec:auswahl}) und $\|\cdot\|$ die euklidische Norm, also die Wurzel der Summe der quadrierten Komponentendifferenzen. Jeder Datenpunkt erhält den nächstgelegenen Masseschwerpunkt als Zuordnung.
     \item Für jedes entstandene Cluster berechnet der Algorithmus den Mittelwert, wodurch die Centroide in die Nähe des Cluster-Mittelpunktes rücken. Die Schritte 2 und 3 wiederholen sich bis zur Konvergenz.
 \end{enumerate}
 Die Auswahl der Zahl $K$ ist essenziell für das Clustering.
@@ -73,16 +74,23 @@ Der manuelle Aufwand bei einem System, das periodisch neue Logs einliest, ist je
 \section{DBSCAN: Flexibles, dichtebasiertes Clustering ohne vordefinierte Cluster-Anzahl}
 \label{sec:dbscan}
 
-Der DBSCAN-Algorithmus gehört zu den dichtebasierten Clusterverfahren. Anders als k-Means benötigt er keinen Parameter k, was eine flexiblere Log-Gruppierung ermöglicht. DBSCAN definiert einen Cluster als dichte Region aus Datenpunkten, getrennt durch Bereiche geringerer Dichte. Der Algorithmus unterteilt Datenpunkte in drei Kategorien: Kernpunkte, Grenzpunkte und Rauschpunkte. Eine dichte Region definiert sich als Radius $\varepsilon$ um einen Punkt $x  \in \mathbb{R}^d$ \cite{Mohammed_Wagner_2020}:
+Der DBSCAN-Algorithmus gehört zu den dichtebasierten Clusterverfahren. Anders als k-Means benötigt er keinen Parameter k, was eine flexiblere Log-Gruppierung ermöglicht. DBSCAN definiert einen Cluster als dichte Region aus Datenpunkten, getrennt durch Bereiche geringerer Dichte. Der Algorithmus unterteilt Datenpunkte in drei Kategorien: Kernpunkte, Grenzpunkte und Rauschpunkte. Sei $D = \{x^{(1)}, \dots, x^{(N)}\}$ der Datensatz aus $N$ Vektoren mit $x \in \mathbb{R}^d$, wobei $\mathbb{R}$ die Menge der reellen Zahlen und $d$ die Dimensionalität des Vektorraums bezeichnet (entspricht $M$ aus Gleichung~\eqref{eq:distanz}). Eine dichte Region definiert sich als Radius $\varepsilon$ um einen Punkt $x$ \cite{Mohammed_Wagner_2020}:
 \begin{equation}
-    N_{\epsilon}(\mathbf{x}) = B_{d}(\mathbf{x}, \epsilon) = \{ \mathbf{y} \mid \| \mathbf{x} - \mathbf{y} \| \leq \epsilon \}
+    N_{\epsilon}(\mathbf{x}) = B_{d}(\mathbf{x}, \epsilon) = \{ \mathbf{y} \in D \mid \| \mathbf{x} - \mathbf{y} \| \leq \epsilon \}
+    \label{eq:eps_umgebung}
 \end{equation}
-Dabei bezeichnet $\| \mathbf{x} - \mathbf{y} \|$ die euklidische Distanz, ersetzbar durch andere Distanzfunktionen. Der Parameter $\epsilon$ gibt den Radius an. Zusätzlich definiert der Wert $minpts$ einen Schwellwert: Eine Anzahl von Punkten innerhalb eines Radius $\epsilon$ gilt ab diesem Wert als relevant. Ein Datenpunkt $x \in D$ heißt Kernpunkt, wenn er mindestens $minpts$ Nachbarn im Radius $\epsilon$ besitzt. Hat ein Punkt weniger Nachbarn, gilt er als Grenzpunkt. Liegt ein Datenpunkt zwar in Reichweite, aber nicht im $\epsilon$-Radius eines Kernpunktes, ist er ein Rauschpunkt. DBSCAN arbeitet in folgenden Schritten \cite{geeksforgeeksDBSCANClustering}:
+Dabei bezeichnet $N_{\epsilon}(\mathbf{x})$ die $\epsilon$-Umgebung von $x$, also die Menge aller Punkte $y$ aus dem Datensatz $D$, für die gilt (Bedingungsstrich $\mid$), dass ihre Distanz $\| \mathbf{x} - \mathbf{y} \|$ zu $x$ höchstens $\epsilon$ beträgt; $\|\cdot\|$ ist dabei dieselbe euklidische Norm wie in Gleichung~\eqref{eq:distanz}, ersetzbar durch andere Distanzfunktionen. $B_{d}(\mathbf{x}, \epsilon)$ beschreibt dieselbe Menge geometrisch als $d$-dimensionale Kugel mit Radius $\epsilon$ um $x$. Der Parameter $\epsilon$ gibt also den Radius dieser Kugel an. Zusätzlich definiert der Parameter $\textit{minPts}$ einen Schwellwert für die Mindestanzahl an Nachbarn innerhalb des Radius $\epsilon$: Ein Datenpunkt $x \in D$ heißt Kernpunkt, wenn $N_\epsilon(x)$ mindestens $\textit{minPts}$ Punkte enthält. Hat ein Punkt weniger Nachbarn, gilt er als Grenzpunkt. Liegt ein Datenpunkt zwar in Reichweite, aber nicht im $\epsilon$-Radius eines Kernpunktes, ist er ein Rauschpunkt. DBSCAN arbeitet in folgenden Schritten \cite{geeksforgeeksDBSCANClustering}:
 \begin{enumerate}
-    \item Kernpunkte identifizieren: Für jeden Datenpunkt $x \in D$ zählt der Algorithmus die Punkte innerhalb des Radius $\epsilon$. Übersteigt die Anzahl $minpts$, gilt der Punkt als Kernpunkt.
+    \item Kernpunkte identifizieren: Für jeden Datenpunkt $x \in D$ zählt der Algorithmus die Punkte innerhalb des Radius $\epsilon$. Übersteigt die Anzahl $\textit{minPts}$, gilt der Punkt als Kernpunkt.
     \item Jeder noch nicht zugeordnete Kernpunkt bildet ein neues Cluster. Anschließend sucht der Algorithmus rekursiv nach allen dichte-verbundenen Punkten innerhalb des Radius $\epsilon$ und ordnet diese dem Cluster zu. Zwei Punkte $x$ und $y$ sind dichte-verbunden, wenn eine Kette von Punkten innerhalb des Radius $\epsilon$ existiert, von denen mindestens einer ein Kernpunkt ist.
     \item Alle Punkte ohne Cluster-Zugehörigkeit gelten als Rauschpunkte.
 \end{enumerate}
+
+\paragraph{Parameterwahl.}
+Anders als bei k-Means entfällt zwar die Vorgabe der Cluster-Anzahl $K$, an ihre Stelle treten jedoch die Parameter $\epsilon$ und $\textit{minPts}$ -- DBSCAN tauscht das Problem der Bestimmung von $K$ also gegen das Problem der Bestimmung von $\epsilon$ und $\textit{minPts}$. Eine gängige Heuristik zur Schätzung von $\epsilon$ ist der $k$-Distanz-Graph: Für jeden Punkt wird die Distanz zu seinem $\textit{minPts}$-nächsten Nachbarn berechnet und aufsteigend sortiert aufgetragen; der Wert am Knick (Elbow) dieser Kurve liefert einen geeigneten Schätzwert für $\epsilon$ \cite{Mohammed_Wagner_2020}. Für $\textit{minPts}$ wird in der Literatur häufig $\textit{minPts} \geq d + 1$ als unterer Richtwert genannt. Im Unterschied zu $K$ muss bei dieser Vorgehensweise die resultierende Cluster-Anzahl nicht vorab bekannt sein, was für die kontinuierliche Log-Gruppierung mit unbekannter und wachsender Anzahl an Lognachrichten-Typen vorteilhaft ist; die Bestimmung guter Werte für $\epsilon$ und $\textit{minPts}$ bleibt jedoch ebenso aufwendig wie zuvor die Bestimmung von $K$.
+
+\paragraph{Effizienz und Limitierungen.}
+Die naive Implementierung bestimmt für jeden der $N$ Datenpunkte dessen $\epsilon$-Umgebung durch einen vollständigen Vergleich mit allen übrigen Punkten ($\mathcal{O}(N)$ je Punkt); durch die rekursive Erweiterung der Cluster über alle Punkte hinweg ergibt sich insgesamt eine Zeitkomplexität von mindestens $\mathcal{O}(N^2)$ \cite{Mohammed_Wagner_2020}. Räumliche Indexstrukturen wie $k$-d-Bäume oder R*-Bäume können die Nachbarschaftssuche auf $\mathcal{O}(N \log N)$ beschleunigen, verlieren ihre Wirksamkeit jedoch mit wachsender Dimensionalität $d$ (Fluch der Dimensionalität) -- ein relevanter Punkt im Hinblick auf die hochdimensionalen Sentence-Embeddings, die in Kapitel~\ref{chap:vek} verwendet werden. Als methodische Limitierung gilt zudem, dass DBSCAN mit einem global festen Wert für $\epsilon$ Cluster stark unterschiedlicher Dichte nicht gleichzeitig korrekt erfassen kann: Ein für dichte Cluster geeigneter Radius klassifiziert dünnere Cluster mitunter vollständig als Rauschen, und umgekehrt.
 
 \section{Drain3: Effizientes On-Demand-Parsing mittels Baumstrukturen}
 \label{sec:drain3}

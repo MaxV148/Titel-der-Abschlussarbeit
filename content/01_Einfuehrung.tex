@@ -81,19 +81,13 @@ einer zufälligen Zuordnung, negative Werte zeigen eine schlechtere
 Übereinstimmung als der Zufall an.
 
 \paragraph{V-Measure.}
-Das V-Measure ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen \cite{inproceedings}. „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit. Homogenität ist wie folgt definiert:
-\begin{definition}[Homogenität]
-    Ein Clustering-Ergebnis erfüllt das Kriterium der Homogenität, wenn jeder Cluster ausschließlich Datenpunkte enthält, die derselben Klasse angehören. \cite[S.~410]{inproceedings}
-\end{definition} Die Vollständigkeit ist wie folgt definiert:
-\begin{definition}[Vollständigkeit]
-    Ein Clustering-Ergebnis erfüllt das Kriterium der Vollständigkeit, wenn alle Datenpunkte einer bestimmten Klasse demselben Cluster zugeordnet sind \cite[S.~410]{inproceedings}.
-\end{definition}
+Das V-Measure ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen \cite{inproceedings}. „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit: Homogenität liegt vor, wenn jeder Cluster ausschließlich Datenpunkte derselben Klasse enthält, Vollständigkeit hingegen, wenn alle Datenpunkte einer Klasse demselben Cluster zugeordnet sind \cite[S.~410]{inproceedings}.
 Die Versuche nutzen die V-Measure-Werte der Python-Bibliothek „scikit-learn“, die wie folgt berechnet werden: \footnote{Dokumentation der Funktion v\_measure\_score \url{https://scikit-learn.org/stable/modules/generated/sklearn.metrics.v_measure_score.html}}
 \begin{equation*}
   v = \frac{(1 + \beta) \cdot \text{homogeneity} \cdot \text{completeness}}{\beta \cdot \text{homogeneity} + \text{completeness}}
 \end{equation*}
 Der Beta-Wert ist ein variabler Faktor (Standardwert 1,0), der die Gewichtung von Homogenität und Vollständigkeit anpasst.
-Die Kombination dieser Metriken vereint verschiedene mathematische Ansätze. Das V-Measure beurteilt Homogenität und Vollständigkeit und analysiert, ob Klassen vermischt oder zersplittert sind. Der ARI korrigiert hingegen den Zufallseinfluss und dient als strenger Benchmark für die Übereinstimmung mit der Referenz.
+Das V-Measure beurteilt Homogenität und Vollständigkeit und analysiert, ob Klassen vermischt oder zersplittert sind. Der ARI korrigiert hingegen den Zufallseinfluss und dient als strenger Benchmark für die Übereinstimmung mit der Referenz.
 
 
 
