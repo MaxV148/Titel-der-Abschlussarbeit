@@ -7,17 +7,17 @@ Die in den letzten Jahren entstandene DevOps-Bewegung \cite{bass2015devops} ziel
 
 
 \section{Motivation: Herausforderungen der unstrukturierten Log-Analyse}
-System-Logs spielen dabei eine wichtige Rolle, da Inhalt und Häufigkeit den Softwarezustand abbilden. Dabei unterscheidet man zwischen Logs des unterliegenden Systems (Server) und Nachrichten der Software selbst. Linux-System-Logs folgen oft dem klaren Format des Syslog-Protokolls \cite{rfc5424}, was die Verarbeitung erleichtert.
-Individuelle Lognachrichten aus eigener Softwareentwicklung folgen hingegen oft keinem festen Format, was Weiterverarbeitung und Analyse erschwert. Zur Verwaltung und Analyse großer Log-Mengen eignet sich Open-Source-Software wie der \ac{ELK}-Stack. Dieser besteht aus drei Komponenten: „E“ steht für Elasticsearch, eine NoSQL-Datenbank für \ac{JSON}-Daten. „L“ bezeichnet Logstash, eine Pipeline, die Lognachrichten aus verschiedenen Quellen an Elasticsearch sendet. „K“ steht für Kibana, eine Weboberfläche zur Datenvisualisierung.
+System-Logs spielen dabei eine wichtige Rolle, da Inhalt und Häufigkeit den Softwarezustand abbilden. Dabei unterscheidet man zwischen Logs des unterliegenden Systems (Server) und Nachrichten der Software selbst (application logs). Linux-System-Logs folgen oft dem klaren Format des Syslog-Protokolls \cite{rfc5424}. Das erleichtert die Verarbeitung, da diese Syslogs einem durch das Protokoll definierten Standard entsprechen.
+Individuelle Lognachrichten aus eigener Softwareentwicklung folgen hingegen oft keinem festen Format, was Weiterverarbeitung und Analyse erschwert. Zur Verwaltung und Analyse großer Log-Mengen eignet sich Open-Source-Software wie der \ac{ELK}-Stack. Dieser besteht aus Elasticsearch (einer NoSQL-Datenbank für \ac{JSON}-Daten), Logstash (einer Pipeline zur Log-Weiterleitung) und Kibana (einer Weboberfläche zur Datenvisualisierung).
 Kibana eignet sich gut für die Suche nach Log-Nachrichten, löst jedoch ein zentrales Problem nicht: Viele Logs unterscheiden sich nur durch Metadaten wie Zeitstempel oder \ac{IP}-Adressen, besitzen aber die gleiche Aussage.
 
-\begin{logbox}{Beispiel 1: Syslog Kernel Message}
+\begin{logbox}{Beispiel 1: \ac{SSH} Login-Fehler - Root}
 \begin{lstlisting}
-Nov  6 09:10:01 servername kernel: [ 1234.567890] usb 1-1: new high-speed USB device number 10 using ehci_hcd
+Nov  6 06:12:05 servername sshd[12345]: Failed password for invalid user root from 191.167.10.80 port 4022 ssh2
 \end{lstlisting}
 \end{logbox}
 
-\begin{logbox}{Beispiel 2: \ac{SSH} Login-Fehler}
+\begin{logbox}{Beispiel 2: \ac{SSH} Login-Fehler - Admin}
 \begin{lstlisting}
 Nov  6 09:11:05 servername sshd[12345]: Failed password for invalid user admin from 192.168.1.100 port 22 ssh2
 \end{lstlisting}
@@ -27,20 +27,20 @@ Nov  6 09:11:05 servername sshd[12345]: Failed password for invalid user admin f
 Die Beispiele veranschaulichen Log-Nachrichten, die ähnliche Ereignisse beschreiben. Eine Gruppierung solcher Logs ist sinnvoll. Dies gelingt beispielsweise mit regulären Ausdrücken (\acs{Regex}), die variable Teile filtern und Gruppen bilden. Dieses Verfahren bietet Flexibilität bei der individuellen Suche, erfordert jedoch hohen manuellen Pflegeaufwand, etwa bei neuen Log-Typen. Alternativ gruppieren Algorithmen den Text der Log-Nachrichten automatisch. Diese Arbeit untersucht Möglichkeiten, Log-Nachrichten kontinuierlich und mit minimalem manuellen Aufwand zu clustern.
 
 \section{Zielsetzung: Vergleich von Verfahren für kontinuierliches Log-Clustering} \label{forschungs_frage}
-Ziel dieser Arbeit ist die Beantwortung der Frage, welches Verfahren sich für die automatisierte, kontinuierliche Gruppierung von Lognachrichten am besten eignet. Dazu werden sechs Ansätze -- vier algorithmische Verfahren (K-Means, DBSCAN, Drain3, Brain), ein probabilistischer Ansatz (MinHash mit Locality-Sensitive Hashing) sowie ein vektorbasierter Ansatz auf Basis von Sentence-Embeddings und PostgreSQL mit \texttt{pgvector}-Erweiterung -- hinsichtlich Cluster-Qualität, Reihenfolge-Stabilität und struktureller Eignung für den kontinuierlichen Betrieb verglichen.
+Ziel dieser Arbeit ist die Beantwortung der Frage, welches Verfahren sich für die automatisierte, kontinuierliche Gruppierung von Lognachrichten am besten eignet - hinsichtlich Cluster-Qualität, Reihenfolge-Stabilität und
+struktureller Eignung für den kontinuierlichen Betrieb. Dazu werden sechs Ansätze -- vier algorithmische Verfahren (K-Means, DBSCAN, Drain3, Brain), ein probabilistischer Ansatz (MinHash mit Locality-Sensitive Hashing) sowie ein vektorbasierter Ansatz auf Basis von Sentence-Embeddings und PostgreSQL mit \texttt{pgvector}-Erweiterung verglichen.
 
 \section{Auswahl der untersuchten Verfahren}
 \label{sec:auswahl}
 Die untersuchten Verfahren wurden entlang der für das Log-Clustering 
-relevanten methodischen Paradigmen ausgewählt, um eine möglichst breite 
+relevanten methodischen Ansätze ausgewählt, um eine möglichst breite 
 Abdeckung des Lösungsraums zu gewährleisten. Berücksichtigt wurden 
 sowohl klassische Verfahren des unüberwachten Lernens als auch 
 domänenspezifische Logparser sowie ein vektorbasierter Ansatz auf 
 Grundlage neuronaler Sprachmodelle.
 
 Aus dem Bereich des klassischen Clusterings repräsentiert K-Means
-(Abschnitt~\ref{sec:kmeans}) das partitionierende Paradigma und dient
-zugleich als Baseline für die nachfolgenden Vergleiche. DBSCAN
+(Abschnitt~\ref{sec:kmeans}) das partitionierende vorgehen. DBSCAN
 (Abschnitt~\ref{sec:dbscan}) ergänzt diese Perspektive um ein
 dichtebasiertes Verfahren, das ohne die Vorgabe einer Cluster-Anzahl
 auskommt.
@@ -60,7 +60,7 @@ Verfahren ab (Kapitel~\ref{chap:vek}).
 
 \section{Methodik: Evaluierung mittels ARI-Wert und V-Measure} \label{Vorgensweise}
 
-Nach dem Vergleich der Clustering-Algorithmen bewerten zwei Metriken die Qualität: der \ac{ARI}-Wert \cite{gates2017impactrandommodelsclustering} und das V-Measure \cite{inproceedings}.
+Die Qualität der Clustering-Algorithmen wird durch zwei Metriken bestimmt: der \ac{ARI}-Wert \cite{gates2017impactrandommodelsclustering} und das V-Measure \cite{inproceedings}.
 
 \paragraph{Adjusted Rand Index.}
 Der \acs{ARI} \cite{YANG201719} misst, wie gut zwei
@@ -81,7 +81,7 @@ einer zufälligen Zuordnung, negative Werte zeigen eine schlechtere
 Übereinstimmung als der Zufall an.
 
 \paragraph{V-Measure.}
-Das V-Measure ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen \cite{inproceedings}. „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße sowie das „Problem of Matching“. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit. Homogenität ist wie folgt definiert:
+Das V-Measure ist eine entropiebasierte Metrik zur externen Evaluierung von Cluster-Analysen \cite{inproceedings}. „Extern“ bedeutet, dass das Ergebnis mit einer bekannten, korrekten Klasseneinteilung (Ground Truth) verglichen wird. Das V-Measure behebt Schwächen anderer Metriken, insbesondere die Abhängigkeit von Cluster-Anzahl oder Datensatzgröße. Es bildet das harmonische Mittel aus Homogenität und Vollständigkeit. Homogenität ist wie folgt definiert:
 \begin{definition}[Homogenität]
     Ein Clustering-Ergebnis erfüllt das Kriterium der Homogenität, wenn jeder Cluster ausschließlich Datenpunkte enthält, die derselben Klasse angehören. \cite[S.~410]{inproceedings}
 \end{definition} Die Vollständigkeit ist wie folgt definiert:

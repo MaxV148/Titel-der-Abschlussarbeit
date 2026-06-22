@@ -11,7 +11,6 @@ Darstellung wird dem verteilten Vorgehen vorgezogen, weil die Vergleichbarkeit
 der Verfahren maßgeblich davon abhängt, dass alle Konfigurationen nach einer
 einheitlichen methodischen Linie ermittelt wurden.
 
-\paragraph{Methodische Linie.}
 Die Parameterwahl erfolgt für alle Verfahren \emph{datengetrieben} und
 \emph{ohne Verwendung der Ground Truth}. Dieser Verzicht ist eine direkte
 Folge der Aufgabenstellung: Im kontinuierlichen Log-Clustering steht im
@@ -30,16 +29,12 @@ systematisch überschätzten Ergebnissen führen.
 \label{sec:eval:param:kmeans}
 
 K-Means erfordert die Anzahl der Cluster $k$ als Eingabeparameter. Die Wahl
-erfolgt nicht heuristisch, sondern datengetrieben über zwei in der Literatur
-etablierte, voneinander unabhängige Verfahren: die Elbow-Methode auf Basis
-der Inertia mit automatischer Knickerkennung sowie den Silhouette-Score. Beide
-Metriken operieren ausschließlich auf den Eingangsvektoren und sind damit
-auch im kontinuierlichen Betrieb anwendbar.
+erfolgt nicht heuristisch, sondern datengetrieben über zwei, voneinander unabhängige Verfahren: die Elbow-Methode auf mit automatischer Knickerkennung sowie den Silhouette-Score.
 
 \paragraph{Vorverarbeitung mittels Truncated SVD.}
 Die direkte Berechnung des Silhouette-Scores im hochdimensionalen, dünn
 besetzten TF-IDF-Raum ($1000$ Dimensionen) ist sowohl rechnerisch aufwendig
-als auch wegen des \textit{Curse of Dimensionality} unzuverlässig: Mit
+als auch wegen des \textit{Curse of Dimensionality}\cite{CurseofDimensionality} unzuverlässig: Mit
 wachsender Dimension nähern sich paarweise Distanzen einem gemeinsamen
 Mittelwert an, sodass das Distanzmaß seine Trennkraft verliert. Daher wird
 die TF-IDF-Matrix für die Parametersuche zuvor mittels \textit{Truncated
@@ -140,8 +135,8 @@ sichert ein kleiner Wert ab, dass auch selten auftretende Templates nicht
 fälschlich als Rauschen klassifiziert werden.
 
 \paragraph{Nachbarschaftsradius $\varepsilon$ via $k$-Distanz-Plot.}
-Für die Wahl von $\varepsilon$ wird das in der Literatur etablierte
-$k$-Distanz-Verfahren nach Ester et al.\ eingesetzt. Hierzu wird für jeden
+Für die Wahl von $\varepsilon$ wird das
+$k$-Distanz-Verfahren eingesetzt. Hierzu wird für jeden
 Punkt im Datensatz die Cosinus-Distanz zum $k$-ten Nachbarn berechnet
 (mit $k = $ \texttt{min\_samples} $= 2$), die resultierenden Werte werden
 aufsteigend sortiert und in Abbildung~\ref{fig:dbscan-kdist} dargestellt. Der
@@ -178,11 +173,7 @@ Cosinus-Ähnlichkeit von $\geq 0{,}4$ -- nahegelegt. Der empirische
 $k$-Distanz-Plot zeigt jedoch, dass dieser Wert bereits weit oberhalb des
 Knicks im Bereich der reinen Ausreißer liegt; eine Konfiguration mit
 $\varepsilon = 0{,}6$ würde semantisch unverwandte Logs zu Clustern
-verschmelzen und damit die Homogenität systematisch absenken. Die Folgen
-dieser Wahl manifestieren sich unmittelbar in den Evaluationswerten (vgl.\
-Abschnitt~\ref{sec:eval:dbscan}): Mit $\varepsilon = 0{,}4$ steigt die
-Homogenität gegenüber dem ursprünglichen Wert von $14{,}5\,\%$ auf
-$57{,}391\,\%$, der ARI von $4{,}6\,\%$ auf $26{,}085\,\%$.
+verschmelzen und damit die Homogenität systematisch absenken. 
 
 % ----------------------------------------------------------------
 \subsection{Drain3}
@@ -261,7 +252,7 @@ Wahl:
 \subsection{MinHash LSH}
 \label{sec:eval:param:minhash}
 
-MinHash\,+\,LSH wird durch drei Hyperparameter gesteuert: die N-Gramm-Größe
+MinHash\,+\,LSH wird durch drei Hyperparameter gesteuert: \\ die N-Gramm-Größe
 \texttt{MINHASH\_NGRAM\_SIZE}, die Signaturlänge \texttt{MINHASH\_NUM\_PERM} und
 den Jaccard-Schwellenwert \texttt{MINHASH\_THRESHOLD}. Die Parameter entsprechen
 unmittelbar den in Abschnitt~\ref{sec:minhash_lsh} formal eingeführten Größen
@@ -269,7 +260,7 @@ $k$ (Shingle-Länge), $p$ (Anzahl der Permutationen) und $s$ (Schwellwert auf de
 Jaccard-Skala). Die Implementierung erfolgt mit der Python-Bibliothek
 \texttt{datasketch} auf dem in Abschnitt~\ref{sec:eval:aufbau} beschriebenen
 gemischten Loghub-Datensatz. Die Signaturlänge wird konstant auf
-\texttt{MINHASH\_NUM\_PERM\;=\;128} gesetzt; untersucht werden ausschließlich
+\texttt{MINHASH\_NUM\_PERM\;=\;128} gesetzt; untersucht werden ausschließlich \\
 \texttt{MINHASH\_NGRAM\_SIZE} und \texttt{MINHASH\_THRESHOLD}.
 
 \paragraph{Ausgangskonfiguration: Trigramme, Schwellenwert $0{,}5$.}
@@ -309,7 +300,7 @@ deutlich zu machen.
 \subsection{pgvector}
 \label{sec:eval:param:pgvector}
 
-Das pgvector-Verfahren wird durch zwei Cosinus-Schwellen gesteuert:
+Das pgvector-Verfahren wird durch zwei Cosinus-Schwellen gesteuert:\\
 \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE} (im Folgenden \texttt{INITIAL})
 für Phase~1 und Strategie~2 sowie
 \texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE} (\texttt{RECLUSTER}) für
@@ -382,17 +373,6 @@ Bemerkenswert ist, dass die bei \texttt{INITIAL} $= 0{,}3$ resultierenden
 $\approx 46$ Cluster auf der Stichprobe nahezu der Anzahl von $44$
 Ground-Truth-Klassen entsprechen, ohne dass diese Information in die
 Parameterwahl eingeflossen ist.
-
-\paragraph{Methodische Anmerkung zum Unterschied Silhouette vs.\ ARI.}
-Auf dem vollen Datensatz ($n = 10\,000$) erzeugt das Verfahren mit den
-gewählten Parametern $80$ Cluster; die Evaluation
-(Abschnitt~\ref{sec:eval:vector}) wird zeigen, dass dies zu einem höheren
-Homogenitäts-, aber niedrigeren ARI-Wert gegenüber der ursprünglichen
-Konfiguration mit \texttt{INITIAL} $= 0{,}5$ führt. Das Beispiel illustriert
-ein bekanntes Phänomen: interne Validitätsmaße wie der Silhouette-Score
-(unsupervised) und externe Maße wie der ARI (supervised) müssen nicht
-übereinstimmen. Die methodische Festlegung dieser Arbeit -- ausschließlich
-unsupervised zu tunen -- bleibt davon unberührt.
 
 % ----------------------------------------------------------------
 \section{Ergebnisse der algorithmischen Verfahren}

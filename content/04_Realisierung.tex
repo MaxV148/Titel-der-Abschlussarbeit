@@ -174,7 +174,7 @@ Standardabweichung~$\sigma$ über alle fünf Durchläufe berechnet und berichtet
 
 \chapter{Implementierung}
 
-\section{k-Means in der Praxis: Implementierung und Zentroid-Zuweisung}
+\section{k-Means: Implementierung und Zentroid-Zuweisung}
 \label{sec:real:kmeans}
 Im Anschluss an die Vektorisierung erfolgt die semantische Gruppierung der Logdaten mittels des K-Means-Algorithmus. Dieses partitionierende Verfahren unterteilt den Datenraum in eine vordefinierte Anzahl von Clustern, wobei jeder Log-Eintrag dem Cluster mit dem nächstgelegenen Schwerpunkt (Zentroid) zugeordnet wird.
 
@@ -203,7 +203,7 @@ welche auf die TF-IDF-Matrix \texttt{X\_tfidf} angewendet wird. Die
 resultierenden Cluster-IDs werden als neue Spalte
 \texttt{'kmeans\_cluster\_id'} im Dataframe gespeichert.
 
-\section{DBSCAN in der Praxis: Dichtebasierte Gruppierung und Rauschfilterung}
+\section{DBSCAN: Dichtebasierte Gruppierung und Rauschfilterung}
 
 Als alternativer Ansatz zum partitionierenden K-Means-Verfahren wird der
 dichtebasierte Algorithmus DBSCAN (Density-Based Spatial Clustering of
@@ -245,7 +245,7 @@ resultierenden Cluster-IDs werden als neue Spalte \texttt{dbscan\_cluster\_id}
 im Dataframe gespeichert.
 
 
-\section{Drain3 in der Praxis: Iterative Zuordnung durch den Online-Parser}
+\section{Drain3: Iterative Zuordnung durch den Online-Parser}
 \label{sec:real:drain3}
 
 Die praktische Umsetzung des Clustering-Verfahrens mittels Drain3 ist in
@@ -288,7 +288,7 @@ for log in df_labeled['log']:
 df_labeled['drain_cluster_id'] = drain_cluster_ids
 \end{lstlisting}
 
-\section{pgvector in der Praxis: Zweistufiges Embedding-basiertes Clustering}
+\section{pgvector: Zweistufiges Embedding-basiertes Clustering}
 \label{sec:real:pgvector}
 
 Das pgvector-Verfahren unterscheidet sich grundlegend von den bisher vorgestellten
@@ -302,7 +302,7 @@ Datenbankschemas sowie das zweistufige Clustering. Die Parameter der Umsetzung
 sind:
 
 \begin{itemize}
-    \item \texttt{PGVECTOR\_EMBEDDING\_MODEL = "sentence-transformers/all-MiniLM-L6-v2"}
+    \item \texttt{PGVECTOR\_EMBEDDING\_MODEL = sentence-transformers/all-MiniLM-L6-v2}
     \item \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.3}
     \item \texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.2}
     \item \texttt{PGVECTOR\_INITIAL\_RATIO = 0.5}
@@ -316,7 +316,7 @@ beschrieben.
 \subsection{Embedding-Erzeugung mit Sentence Transformers}
 
 Die Überführung der Lognachrichten in numerische Vektoren übernimmt das
-vortrainierte Modell \texttt{sentence-transformers/all-MiniLM-L6-v2} aus der
+vortrainierte Modell \texttt{sentence-transformers/all-MiniLM-L6-v2} aus der \\
 \texttt{sentence-transformers}-Bibliothek. Das Modell erzeugt für jede
 Eingabezeichenkette einen Vektor mit $384$ Dimensionen, der die semantische
 Bedeutung des Textes kodiert. Gegenüber TF-IDF-Vektoren, die lediglich das

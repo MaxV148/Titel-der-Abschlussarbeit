@@ -59,7 +59,7 @@ vorliegenden Anwendungsfall jedoch aus.
 
 \subsection{Milvus}
 
-Milvus \cite{milvus} ist eine weitere spezialisierte Open-Source-Vektordatenbank, 
+Milvus \cite{milvusdocs} ist eine weitere spezialisierte Open-Source-Vektordatenbank, 
 die für den Umgang mit hochdimensionalen Vektoren ausgelegt ist. Sie lässt sich 
 On-Premises betreiben und speichert Metadaten zusammen mit den Vektoren in einer 
 gemeinsamen Struktur. Das folgende Beispiel zeigt eine typische Suchanfrage über 
@@ -78,20 +78,20 @@ client.search(
 Die grundlegende Datenstruktur in Milvus ist ebenfalls die \textit{Collection}, 
 die eine Menge von \textit{Entities} enthält. Jede Entity besteht aus einem oder 
 mehreren Vektorfeldern sowie beliebigen skalaren Feldern für Metadaten, 
-beispielsweise Clusternummer oder Log-Text \cite{milvus}. Für die 
+beispielsweise Clusternummer oder Log-Text \cite{milvusdocs}. Für die 
 Ähnlichkeitssuche unterstützt Milvus mehrere Indexstrukturen, darunter HNSW und 
 IVFFlat, sowie verschiedene Ähnlichkeitsmetriken wie Kosinus-Ähnlichkeit, 
 euklidische Distanz und das Skalarprodukt. Darüber hinaus bietet Milvus mit der 
 Range Search eine Suchmethode, die Ergebnisse anhand eines Distanzintervalls 
 einschränkt: Der Parameter \texttt{radius} definiert dabei die äußere 
 Distanzgrenze, während \texttt{range\_filter} optional eine innere Grenze 
-festlegt \cite{key}.
+festlegt \cite{milvusdocs}.
 
 \paragraph{Limitierungen}
 Trotz der Range-Search-Funktionalität unterliegt auch die Milvus-Such-API einer 
 strukturellen Einschränkung: Jede Anfrage erfordert zwingend die Angabe eines 
 \texttt{limit}-Werts, der die maximale Anzahl zurückgegebener Ergebnisse 
-deckelt \cite{key}. Die Range Search schränkt den Suchraum zwar auf ein 
+deckelt \cite{milvussearch}. Die Range Search schränkt den Suchraum zwar auf ein 
 Distanzintervall ein, die Ausgabe bleibt jedoch auf die angegebene Anzahl an 
 Treffern begrenzt. Damit verhält sich Milvus in diesem Punkt analog zu Qdrant: 
 Eine echte schwellwertbasierte Suche, die alle Vektoren unterhalb eines 
@@ -126,7 +126,7 @@ zu 2.000 Dimensionen \cite{githubGitHubPgvectorpgvector}. Da das in dieser Arbei
 eingesetzte Embedding-Modell \texttt{sentence-transformers/all-MiniLM-L6-v2} 
 Vektoren mit 384 Dimensionen erzeugt, liegt die Dimensionalität deutlich unterhalb 
 dieser Grenze. Für die Ähnlichkeitssuche stellt die Erweiterung zwei 
-Indexstrukturen bereit: \ac{IVFFlat} und \acs{HNSW}. \acs{IVFFlat} unterteilt den Vektorraum in
+Indexstrukturen bereit: \ac{IVFFlat} \cite{pgvectorIVFFlat} und \acs{HNSW}\cite{pgvectorhnsw}. \acs{IVFFlat} unterteilt den Vektorraum in
 Listen und durchsucht bei einer Anfrage nur eine Teilmenge davon. \acs{HNSW}
 baut einen mehrschichtigen Graphen über die 
 Vektoren auf und bietet im Vergleich zu IVFFlat eine bessere Query-Performance 
@@ -146,7 +146,7 @@ approximative Ergebnisse und tauscht dabei Recall gegen Geschwindigkeit ein
 für pgvector zeigen, sinkt der Durchsatz bei steigendem Recall über alle getesteten 
 Datensätze hinweg erheblich (siehe Abb.~\ref{fig:ann_recall}). Bei einem Recall 
 nahe 1,0 reduziert sich die Anzahl der Abfragen pro Sekunde gegenüber niedrigeren 
-Recall-Werten um ein Vielfaches \cite{annbenchmarksPgvector}. Die Datensätze 
+Recall-Werten um ein Vielfaches \cite{pgvectorPlots}. Die Datensätze 
 entstammen zwar anderen Domänen, der grundlegende Tradeoff zwischen Recall und 
 Durchsatz ist jedoch unabhängig vom Anwendungsfall.
 
@@ -154,7 +154,7 @@ Durchsatz ist jedoch unabhängig vom Anwendungsfall.
     \centering
     \includegraphics[width=0.85\linewidth]{images/pgvector.png}
     \caption{Recall-Queries-per-second-Tradeoff von pgvector über verschiedene 
-             Benchmark-Datensätze \cite{annbenchmarksPgvector}}
+             Benchmark-Datensätze \cite{pgvectorPlots}}
     \label{fig:ann_recall}
 \end{figure}
 
