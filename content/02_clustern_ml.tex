@@ -221,7 +221,8 @@ gegenüber 0,865 bei Drain – eine Verbesserung um 11,6~\% \cite{brain}.
 MinHash und Locality Sensitive Hashing (\acs{LSH}) bilden eine Kombination probabilistischer Algorithmen zur effizienten Auffindung ähnlicher Datenpunkte in großen Mengen. Das Verfahren opfert ein geringes Maß an Präzision zugunsten einer erheblichen Reduktion des Rechenaufwands. Klassische Einsatzgebiete sind die Duplikaterkennung in Dokumentensammlungen sowie kollaborative Filtersysteme im großflächigen E-Commerce \cite{Leskovec2020_Kap3_1}. Im Vergleich zu den vorgestellten partitionierenden und dichtebasierten Verfahren stellt MinHash\,+\,LSH einen rein hashbasierten Ansatz dar, dessen Eignung für das kontinuierliche Log-Clustering im Folgenden theoretisch eingeordnet und in Abschnitt~\ref{sec:eval:param:minhash} sowie Abschnitt~\ref{sec:eval:minhash} empirisch überprüft wird.
 
 \paragraph{Shingling.}
-Im ersten Schritt wird jede Log-Nachricht durch \textit{Shingling} in eine mathematische Menge überführt. Ein $k$-Shingle bezeichnet einen beliebigen Teilstring der Länge $k$, der in der Nachricht vorkommt. Eine Lognachricht wird damit auf die Menge  aller in ihr enthaltenen $k$-Shingles abgebildet. Die Wahl von $k \in \mathbb{N}_{>0}$ beeinflusst die Trennschärfe des Verfahrens maßgeblich: Zu kleine Werte führen zu fälschlich hohen Ähnlichkeitswerten, da bereits einzelne gemeinsame Tokens eine große Überschneidung erzeugen \cite{Leskovec2020_Kap3_3_2}.
+Im ersten Schritt wird jede Log-Nachricht durch \textit{Shingling} in eine mathematische Menge überführt. Ein $k$-Shingle bezeichnet einen beliebigen Teilstring der Länge $k$, der in der Nachricht vorkommt. Eine Lognachricht $d$ wird damit auf die Menge $S_d \subseteq \Sigma^{k}$ aller in ihr enthaltenen $k$-Shingles abgebildet, wobei $\Sigma$ das zugrundeliegende Token-Alphabet bezeichnet. Die Wahl von $k \in \mathbb{N}_{>0}$ beeinflusst die Trennschärfe des Verfahrens maßgeblich: Zu kleine Werte führen zu fälschlich hohen Ähnlichkeitswerten, da bereits einzelne gemeinsame Tokens eine große Überschneidung erzeugen \cite{Leskovec2020_Kap3_3_2}.
+
 
 Als Beispiel dient diese Lognachricht: \textbf{sshd[14144]: Accepted publickey for ubuntu}. Für $k = 3$ ergibt sich folgende Menge an 40 $k$-Shingles
 \shorthandoff{"}
@@ -237,6 +238,7 @@ Als Beispiel dient diese Lognachricht: \textbf{sshd[14144]: Accepted publickey f
 \end{equation}
 \shorthandon{"}
 
+
 \paragraph{Jaccard-Ähnlichkeit.}
 Als Ähnlichkeitsmetrik dient die Jaccard-Ähnlichkeit, die das Verhältnis von Schnitt- zu Vereinigungsmenge zweier Shingle-Mengen $S$ und $T$ beschreibt:
 \begin{equation}
@@ -246,7 +248,7 @@ Als Ähnlichkeitsmetrik dient die Jaccard-Ähnlichkeit, die das Verhältnis von 
 Dabei sind $S, T$ endliche Mengen von $k$-Shingles und $|\cdot|$ bezeichnet die Kardinalität. Der Wertebereich beträgt $\mathrm{SIM}(S, T) \in [0, 1]$: Der Wert $0$ entspricht disjunkten Mengen ($S \cap T = \emptyset$), der Wert $1$ identischen Mengen ($S = T$).
 
 \paragraph{MinHashing.}
-Der direkte mengenbasierte Vergleich erzeugt bei $n$ Lognachrichten einen Aufwand von $\mathcal{O}(n^2)$. \textit{MinHashing} reduziert die Mengen daher auf kompakte Signaturen fester Länge. Der Algorithmus permutiert die Zeilen der booleschen Shingle-Matrix zufällig und speichert je Spalte den Index der ersten Zeile mit dem Wert~1. Die Wahrscheinlichkeit, dass zwei Spalten nach einer Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer Jaccard-Ähnlichkeit:
+Der direkte mengenbasierte Vergleich erzeugt bei $n$ Lognachrichten einen Aufwand von $\mathcal{O}(n^2)$. \textit{MinHashing} reduziert die Mengen daher auf kompakte Signaturen fester Länge. Der Algorithmus permutiert die Zeilen der booleschen Shingle-Matrix zufällig und speichert je Spalte den Index der ersten Zeile mit dem Wert~1. Die Wahrscheinlichkeit, dass zwei Spalten nach einer Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer Jaccard-Ähnlichkeit.
 Hierbei bezeichnet $\pi$ eine zufällige Permutation der Zeilen und $h_{\pi}(\cdot)$ die zugehörige MinHash-Funktion. Durch $p$-fache Wiederholung mit unabhängigen Permutationen entsteht eine Signatur der Länge $p \in \mathbb{N}_{>0}$. Die mittlere Anzahl übereinstimmender Positionen zweier Signaturen approximiert die Jaccard-Ähnlichkeit erwartungstreu \cite{Leskovec2020_Kap3_3}. In der späteren Implementierung entspricht $p$ dem Parameter \texttt{MINHASH\_NUM\_PERM} (vgl.\ Abschnitt~\ref{sec:eval:minhash}).
 
 \paragraph{Locality Sensitive Hashing.}
