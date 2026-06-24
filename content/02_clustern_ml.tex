@@ -97,7 +97,7 @@ Die naive Implementierung bestimmt für jeden der $N$ Datenpunkte dessen $\epsil
 
 
 Im folgenden Abschnitt geht es um den Drain Online Log Parser, welcher in den algorithmischen Vergleichen durch die Python-Bibliothek drain3 \footnote{GitHub Repository zur Python Implementierung von drain: \url{https://github.com/logpai/Drain3}} genutzt wird. Die Bibliothek basiert auf dem Drain-Algorithmus. Die „3” im Namen zeigt an, dass es sich um eine Weiterentwicklung der Drain-Bibliothek handelt, welche für Python 3 optimiert wurde. Die Vorgänger-Bibliothek war für Python 2 entwickelt worden. 
-Drain ist in der Lage, Lognachrichten kontinuierlich zu verarbeiten und ihnen dabei ein Logcluster sowie ein Logtemplate zuzuordnen. Ein Online-Logparser wie \texttt{drain3} kann Logs eines Systems „on-demand“ verarbeiten, er muss nicht vorher auf Daten angelernt werden. Dies geschieht durch einen internen Parse-Baum mit fester Tiefe (Fixed Depth Tree), welcher den Kern des Algorithmus bildet. Statt Lognachrichten erst über einen Zeitraum zu sammeln und nachträglich auszuwerten, leitet Drain jede neu eintreffende Nachricht direkt durch diese Baumstruktur, um sie effizient dem passenden Cluster zuzuordnen. Der Prozess lässt sich vereinfacht in vier Schritte unterteilen \cite[Abschn.~III]{drain}:
+Drain ist in der Lage, Lognachrichten kontinuierlich zu verarbeiten und sie dabei einer Loggruppe zuzuordnen. Eine Loggruppe fasst alle Lognachrichten zusammen, die demselben Ereignistyp entsprechen, und besitzt ein zugehöriges Logtemplate -- ein generalisiertes Muster der Nachricht, in dem variable Bestandteile durch Wildcards (\texttt{<*>}) ersetzt sind. In der praktischen Implementierung \texttt{drain3} wird eine Loggruppe durch die Klasse \texttt{LogCluster} abgebildet (vgl. Abschnitt~\ref{sec:drain3_persistenz}). Ein Online-Logparser wie \texttt{drain3} kann Logs eines Systems „on-demand“ verarbeiten, er muss nicht vorher auf Daten angelernt werden. Dies geschieht durch einen internen Parse-Baum mit fester Tiefe (Fixed Depth Tree), welcher den Kern des Algorithmus bildet. Statt Lognachrichten erst über einen Zeitraum zu sammeln und nachträglich auszuwerten, leitet Drain jede neu eintreffende Nachricht direkt durch diese Baumstruktur, um sie effizient dem passenden Cluster zuzuordnen. Der Prozess lässt sich vereinfacht in vier Schritte unterteilen \cite[Abschn.~III]{drain}:
 
 \begin{enumerate}
     \item Vorverarbeitung: Zunächst werden mittels einfacher regulärer Ausdrücke offensichtliche Variablen wie IP-Adressen oder Block-IDs aus der Lognachricht entfernt, um die Genauigkeit zu verbessern.
@@ -120,8 +120,8 @@ $simSeq$, welche im ursprünglichen Drain-Paper formal definiert ist
     \label{eq:simseq}
 \end{equation}
 
-Dabei repräsentieren $seq_1$ die neu eintreffende Lognachricht und $seq_2$ das 
-gespeicherte Logtemplate einer Kandidatengruppe. Der Ausdruck $seq(i)$ bezeichnet 
+Dabei repräsentieren $seq_1$ die neu eintreffende Lognachricht und $seq_2$ das
+gespeicherte Logtemplate einer der potenziellen Loggruppen am Blattknoten. Der Ausdruck $seq(i)$ bezeichnet
 das $i$-te Token der jeweiligen Sequenz, während $n$ die Gesamtlänge beider 
 Sequenzen in Token angibt – da Drain auf der ersten Baumebene bereits nach 
 Log-Länge filtert, ist diese für beide Sequenzen identisch. Die Hilfsfunktion 
@@ -136,8 +136,8 @@ $simSeq$ ergibt sich damit als der Anteil übereinstimmender Tokens an der
 Gesamtlänge der Nachricht – ein Wert zwischen $0$ und $1$. Wird der berechnete 
 Wert mit dem konfigurierbaren Ähnlichkeitsschwellenwert $st$ verglichen 
 (\lstinline{drain_sim_th} in der drain3-Bibliothek), gilt: Ist 
-$simSeq \geq st$, wird die Nachricht der Kandidatengruppe mit dem höchsten 
-$simSeq$-Wert zugeordnet und das Template gegebenenfalls durch Wildcards 
+$simSeq \geq st$, wird die Nachricht der Loggruppe mit dem höchsten
+$simSeq$-Wert zugeordnet und das Template gegebenenfalls durch Wildcards
 aktualisiert. Unterschreitet der beste Kandidat den Schwellenwert, legt Drain 
 an dieser Stelle eine neue Loggruppe an.
 
@@ -146,8 +146,9 @@ Durch diese Struktur mit fester Tiefe vermeidet Drain, dass der Suchbaum zu tief
 Für den praktischen Einsatz der Python-Bibliothek drain3 ist zudem ein Aspekt relevant, der über die theoretische Beschreibung im ursprünglichen Paper hinausgeht: die Persistenz des Log-Modells. Der Drain Algorithmus ist als reines In-Memory-Verfahren konzipiert, bei dem der Parse-Baum flüchtig im Arbeitsspeicher existiert und theoretisch bei jedem Systemstart neu aufgebaut werden müsste. Die drain3-Bibliothek erweitert diesen Ansatz jedoch um eine Speicherfunktion (\textit{Snapshotting}). Dies ermöglicht es, den kompletten internen Zustand des Baumes inklusive aller gelernten Templates und Cluster auf die Festplatte zu schreiben und bei einem Neustart wiederherzustellen. In der Praxis muss der Parser somit nicht jedes Mal bei null beginnen ("Cold Start"), sondern kann nahtlos auf das historische Wissen zugreifen und neue Lognachrichten sofort effizient in die bestehende Struktur integrieren.
 
 \subsection{Persistenz in Drain3: Zustandserhaltung des Parse-Baums}
+\label{sec:drain3_persistenz}
 
-Die Persistenzmechanik innerhalb der \lstinline{TemplateMiner-Klasse} \ref{lst:template_miner_py} der Datei \\ \texttt{templateminer.py} gewährleistet die Dauerhaftigkeit des trainierten Modellzustands über Laufzeiten hinweg. Die Architektur sieht hierfür die Nutzung eines abstrakten PersistenceHandlers vor, der bei der Initialisierung des TemplateMiners optional übergeben wird. Ist ein solcher Handler definiert, initiiert das System beim Start automatisch den Versuch, einen bereits existierenden Zustand mittels der Methode \lstinline{load_state()} wiederherzustellen. Der eigentliche Speichervorgang wird durch die Methode \lstinline{save_state()} abgebildet. Dabei verwendet die Funktion \lstinline{save_state} das Modul \lstinline{jsonpickle}, das ganze Python-Objektgraphen in das JSON-Format überführen kann. \lstinline{jsonpickle} ist eine Serialisierungsbibliothek, die beliebige Python-Objekte in lesbares JSON umwandeln und auch wieder exakt in ihre ursprüngliche Objektinstanz zurückführen kann. Dies gelingt, indem das Modul automatisch Python-spezifische Metadaten wie Klassennamen, Variablen und deren Werte in das JSON einbettet. Dadurch können selbst komplexe, verschachtelte Strukturen wie der Drain-Parse-Baum ohne Informationsverlust gespeichert und beim Neustart nahtlos wiederhergestellt werden. Die Funktion \lstinline{load_state} liest den Zustand aus der abgespeicherten Datei ein und dekomprimiert den Inhalt, wenn vorher eine Komprimierung mit \lstinline{zlib} stattgefunden hat.  Anschließend wandelt \lstinline{JSONPickle.load()} den Zustand wieder in eine Instanz der Drain-Klasse zurück. Danach werden Felder wie \lstinline{id_to_cluster} gesetzt. Dabei handelt es sich um ein Schlüssel-Wert-Paar, welches die Zuordnung von der Cluster-ID und den Logcluster-Daten aus dem Template, der Cluster-Größe und der ID ermöglicht. Auch der \lstinline{cluster_count} wird wiederhergestellt, der anzeigt, wie viele Cluster schon gefunden wurden, sowie das \lstinline{root_node}, der Wurzelknoten des Baums zur Verarbeitung der Logs. 
+Die Persistenzmechanik innerhalb der \lstinline{TemplateMiner-Klasse} \ref{lst:template_miner_py} der Datei \\ \texttt{templateminer.py} gewährleistet die Dauerhaftigkeit des trainierten Modellzustands über Laufzeiten hinweg. Die Architektur sieht hierfür die Nutzung eines abstrakten PersistenceHandlers vor, der bei der Initialisierung des TemplateMiners optional übergeben wird. Ist ein solcher Handler definiert, initiiert das System beim Start automatisch den Versuch, einen bereits existierenden Zustand mittels der Methode \lstinline{load_state()} wiederherzustellen. Der eigentliche Speichervorgang wird durch die Methode \lstinline{save_state()} abgebildet. Dabei verwendet die Funktion \lstinline{save_state} das Modul \lstinline{jsonpickle}, das ganze Python-Objektgraphen in das JSON-Format überführen kann. \lstinline{jsonpickle} ist eine Serialisierungsbibliothek, die beliebige Python-Objekte in lesbares JSON umwandeln und auch wieder exakt in ihre ursprüngliche Objektinstanz zurückführen kann. Dies gelingt, indem das Modul automatisch Python-spezifische Metadaten wie Klassennamen, Variablen und deren Werte in das JSON einbettet. Dadurch können selbst komplexe, verschachtelte Strukturen wie der Drain-Parse-Baum ohne Informationsverlust gespeichert und beim Neustart nahtlos wiederhergestellt werden. Die Funktion \lstinline{load_state} liest den Zustand aus der abgespeicherten Datei ein und dekomprimiert den Inhalt, wenn vorher eine Komprimierung mit \lstinline{zlib} stattgefunden hat.  Anschließend wandelt \lstinline{JSONPickle.load()} den Zustand wieder in eine Instanz der Drain-Klasse zurück. Danach werden Felder wie \lstinline{id_to_cluster} gesetzt. Dabei handelt es sich um ein Schlüssel-Wert-Paar, das jeder Cluster-ID die zugehörige \texttt{LogCluster}-Instanz zuordnet -- die programmatische Entsprechung der in Abschnitt~\ref{sec:drain3} eingeführten Loggruppe, bestehend aus Logtemplate, Cluster-Größe und ID. Auch der \lstinline{cluster_count} wird wiederhergestellt, der anzeigt, wie viele Cluster schon gefunden wurden, sowie das \lstinline{root_node}, der Wurzelknoten des Baums zur Verarbeitung der Logs. 
 Die beiden Funktionen \lstinline{save_state()} und \lstinline{load_state()} stellen sicher, dass der Zustand des Parsers über einen Neustart hinweg gespeichert und wiederhergestellt werden kann. Durch die Implementierung als abstrakte Klasse bietet die Bibliothek viel Flexibilität, wie der Zustand des Systems gespeichert werden soll. Die Bibliothek kommt mit vorgefertigten PersistenceHandlern für Redis und Kafka, zwei Vertreter performanter Schlüssel-Wert-Datenbanken. 
 
 \section{Brain: Log Parsing mit bidirektionalem Parallelbaum}
@@ -217,10 +218,24 @@ gegenüber 0,865 bei Drain – eine Verbesserung um 11,6~\% \cite{brain}.
 \section{MinHash und Locality Sensitive Hashing}
 \label{sec:minhash_lsh}
 
-MinHash und Locality Sensitive Hashing (\acs{LSH}) bilden eine Kombination probabilistischer Algorithmen zur effizienten Auffindung ähnlicher Datenpunkte in großen Mengen. Das Verfahren opfert ein geringes Maß an Präzision zugunsten einer erheblichen Reduktion des Rechenaufwands. Klassische Einsatzgebiete sind die Duplikaterkennung in Dokumentensammlungen sowie kollaborative Filtersysteme im großflächigen E-Commerce \cite{Leskovec2020_Kap3_1}. Im Vergleich zu den vorgestellten partitionierenden und dichtebasierten Verfahren stellt MinHash\,+\,LSH einen rein signaturbasierten Ansatz dar, dessen Eignung für das kontinuierliche Log-Clustering im Folgenden theoretisch eingeordnet und in Abschnitt~\ref{sec:eval:param:minhash} sowie Abschnitt~\ref{sec:eval:minhash} empirisch überprüft wird.
+MinHash und Locality Sensitive Hashing (\acs{LSH}) bilden eine Kombination probabilistischer Algorithmen zur effizienten Auffindung ähnlicher Datenpunkte in großen Mengen. Das Verfahren opfert ein geringes Maß an Präzision zugunsten einer erheblichen Reduktion des Rechenaufwands. Klassische Einsatzgebiete sind die Duplikaterkennung in Dokumentensammlungen sowie kollaborative Filtersysteme im großflächigen E-Commerce \cite{Leskovec2020_Kap3_1}. Im Vergleich zu den vorgestellten partitionierenden und dichtebasierten Verfahren stellt MinHash\,+\,LSH einen rein hashbasierten Ansatz dar, dessen Eignung für das kontinuierliche Log-Clustering im Folgenden theoretisch eingeordnet und in Abschnitt~\ref{sec:eval:param:minhash} sowie Abschnitt~\ref{sec:eval:minhash} empirisch überprüft wird.
 
 \paragraph{Shingling.}
-Im ersten Schritt wird jede Log-Nachricht durch \textit{Shingling} in eine mathematische Menge überführt. Ein $k$-Shingle bezeichnet einen beliebigen Teilstring der Länge $k$, der in der Nachricht vorkommt. Eine Lognachricht $d$ wird damit auf die Menge $S_d \subseteq \Sigma^{k}$ aller in ihr enthaltenen $k$-Shingles abgebildet, wobei $\Sigma$ das zugrundeliegende Token-Alphabet bezeichnet. Die Wahl von $k \in \mathbb{N}_{>0}$ beeinflusst die Trennschärfe des Verfahrens maßgeblich: Zu kleine Werte führen zu fälschlich hohen Ähnlichkeitswerten, da bereits einzelne gemeinsame Tokens eine große Überschneidung erzeugen \cite{Leskovec2020_Kap3_3_2}.
+Im ersten Schritt wird jede Log-Nachricht durch \textit{Shingling} in eine mathematische Menge überführt. Ein $k$-Shingle bezeichnet einen beliebigen Teilstring der Länge $k$, der in der Nachricht vorkommt. Eine Lognachricht wird damit auf die Menge  aller in ihr enthaltenen $k$-Shingles abgebildet. Die Wahl von $k \in \mathbb{N}_{>0}$ beeinflusst die Trennschärfe des Verfahrens maßgeblich: Zu kleine Werte führen zu fälschlich hohen Ähnlichkeitswerten, da bereits einzelne gemeinsame Tokens eine große Überschneidung erzeugen \cite{Leskovec2020_Kap3_3_2}.
+
+Als Beispiel dient diese Lognachricht: \textbf{sshd[14144]: Accepted publickey for ubuntu}. Für $k = 3$ ergibt sich folgende Menge an 40 $k$-Shingles
+\shorthandoff{"}
+\begin{equation}
+\begin{split}
+\{\ &\texttt{"ssh"}, \texttt{"shd"}, \texttt{"hd["}, \texttt{"d[1"}, \texttt{"[14"}, \texttt{"141"}, \texttt{"414"}, \texttt{"144"}, \\
+&\texttt{"44]"}, \texttt{"4]:"}, \texttt{"]: "}, \texttt{": A"}, \texttt{" Ac"}, \texttt{"Acc"}, \texttt{"cce"}, \texttt{"cep"}, \\
+&\texttt{"ept"}, \texttt{"pte"}, \texttt{"ted"}, \texttt{"ed "}, \texttt{"d p"}, \texttt{" pu"}, \texttt{"pub"}, \texttt{"ubl"}, \\
+&\texttt{"bli"}, \texttt{"lic"}, \texttt{"ick"}, \texttt{"cke"}, \texttt{"key"}, \texttt{"ey "}, \texttt{"y f"}, \texttt{" fo"}, \\
+&\texttt{"for"}, \texttt{"or "}, \texttt{"r u"}, \texttt{" ub"}, \texttt{"ubu"}, \texttt{"bun"}, \texttt{"unt"}, \texttt{"ntu"}\ \}
+\end{split}
+\label{eq:shingling_example}
+\end{equation}
+\shorthandon{"}
 
 \paragraph{Jaccard-Ähnlichkeit.}
 Als Ähnlichkeitsmetrik dient die Jaccard-Ähnlichkeit, die das Verhältnis von Schnitt- zu Vereinigungsmenge zweier Shingle-Mengen $S$ und $T$ beschreibt:
@@ -232,10 +247,6 @@ Dabei sind $S, T$ endliche Mengen von $k$-Shingles und $|\cdot|$ bezeichnet die 
 
 \paragraph{MinHashing.}
 Der direkte mengenbasierte Vergleich erzeugt bei $n$ Lognachrichten einen Aufwand von $\mathcal{O}(n^2)$. \textit{MinHashing} reduziert die Mengen daher auf kompakte Signaturen fester Länge. Der Algorithmus permutiert die Zeilen der booleschen Shingle-Matrix zufällig und speichert je Spalte den Index der ersten Zeile mit dem Wert~1. Die Wahrscheinlichkeit, dass zwei Spalten nach einer Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer Jaccard-Ähnlichkeit:
-\begin{equation}
-    P\!\left[h_{\pi}(S) = h_{\pi}(T)\right] = \mathrm{SIM}(S, T)
-    \label{eq:minhash_prob}
-\end{equation}
 Hierbei bezeichnet $\pi$ eine zufällige Permutation der Zeilen und $h_{\pi}(\cdot)$ die zugehörige MinHash-Funktion. Durch $p$-fache Wiederholung mit unabhängigen Permutationen entsteht eine Signatur der Länge $p \in \mathbb{N}_{>0}$. Die mittlere Anzahl übereinstimmender Positionen zweier Signaturen approximiert die Jaccard-Ähnlichkeit erwartungstreu \cite{Leskovec2020_Kap3_3}. In der späteren Implementierung entspricht $p$ dem Parameter \texttt{MINHASH\_NUM\_PERM} (vgl.\ Abschnitt~\ref{sec:eval:minhash}).
 
 \paragraph{Locality Sensitive Hashing.}

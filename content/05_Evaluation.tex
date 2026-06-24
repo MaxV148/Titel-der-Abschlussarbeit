@@ -44,7 +44,7 @@ niedrigdimensionalen Raum, der die signifikanten Varianzanteile der
 ursprünglichen Repräsentation erhält und in dem distanzbasierte Maße wie die
 Silhouette zuverlässige Werte liefern. Auf dieser reduzierten Repräsentation
 wird $k$ über den Bereich $k \in \{2, 3, \dots, 39\}$ variiert; pro Wert
-werden Inertia und Silhouette-Score berechnet. Die zugehörige
+werden Elbow und Silhouette-Score berechnet. Die zugehörige
 Implementierung findet sich in Zelle~10 des Notebooks \texttt{ML.ipynb}.
 
 Die SVD-Reduktion dient ausschließlich der Parameterbestimmung; das
@@ -53,21 +53,21 @@ eigentliche K-Means-Clustering im Implementierungsschritt
 TF-IDF-Matrix.
 
 \paragraph{Automatische Knickerkennung.}
-Der Knickpunkt in der Inertia-Kurve wird automatisch über die
+Der Knickpunkt in der Elbow-Kurve wird automatisch über die
 \texttt{KneeLocator}-Bibliothek bestimmt~\cite{satopa2011kneedle}. Das Verfahren
 approximiert die Kurve stückweise und lokalisiert den Punkt maximaler
 Krümmung (\textit{Knee}) als Schnittpunkt zwischen der Verbindungslinie der
 Endpunkte und der normierten Kurve. Die Parameter lauten
 \texttt{curve=\textquotesingle convex\textquotesingle},
 \texttt{direction=\textquotesingle decreasing\textquotesingle}, entsprechend
-dem typischen Verlauf einer fallenden Inertia-Kurve. Dieses Verfahren
+dem typischen Verlauf einer fallenden Elbow-Kurve. Dieses Verfahren
 entspricht methodisch dem Vorgehen bei DBSCAN
 (Abschnitt~\ref{sec:eval:param:dbscan}).
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.85\linewidth]{images/kmeans_elbow.png}
-    \caption{Elbow-Diagramm der Inertia über $k \in [2, 39]$. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
+    \caption{Elbow-Kurve über $k \in [2, 39]$. Auf der Y-Achse ist die Within-Cluster Sum of Squares (\acs{WCSS}) aufgetragen\footnote{\url{https://www.graphpad.com/guides/prism/latest/statistics/stat_clustering_elbow_method.htm}}. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
     \label{fig:kmeans-elbow}
 \end{figure}
 
@@ -80,7 +80,7 @@ entspricht methodisch dem Vorgehen bei DBSCAN
 
 \paragraph{Auswertung.}
 Abbildung~\ref{fig:kmeans-elbow} zeigt den typischen konvexen Verlauf der
-Inertia-Kurve: Die Inertia fällt von $k = 2$ zunächst steil ab und geht
+Elbow-Kurve: Der Elbow fällt von $k = 2$ zunächst steil ab und geht
 anschließend in einen flachen Bereich über. Der \texttt{KneeLocator} lokalisiert
 den Knick bei $k = 13$. In Abbildung~\ref{fig:kmeans-silhouette} liegt das
 globale Maximum des Silhouette-Scores ebenfalls bei $k = 13$.

@@ -1,12 +1,12 @@
 \chapter{Praktische Realisierung der Testumgebung und Verfahren}
 \label{chap:real}
 
-Der folgende Abschnitt beschreibt die Testumgebung für den Vergleich der Clustering-Algorithmen. Ziel ist eine realitätsnahe Umgebung, um Leistungsfähigkeit und Effizienz der Algorithmen unter kontrollierten Bedingungen zu bewerten. Die Testumgebung umfasst die eingesetzte Hardware und Software, die Konfiguration der Vektordatenbank sowie die Vorbereitung der Logdaten. Die Versuche finden in fünf Durchläufen statt, wobei eine zufällige Neuanordnung der Logdaten in den Proben erfolgt. Dies stellt sicher, dass die Tests die Algorithmen nicht nur punktuell, sondern auch im kontinuierlichen Betrieb unter realen Bedingungen prüfen.
+Der folgende Abschnitt beschreibt die Testumgebung für den Vergleich der Clustering-Algorithmen. Ziel ist eine realitätsnahe Umgebung, um Leistungsfähigkeit und Effizienz der Algorithmen unter kontrollierten Bedingungen zu bewerten. Die Testumgebung umfasst die eingesetzte Software, die Konfiguration der Vektordatenbank sowie die Vorbereitung der Logdaten. Die Versuche finden in fünf Durchläufen statt, wobei eine zufällige Neuanordnung der Logdaten in den Proben erfolgt. Dies stellt sicher, dass die Tests die Algorithmen nicht nur punktuell, sondern auch im kontinuierlichen Betrieb unter realen Bedingungen prüfen.
 Diese umfassende Testumgebung bildet die Grundlage für einen fundierten und nachvollziehbaren Vergleich der unterschiedlichen Clustering-Ansätze.
 
 \section{Jupyter Notebooks: Interaktive Validierung der Clustering-Ansätze}
 Eine geeignete Softwareumgebung ist essenziell für die Durchführung und Validierung der Tests. Prinzipiell lassen sich die erforderlichen Python-Skripte über die Konsole ausführen. Für explorative Analysen ist der Einsatz von Jupyter Notebooks jedoch effizienter und komfortabler.\footnote{Eine detaillierte Beschreibung der Architektur von Jupyter-Notebook ist hier zu finden: \url{https://docs.jupyter.org/en/latest/projects/architecture/content-architecture.html}}
-Der entscheidende Vorteil gegenüber herkömmlichen Python-Dateien liegt in der interaktiven, zellenbasierten Struktur. Während ein klassisches Skript linear durchläuft und den Arbeitsspeicher anschließend freigibt, hält das Jupyter Notebook den Kernel-Zustand (Speicherinhalt) über die Ausführung einzelner Zellen hinaus aufrecht. Dies erlaubt die einmalige Ausführung rechenintensiver Vorgänge – wie das Laden großer Datensätze oder das Trainieren von Modellen. Anschließend lassen sich verschiedene Analyseschritte iterativ testen, ohne den gesamten Prozess neu zu starten.
+Der entscheidende Vorteil gegenüber herkömmlichen Python-Dateien liegt in der interaktiven, zellenbasierten Struktur. Während ein klassisches Python-Skript typischerweise als separater Prozess von oben nach unten ausgeführt wird und sein Speicherzustand nach Programmende verloren geht, arbeitet Jupyter Notebook mit einem persistenten Python-Kernel. Dieser Kernel erhält Variablen, geladene Daten und trainierte Modelle über die Ausführung einzelner Zellen hinweg. Dadurch ähnelt Jupyter eher einer erweiterten interaktiven Python-Umgebung wie IPython als einem klassischen Batch-Skript. Besonders bei explorativen Analysen erlaubt dies, rechenintensive Schritte einmal auszuführen und anschließend verschiedene Auswertungen iterativ zu testen, ohne den gesamten Prozess erneut zu starten.
 Zudem unterstützt Jupyter den Ansatz des „Literate Programming“\footnote{Ein Programmierparadigma von Donald E. Knuth: \url{http://www.literateprogramming.com/index.html}}: Die Kombination von ausführbarem Code, formatiertem Text (Markdown) und visualisierten Ergebnissen in einem Dokument erhöht die Nachvollziehbarkeit. Grafiken und Diagramme erscheinen direkt im Kontext des Codes, was die Interpretation der Ergebnisse und die spätere Berichterstellung erleichtert.
 
 \section{Docker: Isolierte und reproduzierbare Testumgebungen}
@@ -102,10 +102,17 @@ Ergebnisse in den nachfolgenden Abschnitten.
 \paragraph{Datensatz.}
 Als Datengrundlage dienen drei Quellen des Loghub-2k-Benchmarks~\cite{zhu2023loghublargecollectionlog}: die
 Systemlog-Datensätze \texttt{Linux}, \texttt{Apache} und \texttt{OpenSSH}, die jeweils
-$2\,000$ Lognachrichten umfassen. Die drei Quellen werden zu einem gemeinsamen Datensatz
-mit $10\,000$ Einträgen zusammengeführt und zufällig permutiert. Diese Mischung bildet ein
-realitätsnäheres Szenario ab, in dem ein Log-Aggregator Nachrichten aus heterogenen
-Systemquellen mit unterschiedlichen Format- und Vokabularkonventionen verarbeiten muss.
+$2\,000$ Lognachrichten umfassen. Die drei Quellen werden zeilenweise zu einem gemeinsamen
+Pool von $6\,000$ Lognachrichten zusammengefügt. Da die Zielgröße des Datensatzes bei $10\,000$ Einträgen liegt, werden die
+fehlenden $4\,000$ Einträge durch zufälliges Duplizieren bereits vorhandener Lognachrichten
+ergänzt: Mittels \texttt{random.choices} werden $4\,000$ Zeilen mit Zurücklegen aus dem Pool
+gezogen und an diesen angefügt. Anschließend wird der resultierende Datensatz aus
+$10\,000$ Einträgen vollständig zufällig permutiert (\texttt{random.shuffle}). Für beide
+Zufallsoperationen wird ein fester Seed (\texttt{random.seed(42)}) verwendet, sodass
+Zusammensetzung und Reihenfolge des Mischdatensatzes reproduzierbar sind. Diese Mischung
+bildet ein Szenario ab, in dem ein Log-Aggregator Nachrichten aus
+heterogenen Systemquellen mit unterschiedlichen Format- und Vokabularkonventionen
+verarbeiten muss.
 
 \paragraph{Motivation und Vorgehen der manuellen Beschriftung.}
 Die Erstellung der Referenzklassifikation orientiert sich am Vorgehen aus
@@ -115,10 +122,14 @@ die dasselbe Ereignis beschreiben -- etwa fehlgeschlagene
 Authentifizierungsversuche, Initialisierungen eines Webserver-Workers oder
 Verbindungsabbau\-meldungen einer SSH-Sitzung --, werden zu einer Klasse
 zusammengefasst, unabhängig von varianten Bestandteilen wie Zeitstempel,
-Hostname, Prozess-ID oder Benutzername. Eine vollautomatische Übernahme der
+Hostname, Prozess-ID oder Benutzername. 
+Eine vollautomatische Übernahme der
 mit Loghub ausgelieferten Templates wurde verworfen, da diese rein
 syntaktisch über Tokenstrukturen definiert sind und semantisch
 zusammen\-gehörige Nachrichten in mehrere Templates aufteilen.
+Die Referenzklassifikation ist damit
+nicht als objektive Template-Wahrheit zu verstehen, sondern als semantisch
+motivierte Evaluationsgrundlage für die in dieser Arbeit untersuchte Clustering-Aufgabe.
 
 Die Beschriftung erfolgt regelbasiert durch reguläre Ausdrücke und
 Teilstring-Suchen, die auf charakteristische, varianzarme Bestandteile der

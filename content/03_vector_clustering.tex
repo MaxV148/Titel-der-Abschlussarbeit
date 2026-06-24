@@ -140,8 +140,10 @@ Trotz der genannten Vorteile weist PostgreSQL in Kombination mit pg\_vector
 gegenüber dedizierten Vektordatenbanken einige Einschränkungen auf. Da PostgreSQL 
 als relationales Datenbanksystem konzipiert ist, sind Vektoroperationen nicht der 
 primäre Anwendungsfall, sondern werden durch eine Erweiterung nachgerüstet. Der 
-HNSW-Index ermöglicht zwar eine schnelle Ähnlichkeitssuche, liefert jedoch nur 
-approximative Ergebnisse und tauscht dabei Recall gegen Geschwindigkeit ein 
+HNSW-Index ermöglicht zwar eine schnelle Ähnlichkeitssuche, liefert jedoch nur
+approximative Ergebnisse und tauscht dabei Recall (der Anteil der tatsächlichen
+nächsten Nachbarn, der im Durchschnitt über alle Anfragen gefunden wird) gegen
+Geschwindigkeit ein
 \cite{githubGitHubPgvectorpgvector}. Wie die Benchmark-Messungen von \acs{ANN}-Benchmarks
 für pgvector zeigen, sinkt der Durchsatz bei steigendem Recall über alle getesteten 
 Datensätze hinweg erheblich (siehe Abb.~\ref{fig:ann_recall}). Bei einem Recall 
@@ -199,7 +201,7 @@ drei Kandidaten anhand der definierten Anforderungen zusammen.
 Die Erweiterung pg\_vector bietet mehrere Ähnlichkeitsmetriken, darunter die Kosinus-Ähnlichkeit und das Skalarprodukt.
 Das Skalarprodukt vergleicht die Länge zweier Vektoren und stellt so eine Ähnlichkeit zwischen ihnen fest (siehe Abb. \ref{fig:skalar}) \cite{pineconeVectorSimilarity}.
 \begin{equation}
-  \bold{a} \cdot \bold{b} = |a||b|\cos{\alpha}
+  \bold{a} \cdot \bold{b} = |\bold{a}||\bold{b}|\cos{\alpha}
 \end{equation}
 
 \begin{figure}
@@ -211,13 +213,13 @@ Das Skalarprodukt vergleicht die Länge zweier Vektoren und stellt so eine Ähnl
 
 Die Kosinus-Ähnlichkeit (siehe Formel \ref{cos}) betrachtet hingegen nicht die Länge der Vektoren, sondern nur den Winkel zueinander \cite{pineconeVectorSimilarity}.
 \begin{equation}
-  sim(a,b) = \frac{a\cdot b}{||a||\cdot||b||}
+  sim(\bold{a},\bold{b}) = \frac{\bold{a}\cdot \bold{b}}{||\bold{a}||\cdot||\bold{b}||}
   \label{cos}
 \end{equation}
 Bei der Auswahl der Ähnlichkeitsmetrik ist die Vorverarbeitung relevant: Wenn ein Modell den Text vektorisiert, das beispielsweise die Kosinus-Ähnlichkeit nutzt, ist es von Vorteil, diese Metrik auch beim Vergleich der Vektoren zu verwenden \cite{pineconeVectorSimilarity}. In diesem Fall kommt das Embedding-Modell „sentence-transformers/all-MiniLM-L6-v2“ zum Einsatz, bei dessen Training auch die Kosinus-Ähnlichkeit Verwendung fand \footnote{Mehr Details unter Training procedure: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2}.
 
 \section{Entwurf eines iterativen Algorithmus zur Vektorgruppierung}\label{PG_Algorithmn}
-Nach der Datenbankwahl folgt die Implementierung eines Algorithmus zur kontinuierlichen Gruppierung der Lognachrichten mithilfe der Vektordatenbank. Da das System periodisch neue Logs übermittelt, deckt der Algorithmus zwei Zustände ab. Zunächst erfolgt eine initiale Gruppierung, sofern noch keine Loggruppen vorliegen. Anschließend erweitern neue Logs die bestehenden Gruppen.
+Nach der Datenbankwahl folgt die Implementierung eines Algorithmus zur kontinuierlichen Gruppierung der Lognachrichten mithilfe der Vektordatenbank. Diese Vorgehensweise wurde wärende der Praxisphase entwurfen und pratkisch eingesetzt. Da das System periodisch neue Logs übermittelt, deckt der Algorithmus zwei Zustände ab. Zunächst erfolgt eine initiale Gruppierung, sofern noch keine Loggruppen vorliegen, dieser Teil wird im Regelfall nur einmal ausgeführt wenn das System ohne bestehende Daten startet. Anschließend erweitern neue Logs die bestehenden Gruppen.
 
 \begin{algorithm}[H]
 \caption{Initial Log Clustering}
