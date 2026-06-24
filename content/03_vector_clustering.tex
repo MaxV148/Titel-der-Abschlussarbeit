@@ -199,7 +199,7 @@ drei Kandidaten anhand der definierten Anforderungen zusammen.
 Die Erweiterung pg\_vector bietet mehrere Ähnlichkeitsmetriken, darunter die Kosinus-Ähnlichkeit und das Skalarprodukt.
 Das Skalarprodukt vergleicht die Länge zweier Vektoren und stellt so eine Ähnlichkeit zwischen ihnen fest (siehe Abb. \ref{fig:skalar}) \cite{pineconeVectorSimilarity}.
 \begin{equation}
-  \bold{a} \cdot \bold{b} = |a||b|\cos{\alpha}
+  \bold{a} \cdot \bold{b} = |\bold{a}||\bold{b}|\cos{\alpha}
 \end{equation}
 
 \begin{figure}
@@ -211,7 +211,7 @@ Das Skalarprodukt vergleicht die Länge zweier Vektoren und stellt so eine Ähnl
 
 Die Kosinus-Ähnlichkeit (siehe Formel \ref{cos}) betrachtet hingegen nicht die Länge der Vektoren, sondern nur den Winkel zueinander \cite{pineconeVectorSimilarity}.
 \begin{equation}
-  sim(a,b) = \frac{a\cdot b}{||a||\cdot||b||}
+  sim(\bold{a},\bold{b}) = \frac{\bold{a}\cdot \bold{b}}{||\bold{a}||\cdot||\bold{b}||}
   \label{cos}
 \end{equation}
 Bei der Auswahl der Ähnlichkeitsmetrik ist die Vorverarbeitung relevant: Wenn ein Modell den Text vektorisiert, das beispielsweise die Kosinus-Ähnlichkeit nutzt, ist es von Vorteil, diese Metrik auch beim Vergleich der Vektoren zu verwenden \cite{pineconeVectorSimilarity}. In diesem Fall kommt das Embedding-Modell „sentence-transformers/all-MiniLM-L6-v2“ zum Einsatz, bei dessen Training auch die Kosinus-Ähnlichkeit Verwendung fand \footnote{Mehr Details unter Training procedure: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2}.

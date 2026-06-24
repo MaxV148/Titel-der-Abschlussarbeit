@@ -222,6 +222,22 @@ MinHash und Locality Sensitive Hashing (\acs{LSH}) bilden eine Kombination proba
 \paragraph{Shingling.}
 Im ersten Schritt wird jede Log-Nachricht durch \textit{Shingling} in eine mathematische Menge überführt. Ein $k$-Shingle bezeichnet einen beliebigen Teilstring der Länge $k$, der in der Nachricht vorkommt. Eine Lognachricht $d$ wird damit auf die Menge $S_d \subseteq \Sigma^{k}$ aller in ihr enthaltenen $k$-Shingles abgebildet, wobei $\Sigma$ das zugrundeliegende Token-Alphabet bezeichnet. Die Wahl von $k \in \mathbb{N}_{>0}$ beeinflusst die Trennschärfe des Verfahrens maßgeblich: Zu kleine Werte führen zu fälschlich hohen Ähnlichkeitswerten, da bereits einzelne gemeinsame Tokens eine große Überschneidung erzeugen \cite{Leskovec2020_Kap3_3_2}.
 
+
+Als Beispiel dient diese Lognachricht: \textbf{sshd[14144]: Accepted publickey for ubuntu}. Für $k = 3$ ergibt sich folgende Menge an 40 $k$-Shingles
+\shorthandoff{"}
+\begin{equation}
+\begin{split}
+\{\ &\texttt{"ssh"}, \texttt{"shd"}, \texttt{"hd["}, \texttt{"d[1"}, \texttt{"[14"}, \texttt{"141"}, \texttt{"414"}, \texttt{"144"}, \\
+&\texttt{"44]"}, \texttt{"4]:"}, \texttt{"]: "}, \texttt{": A"}, \texttt{" Ac"}, \texttt{"Acc"}, \texttt{"cce"}, \texttt{"cep"}, \\
+&\texttt{"ept"}, \texttt{"pte"}, \texttt{"ted"}, \texttt{"ed "}, \texttt{"d p"}, \texttt{" pu"}, \texttt{"pub"}, \texttt{"ubl"}, \\
+&\texttt{"bli"}, \texttt{"lic"}, \texttt{"ick"}, \texttt{"cke"}, \texttt{"key"}, \texttt{"ey "}, \texttt{"y f"}, \texttt{" fo"}, \\
+&\texttt{"for"}, \texttt{"or "}, \texttt{"r u"}, \texttt{" ub"}, \texttt{"ubu"}, \texttt{"bun"}, \texttt{"unt"}, \texttt{"ntu"}\ \}
+\end{split}
+\label{eq:shingling_example}
+\end{equation}
+\shorthandon{"}
+
+
 \paragraph{Jaccard-Ähnlichkeit.}
 Als Ähnlichkeitsmetrik dient die Jaccard-Ähnlichkeit, die das Verhältnis von Schnitt- zu Vereinigungsmenge zweier Shingle-Mengen $S$ und $T$ beschreibt:
 \begin{equation}
@@ -231,11 +247,7 @@ Als Ähnlichkeitsmetrik dient die Jaccard-Ähnlichkeit, die das Verhältnis von 
 Dabei sind $S, T$ endliche Mengen von $k$-Shingles und $|\cdot|$ bezeichnet die Kardinalität. Der Wertebereich beträgt $\mathrm{SIM}(S, T) \in [0, 1]$: Der Wert $0$ entspricht disjunkten Mengen ($S \cap T = \emptyset$), der Wert $1$ identischen Mengen ($S = T$).
 
 \paragraph{MinHashing.}
-Der direkte mengenbasierte Vergleich erzeugt bei $n$ Lognachrichten einen Aufwand von $\mathcal{O}(n^2)$. \textit{MinHashing} reduziert die Mengen daher auf kompakte Signaturen fester Länge. Der Algorithmus permutiert die Zeilen der booleschen Shingle-Matrix zufällig und speichert je Spalte den Index der ersten Zeile mit dem Wert~1. Die Wahrscheinlichkeit, dass zwei Spalten nach einer Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer Jaccard-Ähnlichkeit:
-\begin{equation}
-    P\!\left[h_{\pi}(S) = h_{\pi}(T)\right] = \mathrm{SIM}(S, T)
-    \label{eq:minhash_prob}
-\end{equation}
+Der direkte mengenbasierte Vergleich erzeugt bei $n$ Lognachrichten einen Aufwand von $\mathcal{O}(n^2)$. \textit{MinHashing} reduziert die Mengen daher auf kompakte Signaturen fester Länge. Der Algorithmus permutiert die Zeilen der booleschen Shingle-Matrix zufällig und speichert je Spalte den Index der ersten Zeile mit dem Wert~1. Die Wahrscheinlichkeit, dass zwei Spalten nach einer Permutation denselben MinHash-Wert aufweisen, entspricht exakt ihrer Jaccard-Ähnlichkeit.
 Hierbei bezeichnet $\pi$ eine zufällige Permutation der Zeilen und $h_{\pi}(\cdot)$ die zugehörige MinHash-Funktion. Durch $p$-fache Wiederholung mit unabhängigen Permutationen entsteht eine Signatur der Länge $p \in \mathbb{N}_{>0}$. Die mittlere Anzahl übereinstimmender Positionen zweier Signaturen approximiert die Jaccard-Ähnlichkeit erwartungstreu \cite{Leskovec2020_Kap3_3}. In der späteren Implementierung entspricht $p$ dem Parameter \texttt{MINHASH\_NUM\_PERM} (vgl.\ Abschnitt~\ref{sec:eval:minhash}).
 
 \paragraph{Locality Sensitive Hashing.}
