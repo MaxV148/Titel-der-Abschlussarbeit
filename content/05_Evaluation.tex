@@ -63,7 +63,7 @@ Der Knickpunkt (punkt mit maximalem Krümmung) in der Elbow-Kurve wird automatis
 \texttt{KneeLocator}-Bibliothek bestimmt~\cite{satopa2011kneedle}. Das Verfahren
 approximiert die Kurve stückweise und lokalisiert den Punkt maximaler
 Krümmung (\textit{Knee}) als Schnittpunkt zwischen der Verbindungslinie der
-Endpunkte und der normierten Kurve. Dabei wird auf der y-Ache der WCSS\footnote{\url{https://www.graphpad.com/guides/prism/latest/statistics/stat_clustering_elbow_method.htm}} Wert abgetragen und auf der X-Achse die Anzahl der Cluster.  Die Parameter lauten
+Endpunkte und der normierten Kurve. Dabei wird auf der Y-Ache der WCSS, auch inertia genannt, \cite{Rallabandi} Wert abgetragen und auf der X-Achse die Anzahl der Cluster.  Die Parameter lauten
 \texttt{curve=\textquotesingle convex\textquotesingle},
 \texttt{direction=\textquotesingle decreasing\textquotesingle}, entsprechend
 dem typischen Verlauf einer fallenden Elbow-Kurve. Dise Paramater wurde durch die von der Bibliothek bereitgestellten hilfsfunktion \texttt{find_shape} automatisch ermittelt.
