@@ -19,7 +19,13 @@ Ground-Truth optimierter Parameter wäre dort nicht reproduzierbar. Stattdessen
 kommen verfahrensspezifische, unsupervised Heuristiken zum Einsatz, die
 ausschließlich auf den Eingangsvektoren bzw.\ -nachrichten operieren --
 beispielsweise die Elbow-Methode und der Silhouette-Score für K-Means oder
-der $k$-Distanz-Plot für DBSCAN. Die Ground-Truth-basierten Metriken ARI und
+der $k$-Distanz-Plot für DBSCAN. Der Silhouette-Score bewertet dabei die
+Qualität einer Clusterzuordnung, indem er für jeden Datenpunkt die
+mittlere Distanz zu den Punkten des eigenen Clusters mit der mittleren
+Distanz zum nächstgelegenen fremden Cluster vergleicht und daraus einen
+Wert im Bereich $[-1, 1]$
+ableitet\footnote{\url{https://www.geeksforgeeks.org/machine-learning/what-is-silhouette-score/}}.
+Die Ground-Truth-basierten Metriken ARI und
 V-Measure dienen somit ausschließlich der \emph{Evaluation}, nicht dem
 \emph{Tuning}; eine Doppelnutzung würde zu Information Leakage und damit zu
 systematisch überschätzten Ergebnissen führen.
@@ -53,15 +59,14 @@ eigentliche K-Means-Clustering im Implementierungsschritt
 TF-IDF-Matrix.
 
 \paragraph{Automatische Knickerkennung.}
-Der Knickpunkt in der Elbow-Kurve wird automatisch über die
+Der Knickpunkt (punkt mit maximalem Krümmung) in der Elbow-Kurve wird automatisch über die
 \texttt{KneeLocator}-Bibliothek bestimmt~\cite{satopa2011kneedle}. Das Verfahren
 approximiert die Kurve stückweise und lokalisiert den Punkt maximaler
 Krümmung (\textit{Knee}) als Schnittpunkt zwischen der Verbindungslinie der
 Endpunkte und der normierten Kurve. Dabei wird auf der y-Ache der WCSS\footnote{\url{https://www.graphpad.com/guides/prism/latest/statistics/stat_clustering_elbow_method.htm}} Wert abgetragen und auf der X-Achse die Anzahl der Cluster.  Die Parameter lauten
 \texttt{curve=\textquotesingle convex\textquotesingle},
 \texttt{direction=\textquotesingle decreasing\textquotesingle}, entsprechend
-dem typischen Verlauf einer fallenden Elbow-Kurve. Dieses Verfahren
-entspricht methodisch dem Vorgehen bei DBSCAN
+dem typischen Verlauf einer fallenden Elbow-Kurve. Dise Paramater wurde durch die von der Bibliothek bereitgestellten hilfsfunktion \texttt{find_shape} automatisch ermittelt.
 (Abschnitt~\ref{sec:eval:param:dbscan}).
 
 \begin{figure}[h]
@@ -87,11 +92,7 @@ globale Maximum des Silhouette-Scores ebenfalls bei $k = 13$.
 
 Beide Heuristiken konvergieren auf $k = 13$. Dieser Wert wird daher für die
 in Listing~\ref{lst:k-means-cluster} dokumentierte Implementierung sowie für
-die nachfolgende Evaluation verwendet. Das absolute Niveau des
-Silhouette-Scores ist gering, was bereits an dieser Stelle auf eine schwache
-geometrische Trennung der Cluster im TF-IDF-Raum hinweist; diese Beobachtung
-wird in der Diskussion der K-Means-Ergebnisse
-(Abschnitt~\ref{sec:eval:kmeans}) erneut aufgegriffen.
+die nachfolgende Evaluation verwendet.
 
 % ----------------------------------------------------------------
 \subsection{DBSCAN}
