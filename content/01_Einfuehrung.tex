@@ -90,7 +90,6 @@ Der Beta-Wert ist ein variabler Faktor (Standardwert 1,0), der die Gewichtung vo
 Das V-Measure beurteilt Homogenität und Vollständigkeit und analysiert, ob Klassen vermischt oder zersplittert sind. Der ARI korrigiert hingegen den Zufallseinfluss und dient als strenger Benchmark für die Übereinstimmung mit der Referenz.
 
 
-
 \section{Abgrenzung}
 Die Arbeit entwirft keine neuen Algorithmen, sondern nutzt bestehende, etablierte und getestete Bibliotheken. Im Vordergrund steht der methodische Vergleich der Verfahren hinsichtlich der in Abschnitt~\ref{Vorgensweise} definierten Qualitäts- und Stabilitätskriterien. Quantitative Messungen von Laufzeit und Ressourcenverbrauch werden bewusst ausgeklammert, da eine reproduzierbare Performance-Bewertung eine isolierte Hardware-Umgebung sowie ein dediziertes Benchmark-Setup voraussetzt, deren methodischer Aufwand den Rahmen dieser Arbeit überschreitet. Stattdessen werden Aspekte des Ressourcenverhaltens qualitativ über die strukturelle Eignung für den inkrementellen Betrieb diskutiert. Ebenso ist die Entwicklung eines produktiven Endsystems mit Web-Oberfläche oder Anbindung an eine Log-Aggregations-Pipeline (etwa Elasticsearch) nicht Gegenstand dieser Arbeit; die Implementierung erfolgt ausschließlich in einer Jupyter-Notebook-basierten Evaluationsumgebung.
 

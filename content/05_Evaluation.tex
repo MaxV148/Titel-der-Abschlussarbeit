@@ -57,7 +57,7 @@ Der Knickpunkt in der Elbow-Kurve wird automatisch über die
 \texttt{KneeLocator}-Bibliothek bestimmt~\cite{satopa2011kneedle}. Das Verfahren
 approximiert die Kurve stückweise und lokalisiert den Punkt maximaler
 Krümmung (\textit{Knee}) als Schnittpunkt zwischen der Verbindungslinie der
-Endpunkte und der normierten Kurve. Die Parameter lauten
+Endpunkte und der normierten Kurve. Dabei wird auf der y-Ache der WCSS\footnote{\url{https://www.graphpad.com/guides/prism/latest/statistics/stat_clustering_elbow_method.htm}} Wert abgetragen und auf der X-Achse die Anzahl der Cluster.  Die Parameter lauten
 \texttt{curve=\textquotesingle convex\textquotesingle},
 \texttt{direction=\textquotesingle decreasing\textquotesingle}, entsprechend
 dem typischen Verlauf einer fallenden Elbow-Kurve. Dieses Verfahren
@@ -67,7 +67,7 @@ entspricht methodisch dem Vorgehen bei DBSCAN
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.85\linewidth]{images/kmeans_elbow.png}
-    \caption{Elbow-Kurve über $k \in [2, 39]$. Auf der Y-Achse ist die Within-Cluster Sum of Squares (\acs{WCSS}) aufgetragen\footnote{\url{https://www.graphpad.com/guides/prism/latest/statistics/stat_clustering_elbow_method.htm}}. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
+    \caption{Elbow-Kurve über $k \in [2, 39]$. Auf der Y-Achse ist die Within-Cluster Sum of Squares (\acs{WCSS}) aufgetragen. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
     \label{fig:kmeans-elbow}
 \end{figure}
 
