@@ -349,35 +349,14 @@ embeddings = model.encode(logs_clean, show_progress_bar=True)
 
 Die erzeugten Embeddings werden in einer PostgreSQL-Datenbank mit der
 pgvector-Erweiterung persistiert. Das Schema umfasst zwei Tabellen sowie jeweils
-einen HNSW-Index, wie in Listing~\ref{lst:pgvector-schema} dargestellt.
+einen HNSW-Index, wie in Listing~\ref{fig:pg_schema} dargestellt.
 
-\begin{lstlisting}[caption={Datenbankschema mit HNSW-Indizes},
-                   label={lst:pgvector-schema}]
-CREATE EXTENSION IF NOT EXISTS vector;
-
--- Haupt-Tabelle: eine Zeile pro Lognachricht
-CREATE TABLE IF NOT EXISTS log (
-    id             SERIAL PRIMARY KEY,
-    message        TEXT NOT NULL,
-    embedding      vector(384),
-    processed      BOOLEAN DEFAULT FALSE,
-    log_cluster_id INTEGER
-);
-
--- Hilfstabelle: ein Durchschnittsvektor pro Cluster
-CREATE TABLE IF NOT EXISTS avg_embedding (
-    id             SERIAL PRIMARY KEY,
-    avg_embedding  vector(384) NOT NULL,
-    log_cluster_id INTEGER NOT NULL UNIQUE
-);
-
--- HNSW-Indizes fuer schnelle Cosinus-Distanz-Suche
-CREATE INDEX IF NOT EXISTS idx_log_embedding_hnsw
-    ON log USING hnsw (embedding vector_cosine_ops);
-
-CREATE INDEX IF NOT EXISTS idx_avg_embedding_hnsw
-    ON avg_embedding USING hnsw (avg_embedding vector_cosine_ops);
-\end{lstlisting}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\linewidth]{erd_pgvector.png}
+    \caption{ERD Schema der Postgresql}
+    \label{fig:pg_schema}
+\end{figure}
 
 Die Tabelle \texttt{log} speichert neben dem Rohtext und dem Embedding zwei
 Steuerfelder: \texttt{processed} kennzeichnet, ob eine Lognachricht bereits einem
