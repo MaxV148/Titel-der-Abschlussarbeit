@@ -312,20 +312,20 @@ deutlich zu machen.
 \subsection{pgvector}
 \label{sec:eval:param:pgvector}
 
-Das pgvector-Verfahren wird durch einen einzigen Cosinus-Schwellenwert
-gesteuert: \texttt{PGVECTOR\_COSINE\_DISTANCE} (im Folgenden
-\texttt{THRESHOLD}). Der Parameter wird über einen 1D-Sweep untersucht.
+Das pgvector-Verfahren wird durch einen Cosinus-Schwellen gesteuert:\\
+\texttt{THRESHOLD}. Der Parameter wird gemeinsam über einen
+2D-Sweep untersucht.
 
 \paragraph{Sweep-Aufbau.}
-Für \texttt{THRESHOLD} wird der Bereich
-$\{0{,}1, 0{,}2, 0{,}3, 0{,}4, 0{,}5, 0{,}6, 0{,}7\}$ durchlaufen. Um ein
-realistisches Szenario nachzubilden, wird der Sweep auf einer Stichprobe von
-$n = 2\,000$ Lognachrichten begrenzt, da im produktiven Einsatz nicht alle
-Logs zur Parameterbestimmung zur Verfügung stehen. Die Embeddings werden
-einmal vorberechnet und für jeden Schwellenwert wiederverwendet; pro
-Durchlauf werden die DB-Tabellen geleert, die Embeddings per Bulk-Insert
-eingespielt und die Funktion \texttt{cluster\_batch} aus
-Abschnitt~\ref{PG_Algorithmn} auf die vollständige Stichprobe angewendet.
+Für \texttt{THRESHOLD} wird der Bereich $\{0{.}1,0{.}2,0{.}3, 0{.}4, 0{.}5, 0{.}6, 0{.}7\}$
+durchlaufen. Es werden ausschließlich
+Kombinationen mit \texttt{RECLUSTER} $<$ \texttt{INITIAL} ausgewertet, da die
+zweistufige Architektur einen strengeren Schwellenwert für das Re-Clustering
+voraussetzt; die übrigen Felder bleiben leer. Um ein realistisches Szenario nachzubilden wird der
+Sweep auf einer Stichprobe von $n = 2\,000$ Lognachrichten begrenzt, da man im produktive Einsatz nicht alle Logs zur Parameterbestimmung zur Verfügung stehen. Die Embeddings werden einmal vorberechnet und für jede
+Parameterkombination wiederverwendet; pro Kombination werden die DB-Tabellen
+geleert, die Embeddings per Bulk-Insert eingespielt und der vollständige
+zweistufige Algorithmus aus Abschnitt~\ref{sec:real:pgvector} ausgeführt.
 Als unsupervised Auswertungskriterium dient der Silhouette-Score auf den
 Embeddings (Cosinus-Metrik, \texttt{sample\_size = 2000},
 \texttt{random\_state = 42}); zusätzlich wird die Cluster-Anzahl
