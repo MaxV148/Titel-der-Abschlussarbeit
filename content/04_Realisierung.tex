@@ -313,7 +313,7 @@ Datenbankschemas sowie die Ausführung des in Abschnitt~\ref{PG_Algorithmn}
 entworfenen iterativen Clustering-Verfahrens. Die Parameter der Umsetzung sind:
 
 \begin{itemize}
-    \item \texttt{PGVECTOR\_EMBEDDING\_MODEL = sentence-transformers/all-MiniLM-L6-v2}
+    \item \texttt{PGVECTOR\_EMBEDDING\_MODEL = \\ sentence-transformers/all-MiniLM-L6-v2}
     \item \texttt{PGVECTOR\_COSINE\_DISTANCE = 0.3}
 \end{itemize}
 
@@ -350,6 +350,8 @@ pgvector-Erweiterung persistiert. Das Schema umfasst zwei Tabellen sowie jeweils
 einen HNSW-Index und wird vollständig durch das in Listing~\ref{lst:pg-schema}
 gezeigte SQL-Statement angelegt; das zugehörige Entity-Relationship-Diagramm
 zeigt Abbildung~\ref{fig:pg_schema}.
+
+\newpage
 
 \begin{lstlisting}[caption={Schemadefinition für \texttt{log} und \texttt{avg\_embedding}},
                    label={lst:pg-schema}]
@@ -444,7 +446,7 @@ avg\_embedding RESTART IDENTITY} setzt anschließend beide in
 Listing~\ref{lst:pg-schema} angelegten Tabellen vollständig zurück und
 beginnt die \texttt{SERIAL}-Sequenzen neu bei~1, sodass jeder Lauf auf einem
 leeren Schema beginnt, ohne dass das Schema selbst neu erstellt werden muss.
-Der zentrale Aufruf \texttt{cluster\_batch(logs\_clean, embeddings,
+Der zentrale Aufruf \texttt{cluster\_batch(logs\_clean, embeddings, \\
 PGVECTOR\_COSINE\_DISTANCE, conn)} übergibt den gesamten Datensatz in einem
 Durchlauf an das in Abschnitt~\ref{PG_Algorithmn} beschriebene Verfahren. Das
 zurückgegebene Label-Array wird abschließend als Spalte

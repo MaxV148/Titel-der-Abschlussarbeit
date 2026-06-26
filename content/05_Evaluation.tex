@@ -312,17 +312,13 @@ deutlich zu machen.
 \subsection{pgvector}
 \label{sec:eval:param:pgvector}
 
-Das pgvector-Verfahren wird durch zwei Cosinus-Schwellen gesteuert:\\
-\texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE} (im Folgenden \texttt{INITIAL})
-für Phase~1 und Strategie~2 sowie
-\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE} (\texttt{RECLUSTER}) für
-Strategie~1 in Phase~2. Beide Parameter werden gemeinsam über einen
+Das pgvector-Verfahren wird durch einen Cosinus-Schwellen gesteuert:\\
+\texttt{THRESHOLD}. Der Parameter wird gemeinsam über einen
 2D-Sweep untersucht.
 
 \paragraph{Sweep-Aufbau.}
-Für \texttt{INITIAL} wird der Bereich $\{0{.}3, 0{.}4, 0{.}5, 0{.}6, 0{.}7\}$
-durchlaufen, für \texttt{RECLUSTER} der Bereich
-$\{0{.}1, 0{.}2, 0{.}3, 0{.}4, 0{.}5\}$. Es werden ausschließlich
+Für \texttt{THRESHOLD} wird der Bereich $\{0{.}1,0{.}2,0{.}3, 0{.}4, 0{.}5, 0{.}6, 0{.}7\}$
+durchlaufen. Es werden ausschließlich
 Kombinationen mit \texttt{RECLUSTER} $<$ \texttt{INITIAL} ausgewertet, da die
 zweistufige Architektur einen strengeren Schwellenwert für das Re-Clustering
 voraussetzt; die übrigen Felder bleiben leer. Um ein realistisches Szenario nachzubilden wird der
