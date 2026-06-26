@@ -312,77 +312,53 @@ deutlich zu machen.
 \subsection{pgvector}
 \label{sec:eval:param:pgvector}
 
-Das pgvector-Verfahren wird durch zwei Cosinus-Schwellen gesteuert:\\
-\texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE} (im Folgenden \texttt{INITIAL})
-für Phase~1 und Strategie~2 sowie
-\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE} (\texttt{RECLUSTER}) für
-Strategie~1 in Phase~2. Beide Parameter werden gemeinsam über einen
-2D-Sweep untersucht.
+Das pgvector-Verfahren wird durch einen einzigen Cosinus-Schwellenwert
+gesteuert: \texttt{PGVECTOR\_COSINE\_DISTANCE} (im Folgenden
+\texttt{THRESHOLD}). Der Parameter wird über einen 1D-Sweep untersucht.
 
 \paragraph{Sweep-Aufbau.}
-Für \texttt{INITIAL} wird der Bereich $\{0{.}3, 0{.}4, 0{.}5, 0{.}6, 0{.}7\}$
-durchlaufen, für \texttt{RECLUSTER} der Bereich
-$\{0{.}1, 0{.}2, 0{.}3, 0{.}4, 0{.}5\}$. Es werden ausschließlich
-Kombinationen mit \texttt{RECLUSTER} $<$ \texttt{INITIAL} ausgewertet, da die
-zweistufige Architektur einen strengeren Schwellenwert für das Re-Clustering
-voraussetzt; die übrigen Felder bleiben leer. Um ein realistisches Szenario nachzubilden wird der
-Sweep auf einer Stichprobe von $n = 2\,000$ Lognachrichten begrenzt, da man im produktive Einsatz nicht alle Logs zur Parameterbestimmung zur Verfügung stehen. Die Embeddings werden einmal vorberechnet und für jede
-Parameterkombination wiederverwendet; pro Kombination werden die DB-Tabellen
-geleert, die Embeddings per Bulk-Insert eingespielt und der vollständige
-zweistufige Algorithmus aus Abschnitt~\ref{sec:real:pgvector} ausgeführt.
+Für \texttt{THRESHOLD} wird der Bereich
+$\{0{,}1, 0{,}2, 0{,}3, 0{,}4, 0{,}5, 0{,}6, 0{,}7\}$ durchlaufen. Um ein
+realistisches Szenario nachzubilden, wird der Sweep auf einer Stichprobe von
+$n = 2\,000$ Lognachrichten begrenzt, da im produktiven Einsatz nicht alle
+Logs zur Parameterbestimmung zur Verfügung stehen. Die Embeddings werden
+einmal vorberechnet und für jeden Schwellenwert wiederverwendet; pro
+Durchlauf werden die DB-Tabellen geleert, die Embeddings per Bulk-Insert
+eingespielt und die Funktion \texttt{cluster\_batch} aus
+Abschnitt~\ref{PG_Algorithmn} auf die vollständige Stichprobe angewendet.
 Als unsupervised Auswertungskriterium dient der Silhouette-Score auf den
 Embeddings (Cosinus-Metrik, \texttt{sample\_size = 2000},
-\texttt{random\_state = 42}); zusätzlich wird die Cluster-Anzahl protokolliert.
-Die zugehörige Implementierung findet sich im Notebook \texttt{ML.ipynb}
-(Zelle~13).
+\texttt{random\_state = 42}); zusätzlich wird die Cluster-Anzahl
+protokolliert. Die zugehörige Implementierung findet sich im Notebook
+\texttt{ML.ipynb} (Zelle~9).
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=0.78\linewidth]{images/pgvector_heatmap_clusters.png}
-    \caption{pgvector-Parametersuche -- Cluster-Anzahl pro Parameterkombination ($n = 2\,000$). Felder oberhalb der Diagonalen verletzen die Bedingung \texttt{RECLUSTER} $<$ \texttt{INITIAL} und werden nicht ausgewertet.}
-    \label{fig:pgvector-heatmap-clusters}
+    \includegraphics[width=0.95\linewidth]{images/pgvector_sweep.png}
+    \caption{pgvector-Parametersuche -- Cluster-Anzahl (links) und
+    Silhouette-Score, Cosinus-Metrik (rechts) je Schwellenwert
+    \texttt{THRESHOLD} ($n = 2\,000$). Globales Maximum des
+    Silhouette-Scores bei \texttt{THRESHOLD} $= 0{,}3$.}
+    \label{fig:pgvector-sweep}
 \end{figure}
 
-\begin{figure}[h]
-    \centering
-    \includegraphics[width=0.78\linewidth]{images/pgvector_heatmap_silhouette.png}
-    \caption{pgvector-Parametersuche -- Silhouette-Score (Cosinus-Metrik) pro Parameterkombination ($n = 2\,000$). Globales Maximum bei \texttt{INITIAL} $= 0{,}3$.}
-    \label{fig:pgvector-heatmap-silhouette}
-\end{figure}
+\paragraph{Beobachtung: \texttt{THRESHOLD} steuert Cluster-Anzahl und Qualität.}
+Mit steigendem \texttt{THRESHOLD} sinkt die Cluster-Anzahl monoton: $101$
+($\texttt{THRESHOLD} = 0{,}1$), $53$ ($0{,}2$), $37$ ($0{,}3$), $20$
+($0{,}4$), $15$ ($0{,}5$), $8$ ($0{,}6$), $7$ ($0{,}7$). Der
+Silhouette-Score erreicht bei \texttt{THRESHOLD} $= 0{,}3$ sein globales
+Maximum von $0{,}730$ und liegt für $0{,}1$ ($0{,}710$) und $0{,}2$
+($0{,}722$) nur knapp darunter -- die feinere Aufteilung in mehr Cluster
+bleibt also intern kohärent. Ab \texttt{THRESHOLD} $= 0{,}4$ ($0{,}672$)
+fällt der Score deutlicher und erreicht bei $0{,}5$ mit $0{,}603$ sein
+Minimum, bevor er bei $0{,}6$ ($0{,}615$) und $0{,}7$ ($0{,}611$) auf
+niedrigem Niveau leicht schwankt.
 
-\paragraph{Beobachtung 1:}
-Beide Heatmaps zeigen ein auffälliges Muster vertikaler Streifen: Sowohl die
-Cluster-Anzahl als auch der Silhouette-Score sind innerhalb jeder Spalte
-konstant; eine Variation von \texttt{RECLUSTER} verändert das Endergebnis
-\emph{nicht}. Die Ursache liegt in der Drei-Strategien-Logik der zweiten
-Phase (vgl.\ Abschnitt~\ref{sec:real:pgvector}): Findet Strategie~1 keinen
-ausreichend nahen Cluster-Schwerpunkt, weitet Strategie~2 die Suche
-unmittelbar auf alle bereits verarbeiteten Einzellogs mit dem
-\texttt{INITIAL}-Schwellenwert aus. Im untersuchten Datensatz greift dieser
-Fallback in praktisch allen Fällen, wodurch \texttt{RECLUSTER} effektiv
-übergangen wird. Die zweistufige Architektur reduziert sich faktisch auf
-eine durch \texttt{INITIAL} parametrisierte einstufige Pipeline.
-
-\paragraph{Beobachtung 2: \texttt{INITIAL} steuert Cluster-Anzahl und Qualität.}
-Mit kleiner werdendem \texttt{INITIAL} steigt die Cluster-Anzahl monoton:
-$10$ ($\texttt{INITIAL} = 0{,}7$), $13$ ($0{,}6$), $21$ ($0{,}5$), $32$
-($0{,}4$), $46$ ($0{,}3$). Der Silhouette-Score erreicht bei
-\texttt{INITIAL} $= 0{,}3$ sein globales Maximum von $0{,}653$, fast
-identisch mit \texttt{INITIAL} $= 0{,}4$ ($0{,}650$). Bei größeren
-Schwellenwerten fällt der Silhouette-Score deutlich ab -- bis auf $0{,}313$
-bei \texttt{INITIAL} $= 0{,}7$, was eine massive Untersegmentierung
-(nur $10$ Cluster) widerspiegelt.
-
-\paragraph{Wahl der Parameter.}
-Datengetrieben ergibt sich \texttt{INITIAL} $= 0{,}3$ aus dem Maximum des
-Silhouette-Scores. Da \texttt{RECLUSTER} keinen Effekt auf das Ergebnis
-zeigt, wäre jeder Wert kleiner als \texttt{INITIAL} austauschbar; gewählt
-wird \texttt{RECLUSTER} $= 0{,}2$, um die architektonische Intention der
-zweistufigen Pipeline (\enquote{strenger als Initial}) formal zu wahren.
-Bemerkenswert ist, dass die bei \texttt{INITIAL} $= 0{,}3$ resultierenden
-$\approx 46$ Cluster auf der Stichprobe nahezu der Anzahl von $44$
-Ground-Truth-Klassen entsprechen, ohne dass diese Information in die
-Parameterwahl eingeflossen ist.
+\paragraph{Wahl des Parameters.}
+Datengetrieben ergibt sich \texttt{THRESHOLD} $= 0{,}3$ aus dem Maximum des
+Silhouette-Scores. Die resultierenden $37$ Cluster auf der Stichprobe liegen
+in der Größenordnung der $44$ Ground-Truth-Klassen, ohne dass diese
+Information in die Parameterwahl eingeflossen ist.
 
 % ----------------------------------------------------------------
 \section{Ergebnisse der algorithmischen Verfahren}
