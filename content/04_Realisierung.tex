@@ -299,7 +299,7 @@ for log in df_labeled['log']:
 df_labeled['drain_cluster_id'] = drain_cluster_ids
 \end{lstlisting}
 
-\section{pgvector: Zweistufiges Embedding-basiertes Clustering}
+\section{pgvector: Embedding-basiertes Clustering}
 \label{sec:real:pgvector}
 
 Das pgvector-Verfahren unterscheidet sich grundlegend von den bisher vorgestellten
@@ -308,18 +308,16 @@ Baumstrukturen (Drain3) zu operieren, repräsentiert es jede Lognachricht als
 semantischen Vektor in einem kontinuierlichen, hochdimensionalen Einbettungsraum.
 Ähnliche Lognachrichten liegen in diesem Raum geometrisch nah beieinander, sodass
 die Clusterbildung auf Basis von Vektordistanzen erfolgen kann. Die Implementierung
-gliedert sich in drei Phasen: die Erzeugung der Embeddings, den Aufbau des
-Datenbankschemas sowie das zweistufige Clustering. Die Parameter der Umsetzung
-sind:
+gliedert sich in drei Schritte: die Erzeugung der Embeddings, den Aufbau des
+Datenbankschemas sowie die Ausführung des in Abschnitt~\ref{PG_Algorithmn}
+entworfenen iterativen Clustering-Verfahrens. Die Parameter der Umsetzung sind:
 
 \begin{itemize}
     \item \texttt{PGVECTOR\_EMBEDDING\_MODEL = sentence-transformers/all-MiniLM-L6-v2}
-    \item \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.3}
-    \item \texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.2}
-    \item \texttt{PGVECTOR\_INITIAL\_RATIO = 0.5}
+    \item \texttt{PGVECTOR\_COSINE\_DISTANCE = 0.3}
 \end{itemize}
 
-Die Wahl der beiden Cosinus-Schwellen wird zentral in
+Die Wahl der Cosinus-Schwelle wird zentral in
 Abschnitt~\ref{sec:eval:param:pgvector} im Rahmen der Parameterwahl
 begründet; an dieser Stelle wird ausschließlich die Implementierung
 beschrieben.
@@ -405,131 +403,51 @@ jedoch mehr Speicher und eine längere Aufbauzeit
 \cite{githubGitHubPgvectorpgvector}. Da die Datenmenge in diesem Szenario
 überschaubar ist, überwiegen die Vorteile der schnelleren Abfragezeit.
 
-\subsection{Phase 1: Initial Clustering auf der ersten Hälfte der Daten}
+\subsection{Ausführung des Clustering-Verfahrens}
 
-Das Clustering folgt einem zweistufigen Ansatz, der die Verarbeitungsreihenfolge
-explizit kontrolliert. In Phase 1 werden die ersten 50\,\% der Lognachrichten
-(\lstinline{split\_idx = int(len(logs\_clean) * 0.5)}) verarbeitet, um eine initiale
-Clusterbasis aufzubauen. Die restlichen Einträge werden zunächst als
-\lstinline{processed = TRUE} markiert, sodass der Algorithmus sie in dieser Phase
-überspringt. Das Vorgehen ist in Listing~\ref{lst:pgvector-initial} dargestellt.
+Listing~\ref{lst:pgvector-run} zeigt den Code, der das in
+Abschnitt~\ref{PG_Algorithmn} entworfene Verfahren (Funktion
+\texttt{cluster\_batch}, Listing~\ref{lst:cluster-batch}) auf den
+vollständigen Datensatz anwendet.
 
-\begin{lstlisting}[caption={Phase 1: Initial Clustering},
-                   label={lst:pgvector-initial}]
-PGVECTOR_INITIAL_COSINE_DISTANCE = 0.3
-PGVECTOR_INITIAL_RATIO           = 0.5
+\begin{lstlisting}[caption={Anwendung der Funktion \texttt{cluster\_batch} auf den Gesamtdatensatz},
+                   label={lst:pgvector-run}]
+# ===== PGVECTOR CLUSTERING =====
+from sqlalchemy import create_engine, text
+from sentence_transformers import SentenceTransformer
+import numpy as np
 
-split_idx = int(len(logs_clean) * PGVECTOR_INITIAL_RATIO)
+print("pgvector: Verbinde mit Datenbank...")
+engine = create_engine(PGVECTOR_DB_URL)
 
-# Zweite Haelfte temporaer sperren
-conn.execute(text(
-    "UPDATE log SET processed = TRUE WHERE id > :s"
-), {"s": split_idx})
+print("pgvector: Generiere Embeddings...")
+model = SentenceTransformer(PGVECTOR_EMBEDDING_MODEL)
+embeddings = model.encode(logs_clean, show_progress_bar=True)
 
-# Initial Clustering auf erster Haelfte
-for (log_id,) in candidates:
-    # Bereits zugewiesene Logs ueberspringen
-    if already_assigned(log_id):
-        continue
+with engine.connect() as conn:
+    conn.execute(text("TRUNCATE log, avg_embedding RESTART IDENTITY"))
+    conn.commit()
 
-    # Aehnliche Logs per Cosinus-Distanz finden
-    similar = conn.execute(text("""
-        WITH target AS (SELECT embedding FROM log WHERE id = :id)
-        SELECT l.id FROM log l, target t
-        WHERE l.processed = FALSE
-          AND (l.embedding <=> t.embedding) < :threshold
-        ORDER BY l.embedding <=> t.embedding
-    """), {"id": log_id,
-           "threshold": PGVECTOR_INITIAL_COSINE_DISTANCE})
 
-    if similar:
-        new_cluster_id = max_cluster_id() + 1
-        assign_cluster(similar_ids, new_cluster_id)
+print("pgvector: Clustering...")
+with engine.connect() as conn:
+    labels = cluster_batch(logs_clean, embeddings, PGVECTOR_COSINE_DISTANCE, conn)
 
-# Durchschnittsvektoren berechnen
-INSERT INTO avg_embedding (log_cluster_id, avg_embedding)
-SELECT log_cluster_id, AVG(embedding) FROM log
-WHERE log_cluster_id IS NOT NULL
-GROUP BY log_cluster_id
-ON CONFLICT (log_cluster_id) DO UPDATE
-    SET avg_embedding = EXCLUDED.avg_embedding;
+df_labeled['pgvector_cluster_id'] = labels
+print(f"pgvector: Fertig! {df_labeled['pgvector_cluster_id'].nunique()} Cluster erstellt")
 \end{lstlisting}
 
-Der Algorithmus iteriert sequenziell über alle noch nicht zugewiesenen
-Kandidaten. Für jeden Kandidaten wird über den HNSW-Index eine Nachbarschaftssuche
-mit dem Schwellenwert \texttt{PGVECTOR\_INITIAL\_COSINE\_DISTANCE = 0.3} ausgeführt:
-Alle Logs, deren Cosinus-Distanz zum aktuellen Kandidaten diesen Wert unterschreitet,
-gelten als ähnlich genug für eine gemeinsame Cluster-Zugehörigkeit. Der gesamte
-Ähnlichkeitsbatch erhält eine neue Cluster-ID. Nach Abschluss aller Zuweisungen
-werden die Durchschnittsvektoren je Cluster in \texttt{avg\_embedding} berechnet
-und gespeichert.
-
-\subsection{Phase 2: Re-Clustering auf der zweiten Hälfte der Daten}
-
-In Phase 2 werden die zurückgehaltenen 50\,\% der Lognachrichten verarbeitet.
-Diese werden als \lstinline{processed = FALSE} markiert und iterativ gegen die
-bereits bekannten Cluster abgeglichen. Das Re-Clustering folgt einer
-Drei-Strategien-Logik, die in Listing~\ref{lst:pgvector-recluster} dargestellt ist.
-
-\begin{lstlisting}[caption={Phase 2: Re-Clustering mit drei Strategien},
-                   label={lst:pgvector-recluster}]
-PGVECTOR_RECLUSTER_COSINE_DISTANCE = 0.2
-
-for (log_id,) in unprocessed:
-
-    # Strategie 1: Aehnlichen Durchschnittsvektor suchen
-    similar_cluster = conn.execute(text("""
-        WITH target AS (SELECT embedding FROM log WHERE id = :id)
-        SELECT ae.log_cluster_id FROM avg_embedding ae, target t
-        WHERE (ae.avg_embedding <=> t.embedding) <= :threshold
-        ORDER BY ae.avg_embedding <=> t.embedding LIMIT 1
-    """), {"id": log_id,
-           "threshold": PGVECTOR_RECLUSTER_COSINE_DISTANCE})
-
-    if similar_cluster:
-        assign_to_existing_cluster(log_id, similar_cluster)
-
-    else:
-        # Strategie 2: Aehnliches Einzel-Log suchen
-        similar_log = conn.execute(text("""
-            WITH target AS (SELECT embedding FROM log WHERE id = :id)
-            SELECT l.log_cluster_id FROM log l, target t
-            WHERE l.processed = TRUE
-              AND (l.embedding <=> t.embedding) < :threshold
-            ORDER BY l.embedding <=> t.embedding LIMIT 1
-        """), {"id": log_id,
-               "threshold": PGVECTOR_INITIAL_COSINE_DISTANCE})
-
-        if similar_log:
-            assign_to_existing_cluster(log_id, similar_log)
-        else:
-            # Strategie 3: Neuen Cluster anlegen
-            assign_new_cluster(log_id)
-
-    # Durchschnittsvektor aktualisieren
-    update_avg_embedding(log_id)
-\end{lstlisting}
-
-Die drei Strategien sind nach aufsteigendem Rechenaufwand geordnet. Strategie~1
-sucht zunächst in der \texttt{avg\_embedding}-Tabelle nach einem ähnlichen
-Cluster-Schwerpunkt; dieser Vergleich ist besonders effizient, da die Tabelle
-nur so viele Einträge enthält, wie Cluster existieren – deutlich weniger als die
-Gesamtzahl der Lognachrichten. Der Schwellenwert von
-\texttt{PGVECTOR\_RECLUSTER\_COSINE\_DISTANCE = 0.2} ist dabei bewusst strenger
-als in Phase 1 ($0{,}3$) gewählt: Ein neues Log soll einem bestehenden Cluster
-nur dann zugeordnet werden, wenn es sich in unmittelbarer Nähe des
-Cluster-Schwerpunktes befindet, um Cluster-Drift durch sukzessive Fehlzuweisungen
-zu vermeiden. Findet Strategie~1 keinen Treffer, weitet Strategie~2 die Suche
-auf alle verarbeiteten Einzellogs aus. Erst wenn auch diese Suche erfolglos
-bleibt, legt Strategie~3 einen neuen Cluster an. Nach jeder Zuweisung wird der
-betroffene Durchschnittsvektor in \texttt{avg\_embedding} aktualisiert, sodass
-nachfolgende Zuweisungen auf dem aktuellen Stand der Clusterbasis operieren.
-
-Im vorliegenden Testlauf erzeugte Phase~1 die initiale Clusterbasis; Phase~2
-ergänzte sie um wenige weitere Cluster aus Strategie~3, sodass insgesamt $80$
-Cluster entstehen. Diese Zahl liegt deutlich oberhalb der $44$
-Ground-Truth-Klassen des Datensatzes -- ein direkter Effekt des strengen
-Initial-Schwellenwerts $0{,}3$, dessen Begründung in
-Abschnitt~\ref{sec:eval:param:pgvector} erfolgt. Die Auswirkungen der
-Übersegmentierung auf die Evaluationsmetriken werden in
-Abschnitt~\ref{sec:eval:vector} diskutiert.
+Nach Aufbau der Datenbankverbindung erzeugt das Sentence-Transformer-Modell
+die Embeddings für sämtliche Lognachrichten (\texttt{logs\_clean}) analog zu
+Listing~\ref{lst:pgvector-embed}. Die Anweisung \texttt{TRUNCATE log,
+avg\_embedding RESTART IDENTITY} setzt anschließend beide in
+Listing~\ref{lst:pg-schema} angelegten Tabellen vollständig zurück und
+beginnt die \texttt{SERIAL}-Sequenzen neu bei~1, sodass jeder Lauf auf einem
+leeren Schema beginnt, ohne dass das Schema selbst neu erstellt werden muss.
+Der zentrale Aufruf \texttt{cluster\_batch(logs\_clean, embeddings,
+PGVECTOR\_COSINE\_DISTANCE, conn)} übergibt den gesamten Datensatz in einem
+Durchlauf an das in Abschnitt~\ref{PG_Algorithmn} beschriebene Verfahren. Das
+zurückgegebene Label-Array wird abschließend als Spalte
+\texttt{pgvector\_cluster\_id} in \texttt{df\_labeled} abgelegt und steht
+damit für die Evaluation in Kapitel~\ref{chap:eval} neben den Ergebnissen der
+übrigen Verfahren zur Verfügung.
