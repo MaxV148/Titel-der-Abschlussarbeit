@@ -219,36 +219,60 @@ Die Kosinus-Ähnlichkeit (siehe Formel \ref{cos}) betrachtet hingegen nicht die 
 Bei der Auswahl der Ähnlichkeitsmetrik ist die Vorverarbeitung relevant: Wenn ein Modell den Text vektorisiert, das beispielsweise die Kosinus-Ähnlichkeit nutzt, ist es von Vorteil, diese Metrik auch beim Vergleich der Vektoren zu verwenden \cite{pineconeVectorSimilarity}. In diesem Fall kommt das Embedding-Modell „sentence-transformers/all-MiniLM-L6-v2“ zum Einsatz, bei dessen Training auch die Kosinus-Ähnlichkeit Verwendung fand \footnote{Mehr Details unter Training procedure: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2}.
 
 \section{Entwurf eines iterativen Algorithmus zur Vektorgruppierung}\label{PG_Algorithmn}
-Nach der Datenbankwahl folgt der Entwurf eines Algorithmus zur kontinuierlichen Gruppierung der Lognachrichten mithilfe der Vektordatenbank. Diese Vorgehensweise wurde während der Praxisphase entworfen und praktisch eingesetzt. Der Algorithmus verarbeitet eingehende Lognachrichten sequenziell und vergleicht jede einzeln mit den bereits bestehenden Cluster-Schwerpunkten, unabhängig davon, ob zu diesem Zeitpunkt bereits Cluster existieren. Eine Unterscheidung zwischen einer initialen Gruppierung beim ersten Start und einer nachträglichen Erweiterung bestehender Cluster ist dadurch nicht erforderlich: Liegt noch kein Cluster-Schwerpunkt innerhalb des Schwellwerts vor, kann keine Ähnlichkeit gefunden werden, sodass automatisch ein neuer Cluster entsteht. Kaltstart und fortlaufender Betrieb werden so durch denselben Mechanismus abgedeckt.
+Nach der Datenbankwahl folgt der Entwurf eines Algorithmus zur kontinuierlichen Gruppierung der Lognachrichten mithilfe der Vektordatenbank. Diese Vorgehensweise wurde während der Praxisphase entworfen und praktisch eingesetzt. Der Algorithmus verarbeitet eingehende Lognachrichten sequenziell und vergleicht jede einzelne mit den bereits bestehenden Cluster-Schwerpunkten, unabhängig davon, ob zu diesem Zeitpunkt bereits Cluster existieren. Liegt noch kein Cluster-Schwerpunkt innerhalb des Schwellwerts vor, kann keine Ähnlichkeit gefunden werden, sodass automatisch ein neuer Cluster entsteht. Kaltstart und fortlaufender Betrieb werden so durch denselben Mechanismus abgedeckt.
 
-Listing~\ref{lst:cluster-batch} zeigt den Pseudocode des Verfahrens.
+Listing~\ref{lst:cluster-batch} zeigt den Python Code des Verfahrens.
 
 \begin{minted}[linenos, breaklines, fontsize=\small]{python}
-def cluster_batch(logs, embeddings, schwellwert):
-    cluster_anzahl = aktuelle_cluster_anzahl()
+def cluster_batch(logs, embeddings, threshold, conn):
+    cluster_count = conn.execute(
+        text('SELECT COALESCE(MAX(log_cluster_id), 0) FROM log')
+    ).scalar()
 
-    # Schritt 1: neue Logs mit ihren Embeddings persistieren
-    for log, embedding in zip(logs, embeddings):
-        speichere_log(log, embedding, verarbeitet=False)
+    for msg, emb in zip(logs, embeddings):
+        emb_str = '[' + ','.join(map(str, emb.tolist())) + ']'
+        conn.execute(text(
+            'INSERT INTO log (message, embedding, processed) VALUES (:msg, :emb, FALSE)'
+        ), {'msg': msg, 'emb': emb_str})
+    conn.commit()
 
-    unverarbeitete_logs = hole_unverarbeitete_logs()  # aufsteigend nach id
+    log_ids = conn.execute(text(
+        'SELECT id FROM log WHERE processed = FALSE AND embedding IS NOT NULL ORDER BY id'
+    )).fetchall()
 
-    # Schritt 2: jedes Log einzeln und sequenziell zuordnen
-    for log in unverarbeitete_logs:
-        gefundener_cluster = finde_naechsten_cluster(log.embedding, schwellwert)
+    for (log_id,) in log_ids:
+        sim_cluster = conn.execute(text('''
+            WITH target AS (SELECT embedding FROM log WHERE id = :id)
+            SELECT ae.log_cluster_id FROM avg_embedding ae, target t
+            WHERE (ae.avg_embedding <=> t.embedding) <= :threshold
+            ORDER BY ae.avg_embedding <=> t.embedding LIMIT 1
+        '''), {'id': log_id, 'threshold': threshold}).fetchone()
 
-        if gefundener_cluster is not None:
-            cluster_id = gefundener_cluster.id
+        if sim_cluster:
+            cid = sim_cluster[0]
         else:
-            cluster_anzahl += 1
-            cluster_id = cluster_anzahl
+            cluster_count += 1
+            cid = cluster_count
 
-        weise_zu_und_markiere_verarbeitet(log, cluster_id)
+        conn.execute(text(
+            'UPDATE log SET log_cluster_id = :cid, processed = TRUE WHERE id = :id'
+        ), {'cid': cid, 'id': log_id})
 
-        # Schritt 3: betroffenen Cluster-Schwerpunkt sofort aktualisieren
-        aktualisiere_durchschnittsvektor(cluster_id)
+        conn.execute(text('''
+            INSERT INTO avg_embedding (log_cluster_id, avg_embedding)
+            SELECT log_cluster_id, AVG(embedding) FROM log
+            WHERE embedding IS NOT NULL AND log_cluster_id = :cid
+            GROUP BY log_cluster_id
+            ON CONFLICT (log_cluster_id) DO UPDATE
+                SET avg_embedding = EXCLUDED.avg_embedding
+        '''), {'cid': cid})
 
-    return alle_cluster_zuweisungen()
+    conn.commit()
+
+    rows = conn.execute(text(
+        'SELECT id, log_cluster_id FROM log ORDER BY id'
+    )).fetchall()
+    return np.array([r[1] if r[1] is not None else -1 for r in rows])
 \end{minted}
 \captionof{lstlisting}{Iteratives Clustering neu eingehender Lognachrichten (Pseudocode)}
 \label{lst:cluster-batch}
