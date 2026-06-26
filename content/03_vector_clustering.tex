@@ -219,119 +219,40 @@ Die Kosinus-Ähnlichkeit (siehe Formel \ref{cos}) betrachtet hingegen nicht die 
 Bei der Auswahl der Ähnlichkeitsmetrik ist die Vorverarbeitung relevant: Wenn ein Modell den Text vektorisiert, das beispielsweise die Kosinus-Ähnlichkeit nutzt, ist es von Vorteil, diese Metrik auch beim Vergleich der Vektoren zu verwenden \cite{pineconeVectorSimilarity}. In diesem Fall kommt das Embedding-Modell „sentence-transformers/all-MiniLM-L6-v2“ zum Einsatz, bei dessen Training auch die Kosinus-Ähnlichkeit Verwendung fand \footnote{Mehr Details unter Training procedure: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2}.
 
 \section{Entwurf eines iterativen Algorithmus zur Vektorgruppierung}\label{PG_Algorithmn}
-Nach der Datenbankwahl folgt die Implementierung eines Algorithmus zur kontinuierlichen Gruppierung der Lognachrichten mithilfe der Vektordatenbank. Diese Vorgehensweise wurde wärende der Praxisphase entwurfen und pratkisch eingesetzt. Da das System periodisch neue Logs übermittelt, deckt der Algorithmus zwei Zustände ab. Zunächst erfolgt eine initiale Gruppierung, sofern noch keine Loggruppen vorliegen, dieser Teil wird im Regelfall nur einmal ausgeführt wenn das System ohne bestehende Daten startet. Anschließend erweitern neue Logs die bestehenden Gruppen.
+Nach der Datenbankwahl folgt der Entwurf eines Algorithmus zur kontinuierlichen Gruppierung der Lognachrichten mithilfe der Vektordatenbank. Diese Vorgehensweise wurde während der Praxisphase entworfen und praktisch eingesetzt. Der Algorithmus verarbeitet eingehende Lognachrichten sequenziell und vergleicht jede einzeln mit den bereits bestehenden Cluster-Schwerpunkten, unabhängig davon, ob zu diesem Zeitpunkt bereits Cluster existieren. Eine Unterscheidung zwischen einer initialen Gruppierung beim ersten Start und einer nachträglichen Erweiterung bestehender Cluster ist dadurch nicht erforderlich: Liegt noch kein Cluster-Schwerpunkt innerhalb des Schwellwerts vor, kann keine Ähnlichkeit gefunden werden, sodass automatisch ein neuer Cluster entsteht. Kaltstart und fortlaufender Betrieb werden so durch denselben Mechanismus abgedeckt.
 
-\begin{algorithm}[H]
-\caption{Initial Log Clustering}
-\begin{algorithmic}[1]
+Listing~\ref{lst:cluster-batch} zeigt den Pseudocode des Verfahrens.
 
-\Require Keine Eingabe (verwendet Datenbank-Daten)
-\Ensure Gruppierte Log-Einträge in Clustern
+\begin{minted}[linenos, breaklines, fontsize=\small]{python}
+def cluster_batch(logs, embeddings, schwellwert):
+    cluster_anzahl = aktuelle_cluster_anzahl()
 
-\Statex
+    # Schritt 1: neue Logs mit ihren Embeddings persistieren
+    for log, embedding in zip(logs, embeddings):
+        speichere_log(log, embedding, verarbeitet=False)
 
-\State // Schritt 1: Hole alle noch nicht verarbeiteten Logs
-\ForAll{$log$ \textbf{in} $unprocessed\_logs$}
-    
-    
-    \State // Schritt 2: Überspringen, falls bereits zugewiesen
-    \If{$log\_bereits\_in\_cluster(log)$}
-        \State \textbf{continue}
-    \EndIf
-    
-    \State // Schritt 3: Ähnliche Logs per Cosine-Ähnlichkeit finden
-    \State $ähnliche\_logs \gets finde\_ähnliche\_logs(log,cosine\_threshold)$
-    
-    \If{$ähnliche\_logs$ \textbf{ist leer}}
-        \State \textbf{continue}
-    \EndIf
-    
-    \State // Schritt 5: Cluster erstellen und zuweisen
-    \State $neuer\_cluster \gets erstelle\_neuen\_log\_cluster()$
-    \State weise\_cluster\_zu\_und\_markiere\_verarbeitet($ähnliche\_logs$, $neuer\_cluster.id$)
+    unverarbeitete_logs = hole_unverarbeitete_logs()  # aufsteigend nach id
 
+    # Schritt 2: jedes Log einzeln und sequenziell zuordnen
+    for log in unverarbeitete_logs:
+        gefundener_cluster = finde_naechsten_cluster(log.embedding, schwellwert)
 
-\EndFor
+        if gefundener_cluster is not None:
+            cluster_id = gefundener_cluster.id
+        else:
+            cluster_anzahl += 1
+            cluster_id = cluster_anzahl
 
-\Statex
+        weise_zu_und_markiere_verarbeitet(log, cluster_id)
 
-\State // Schritt 6: Durchschnittswerte berechnen
-\State fülle\_durchschnitts\_log\_gruppen\_tabelle()
+        # Schritt 3: betroffenen Cluster-Schwerpunkt sofort aktualisieren
+        aktualisiere_durchschnittsvektor(cluster_id)
 
-\end{algorithmic}
-\end{algorithm}
+    return alle_cluster_zuweisungen()
+\end{minted}
+\captionof{lstlisting}{Iteratives Clustering neu eingehender Lognachrichten (Pseudocode)}
+\label{lst:cluster-batch}
 
+Schritt 1 persistiert alle neu eingehenden Lognachrichten zusammen mit ihrem Embedding-Vektor und markiert sie als unverarbeitet. Schritt 2 iteriert anschließend über alle unverarbeiteten Logs in der Reihenfolge ihres Eintreffens und sucht für jedes Log mittels einer Schwellwert-Suche über die Kosinus-Distanz den nächstgelegenen Cluster-Schwerpunkt. Liegt ein Schwerpunkt innerhalb des Schwellwerts~$\tau$, wird das Log dem zugehörigen Cluster zugewiesen; andernfalls eröffnet das Verfahren einen neuen Cluster mit fortlaufender Nummer. In Schritt 3 wird unmittelbar nach jeder Zuweisung der Durchschnittsvektor (\texttt{avg\_embedding}) des betroffenen Clusters neu berechnet, sodass nachfolgende Logs im selben Durchlauf bereits gegen den aktualisierten Schwerpunkt geprüft werden. Der Vergleich mit den Cluster-Schwerpunkten bildet dabei die alleinige Zuordnungsstrategie des Verfahrens.
 
-
-Algorithmus 1 beschreibt das initiale Clustering. Zunächst iteriert der Prozess über jedes neue, noch nicht verarbeitete Log. Der zweite Schritt prüft für jedes neue Log, ob es bereits bei einer früheren Iteration einer Gruppe hinzugefügt wurde. Der dritte Schritt sucht mithilfe eines Schwellwerts für die Kosinus-Ähnlichkeit in der Vektordatenbank nach ähnlichen Logs. Findet der Algorithmus keine ähnlichen Logs, überspringt er das aktuelle Log. Im fünften Schritt erhalten die ähnlichen Logs die Clusternummer und die iterierten Logs eine Markierung als „bearbeitet“. Schritt 6 berechnet die Durchschnittsvektoren (Cluster-Embeddings) neu.
-
-
-\begin{algorithm}[H]
-\caption{Re-Cluster Logs (Inkrementelles Clustering)}
-\begin{algorithmic}[1]
-
-\Require Keine Eingabe (verwendet Datenbank-Daten)
-\Ensure Erweiterte oder neue Log-Cluster
-
-\Statex
-\State // Schritt 1: Hole alle noch nicht verarbeiteten Logs
-\ForAll{$log$ \textbf{in} get\_unprocessed\_logs()}
-
-    
-    \State // Schritt 2: Gruppierung nach Rang
-    \State $gruppierte\_logs \gets gruppiere\_nach\_template(gerankte\_logs)$
-    
-    \Statex
-    
-    \ForAll{$(rang, logs\_mit\_gleichem\_rang)$ \textbf{in} $gruppierte\_logs$}
-
-        \State // Schritt 3: Hole ersten Log
-        \State $repräsentatives\_log \gets logs\_mit\_gleichem\_rang[0]$
-        \State $log\_ids \gets extrahiere\_alle\_logs(logs\_mit\_gleichem\_template)$
-        
-        \Statex
-        \State // Strategie 1: Durchschnitts-Cluster-Embeddings
-        \State $ähnlicher\_cluster\_avg \gets finde\_cluster\_in\_avg\_tabelle(repräsentatives\_log)$
-        
-        \If{$ähnlicher\_cluster\_avg$ \textbf{existiert}}
-            \State $cluster \gets hole\_cluster\_by\_id(ähnlicher\_cluster\_avg)$
-            \State weise\_cluster\_zu($log\_ids$, $cluster.id$)
-            \State markiere\_als\_verarbeitet($log\_ids$)
-        
-        \Else
-        
-            \State // Strategie 2: Suche in verarbeiteten Logs
-            \State $ähnliches\_log \gets finde\_ähnlichstes\_verarbeitetes\_log(repräsentatives\_log)$
-            
-            \If{$ähnliches\_log$ \textbf{existiert}}
-                \State weise\_cluster\_zu($log\_ids$, $ähnliches\_log.log\_cluster.id$)
-                \State markiere\_als\_verarbeitet($log\_ids$)
-            
-            \Else
-                \State // Strategie 3: Neuen Cluster anlegen
-                \State $neuer\_cluster \gets erstelle\_neuen\_log\_cluster()$
-                \State weise\_cluster\_zu($log\_ids$, $neuer\_cluster.id$)
-                \State markiere\_als\_verarbeitet($log\_ids$)
-            \EndIf
-            
-        \EndIf
-        
-    \EndFor
-    
-\EndFor
-
-\Statex
-
-\State // Schritt 4: Durchschnitts-Embeddings aktualisieren
-\State $zuletzt\_geänderte\_cluster \gets hole\_zuletzt\_geänderte\_cluster()$
-
-\ForAll{$cluster\_id$ \textbf{in} $zuletzt\_geänderte\_cluster$}
-    \State aktualisiere\_durchschnitts\_embedding($cluster\_id$)
-\EndFor
-
-\end{algorithmic}
-\end{algorithm}
-
-
-
-Nach dem ersten Algorithmus besitzen die Logs zugewiesene Gruppen, auf die das System aufbaut. Bei erneutem Programmstart kommt der zweite Algorithmus zum Einsatz. Schritt 1 iteriert durch die unverarbeiteten Logs. Schritt 2 gruppiert die Logs nach dem Log-Template. Dies spart Rechenleistung, da viele Logs mit gleichem Template häufiger vorkommen, aber nicht mehrfach verarbeitet werden müssen. Drei Strategien unterteilen den nächsten Schritt. Zunächst wählt Schritt 3 ein Log aus den zuvor nach dem Template gruppierten Logs aus. Die erste Strategie sucht nach ähnlichen Loggruppen über den Durchschnitt der Cluster-Embeddings. Dies ist effizienter, da die Tabelle für die Durchschnittsvektoren nur so viele Einträge hat, wie es Loggruppen gibt. Dies sind deutlich weniger als die Einträge in der Tabelle mit allen Logs und ihren Embeddings. Findet Strategie 1 keine passenden Logs, sucht Strategie 2 in allen Logs nach ähnlichen Einträgen und fügt sie dem Log sowie allen gruppierten Logs hinzu. Ohne Treffer erstellt das System eine neue Loggruppe und weist diese zu. Schritt 4 aktualisiert die Tabelle der Durchschnitts-Embeddings.
+Aus der sequenziellen Verarbeitung folgt eine inhärente Reihenfolgeabhängigkeit: Welche Lognachricht zuerst einen Cluster-Schwerpunkt definiert, beeinflusst, welchem Cluster ähnliche nachfolgende Logs zugeordnet werden. Bei unterschiedlicher Eingangsreihenfolge derselben Lognachrichten entstehen folglich potenziell abweichende Clusterzuordnungen. Dieser Effekt ist typisch für inkrementelle Online-Verfahren und wird in Kapitel~\ref{chap:eval} bei der Bewertung der Reihenfolge-Stabilität wieder aufgegriffen.
