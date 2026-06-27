@@ -454,10 +454,10 @@ gesteuert: \texttt{PGVECTOR\_COSINE\_DISTANCE} (im Folgenden
 \texttt{THRESHOLD}). Der Parameter wird über einen Parameterdurchlauf untersucht.
 
 \paragraph{Aufbau des Parameterdurchlaufs.}
-Für \texttt{THRESHOLD} wird der 
+Für \texttt{THRESHOLD} wird der
 $\{0{,}1, 0{,}2, 0{,}3, 0{,}4, 0{,}5, 0{,}6, 0{,}7\}$ durchlaufen. Um ein
 realistisches Szenario nachzubilden, wird der Durchlauf auf einer Stichprobe von
-$n = 2\,000$ Lognachrichten begrenzt, da im produktiven Einsatz nicht alle
+$n = 3\,000$ Lognachrichten begrenzt, da im produktiven Einsatz nicht alle
 Logs zur Parameterbestimmung zur Verfügung stehen. Die Embeddings werden
 einmal vorberechnet und für jeden Schwellenwert wiederverwendet; pro
 Durchlauf werden die DB-Tabellen geleert, die Embeddings per Bulk-Insert
@@ -474,26 +474,28 @@ protokolliert. Die zugehörige Implementierung findet sich im Notebook
     \includegraphics[width=0.95\linewidth]{images/pgvector_sweep.png}
     \caption{pgvector-Parametersuche -- Cluster-Anzahl (links) und
     Silhouette-Score, Cosinus-Metrik (rechts) je Schwellenwert
-    \texttt{THRESHOLD} ($n = 2\,000$). Globales Maximum des
+    \texttt{THRESHOLD} ($n = 3\,000$). Globales Maximum des
     Silhouette-Scores bei \texttt{THRESHOLD} $= 0{,}3$.}
     \label{fig:pgvector-sweep}
 \end{figure}
 
 \paragraph{Beobachtung: \texttt{THRESHOLD} steuert Cluster-Anzahl und Qualität.}
-Mit steigendem \texttt{THRESHOLD} sinkt die Cluster-Anzahl monoton: $101$
-($\texttt{THRESHOLD} = 0{,}1$), $53$ ($0{,}2$), $37$ ($0{,}3$), $20$
-($0{,}4$), $15$ ($0{,}5$), $8$ ($0{,}6$), $7$ ($0{,}7$). Der
-Silhouette-Score erreicht bei \texttt{THRESHOLD} $= 0{,}3$ sein globales
-Maximum von $0{,}730$ und liegt für $0{,}1$ ($0{,}710$) und $0{,}2$
-($0{,}722$) nur knapp darunter -- die feinere Aufteilung in mehr Cluster
-bleibt also intern kohärent. Ab \texttt{THRESHOLD} $= 0{,}4$ ($0{,}672$)
-fällt der Score deutlicher und erreicht bei $0{,}5$ mit $0{,}603$ sein
-Minimum, bevor er bei $0{,}6$ ($0{,}615$) und $0{,}7$ ($0{,}611$) auf
-niedrigem Niveau leicht schwankt.
+Mit steigendem \texttt{THRESHOLD} sinkt die Cluster-Anzahl monoton: $138$
+($\texttt{THRESHOLD} = 0{.}1$), $73$ ($0{.}2$), $51$ ($0{.}3$), $27$
+($0{.}4$), $17$ ($0{.}5$), $9$ ($0{.}6$), $3$ ($0{.}7$). Der
+Silhouette-Score erreicht bei \texttt{THRESHOLD} $= 0{.}3$ sein globales
+Maximum von $0{.}725$ und liegt für $0{.}1$ ($0{.}711$) und $0{.}2$
+($0{.}716$) nur knapp darunter -- die feinere Aufteilung in mehr Cluster
+bleibt also intern kohärent. Ab \texttt{THRESHOLD} $= 0{.}4$ ($0{,}654$)
+fällt der Score und sinkt danach durchgehend weiter -- über $0{.}601$
+($0{.}5$) und $0{.}480$ ($0{.}6$) bis auf sein Minimum von $0{.}208$ bei
+\texttt{THRESHOLD} $= 0{.}7$. Anders als bei einem Zwischenminimum
+stabilisiert sich der Score am oberen Rand des Suchraums nicht, sondern
+fällt bis zum letzten getesteten Wert monoton weiter.
 
 \paragraph{Wahl des Parameters.}
 Datengetrieben ergibt sich \texttt{THRESHOLD} $= 0{,}3$ aus dem Maximum des
-Silhouette-Scores. Die resultierenden $37$ Cluster auf der Stichprobe liegen
+Silhouette-Scores. Die resultierenden $51$ Cluster auf der Stichprobe liegen
 in der Größenordnung der $44$ Ground-Truth-Klassen, ohne dass diese
 Information in die Parameterwahl eingeflossen ist.
 
