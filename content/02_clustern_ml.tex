@@ -69,7 +69,7 @@ Der K-Means-Clusteralgorithmus umfasst drei Schritte. Die Nutzung erfordert zun�
     \item Für jedes entstandene Cluster berechnet der Algorithmus den Mittelwert, wodurch die Centroide in die Nähe des Cluster-Mittelpunktes rücken. Die Schritte 2 und 3 wiederholen sich bis zur Konvergenz.
 \end{enumerate}
 Die Auswahl der Zahl $K$ ist essenziell für das Clustering.
-Der manuelle Aufwand bei einem System, das periodisch neue Logs einliest, ist jedoch zu hoch. Selbst eine Automatisierung mittels der Elbow-Methode zur Bestimmung von K erforderte bei jedem Durchlauf eine Neuberechnung. Zudem ist die Anzahl der Loggruppen im Voraus unbekannt. Deshalb ist ein Cluster-Algorithmus erforderlich, der ohne feste Eingabeparameter wie K auskommt.
+Der manuelle Aufwand bei einem System, das periodisch neue Logs einliest, ist jedoch zu hoch. Selbst eine automatisierte, datengetriebene Bestimmung von K mittels des Silhouette-Scores erforderte bei jedem Durchlauf eine Neuberechnung. Zudem ist die Anzahl der Loggruppen im Voraus unbekannt. Deshalb ist ein Cluster-Algorithmus erforderlich, der ohne feste Eingabeparameter wie K auskommt.
 
 \section{DBSCAN: Flexibles, dichtebasiertes Clustering ohne vordefinierte Cluster-Anzahl}
 \label{sec:dbscan}
