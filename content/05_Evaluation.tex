@@ -37,7 +37,7 @@ systematisch überschätzten Ergebnissen führen.
 \label{sec:eval:param:kmeans}
 
 K-Means erfordert die Anzahl der Cluster $k$ als Eingabeparameter. Die Wahl
-erfolgt nicht heuristisch, sondern datengetrieben über zwei, Verfahren: die Elbow-Methode auf mit automatischer Knickerkennung sowie den Silhouette-Score.
+erfolgt nicht heuristisch, sondern datengetrieben über zwei Verfahren: die Elbow-Methode mit automatischer Knickerkennung sowie den Silhouette-Score.
 
 \paragraph{Vorverarbeitung mittels Truncated SVD.}
 Die direkte Berechnung des Silhouette-Scores im hochdimensionalen, dünn
@@ -73,14 +73,14 @@ dem typischen Verlauf einer fallenden Elbow-Kurve. Dise Paramater wurde durch di
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\linewidth]{images/k_means_ellenbow.png}
-    \caption{Elbow-Kurve über $k \in [2, 39]$. Auf der Y-Achse ist die Within-Cluster Sum of Squares (\acs{WCSS}) aufgetragen. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
+    \caption{Elbow-Kurve über $k \in [2, 39]$. Auf der Y-Achse ist die Within-Cluster Sum of Squares (\acs{WCSS}) aufgetragen. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 12$.}
     \label{fig:kmeans-elbow}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\linewidth]{images/k_means_silhouette.png}
-    \caption{Silhouette-Score über $k \in [2, 39]$. Das globale Maximum liegt bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
+    \caption{Silhouette-Score über $k \in [2, 39]$. Das globale Maximum liegt bei $k = 10$; die grüne gestrichelte Linie markiert dieses Maximum und entspricht zugleich dem gewählten Implementierungswert.}
     \label{fig:kmeans-silhouette}
 \end{figure}
 
@@ -88,12 +88,18 @@ dem typischen Verlauf einer fallenden Elbow-Kurve. Dise Paramater wurde durch di
 Abbildung~\ref{fig:kmeans-elbow} zeigt den typischen konvexen Verlauf der
 Elbow-Kurve: Der Elbow fällt von $k = 2$ zunächst steil ab und geht
 anschließend in einen flachen Bereich über. Der \texttt{KneeLocator} lokalisiert
-den Knick bei $k = 13$. In Abbildung~\ref{fig:kmeans-silhouette} liegt das
-globale Maximum des Silhouette-Scores ebenfalls bei $k = 13$.
+den Knick bei $k = 12$. In Abbildung~\ref{fig:kmeans-silhouette} erreicht der
+Silhouette-Score sein globales Maximum dagegen bereits bei $k = 10$; nach
+einem Abfall bis etwa $k = 22$ steigt die Kurve zu größeren $k$ hin wieder
+leicht an, ohne das Maximum bei $k = 10$ zu übertreffen.
 
-Beide Heuristiken konvergieren auf $k = 13$. Dieser Wert wird daher für die
-in Listing~\ref{lst:k-means-cluster} dokumentierte Implementierung sowie für
-die nachfolgende Evaluation verwendet.
+Die beiden Heuristiken konvergieren in diesem Fall nicht auf einen
+gemeinsamen Wert. Da der Silhouette-Score die Kompaktheit und Separation der
+resultierenden Partitionen direkt bewertet, während die Elbow-Methode
+lediglich einen Kompromiss zwischen Modellkomplexität und Varianzreduktion
+markiert, wird dem Silhouette-Optimum der Vorzug gegeben. Es wird daher
+$k = 10$ für die in Listing~\ref{lst:k-means-cluster} dokumentierte
+Implementierung sowie für die nachfolgende Evaluation verwendet.
 
 % ----------------------------------------------------------------
 \subsection{DBSCAN}
