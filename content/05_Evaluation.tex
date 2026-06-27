@@ -72,14 +72,14 @@ dem typischen Verlauf einer fallenden Elbow-Kurve. Dise Paramater wurde durch di
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\linewidth]{images/kmeans_elbow.png}
+    \includegraphics[width=0.85\linewidth]{images/k_means_ellenbow.png}
     \caption{Elbow-Kurve über $k \in [2, 39]$. Auf der Y-Achse ist die Within-Cluster Sum of Squares (\acs{WCSS}) aufgetragen. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
     \label{fig:kmeans-elbow}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.85\linewidth]{images/kmeans_silhouette.png}
+    \includegraphics[width=0.85\linewidth]{images/k_means_silhouette.png}
     \caption{Silhouette-Score über $k \in [2, 39]$. Das globale Maximum liegt bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
     \label{fig:kmeans-silhouette}
 \end{figure}
@@ -210,9 +210,9 @@ gefundenen \texttt{sim\_th}-Wahl gegenüber der Baumtiefe zu prüfen.
 
 \paragraph{Aufbau des Parameterdurchlaufs.}
 Aus den $10\,000$ Lognachrichten des gemischten Datensatzes wird mit festem
-Seed ($42$) eine reproduzierbare Stichprobe von $4\,000$ Nachrichten
-($40\,\%$) gezogen. Für diese Stichprobe wird die Anzahl der enthaltenen
-Ground-Truth-Klassen bestimmt; sie beträgt $42$ -- zwei der insgesamt $44$
+Seed ($42$) eine reproduzierbare Stichprobe von $3\,000$ Nachrichten
+($30\,\%$) gezogen. Für diese Stichprobe wird die Anzahl der enthaltenen
+Ground-Truth-Klassen bestimmt; sie beträgt $38$ -- zwei der insgesamt $44$
 Klassen des Gesamtdatensatzes (vgl.\ Abschnitt~\ref{sec:eval:aufbau}) sind in
 der Stichprobe nicht vertreten. Für jede Kombination aus
 $\texttt{drain\_sim\_th} \in \{0{,}1, 0{,}2, \dots, 0{,}9\}$ und
@@ -221,7 +221,7 @@ frischer \texttt{TemplateMiner} instanziiert, die Stichprobe sequenziell
 verarbeitet und die Anzahl eindeutiger Cluster-IDs protokolliert. Als
 Auswahlkriterium dient -- je \texttt{depth}-Wert -- die kleinste absolute
 Differenz zwischen resultierender Cluster-Anzahl und der
-Ground-Truth-Klassenzahl der Stichprobe ($42$); aus den drei
+Ground-Truth-Klassenzahl der Stichprobe; aus den drei
 depth-spezifischen Minima wird anschließend die insgesamt beste Kombination
 bestimmt. Da ausschließlich Cluster-\emph{Anzahlen} verglichen werden und
 weder ARI noch V-Measure in die Auswahl einfließen, bleibt die in
@@ -232,7 +232,7 @@ Notebook \texttt{ML.ipynb} (Zelle~5).
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\linewidth]{images/drain3_sweep.png}
-    \caption{Drain3-Parametersuche: Cluster-Anzahl als Funktion von \texttt{drain\_sim\_th} für drei Werte von \texttt{drain\_depth} auf einer Stichprobe von $4\,000$ Lognachrichten (logarithmische y-Achse). Die blaue Strichpunktlinie markiert die $42$ Ground-Truth-Klassen der Stichprobe; die rote gestrichelte Linie zeigt die beste gefundene Kombination (\texttt{depth} $=3$, \texttt{sim\_th} $=0{,}2$, $44$ Cluster).}
+    \caption{Drain3-Parametersuche: Cluster-Anzahl als Funktion von \texttt{drain\_sim\_th} für drei Werte von \texttt{drain\_depth} auf einer Stichprobe von $3\,000$ Lognachrichten (logarithmische y-Achse). Die blaue Strichpunktlinie markiert die $38$ Ground-Truth-Klassen der Stichprobe; die rote gestrichelte Linie zeigt die beste gefundene Kombination (\texttt{depth} $=3$, \texttt{sim\_th} $=0{,}2$, $40$ Cluster).}
     \label{fig:drain3-sweep}
 \end{figure}
 
@@ -241,9 +241,8 @@ Die Kurven für \texttt{depth} $\in \{4, 5\}$ liegen in
 Abbildung~\ref{fig:drain3-sweep} exakt übereinander -- für keinen der neun
 untersuchten \texttt{sim\_th}-Werte unterscheidet sich die resultierende
 Cluster-Anzahl. \texttt{depth} $=3$ erzeugt dagegen im Bereich
-$\texttt{sim\_th} \in [0{,}1, 0{,}6]$ durchgehend weniger Cluster (ca.\
-$6\,\%$ bis $18\,\%$ unter den Werten von \texttt{depth} $\in \{4, 5\}$),
-nähert sich bei $\texttt{sim\_th} = 0{,}7$ an (Differenz $\approx 1\,\%$) und
+$\texttt{sim\_th} \in [0{.}1, 0{.}6]$ durchgehend weniger Cluster,
+nähert sich bei $\texttt{sim\_th} = 0{,}7$ an und
 ist ab $\texttt{sim\_th} \geq 0{,}8$ identisch zu den beiden anderen Tiefen.
 Eine Baumtiefe von $3$ reicht im niedrigen bis mittleren
 \texttt{sim\_th}-Bereich demnach nicht aus, um die strukturelle Vielfalt der
@@ -256,21 +255,20 @@ zur Verfügung, sodass eine weitere Erhöhung auf $5$ keinen messbaren Effekt
 mehr zeigt.
 
 \paragraph{Beobachtung 2: moderates Wachstum bis \texttt{sim\_th=0,7}, danach sprunghafte Übersegmentierung.}
-Für \texttt{depth} $\in \{4, 5\}$ wächst die Cluster-Anzahl von $39$
-($\texttt{sim\_th}=0{,}1$) über $116$ ($\texttt{sim\_th}=0{,}6$) auf $197$
-($\texttt{sim\_th}=0{,}7$) -- ein Faktor von rund $5$ über sechs
-Zehntelschritte. Zwischen $\texttt{sim\_th}=0{,}7$ und $0{,}8$ springt die
-Anzahl auf $722$ (Faktor $\approx 3{,}7$), zwischen $0{,}8$ und $0{,}9$ auf
-$2\,276$ (Faktor $\approx 3{,}2$). Oberhalb von $\texttt{sim\_th} \approx 0{,}7$
+Für \texttt{depth} $\in \{4, 5\}$ wächst die Cluster-Anzahl von $35$
+($\texttt{sim\_th}=0{.}1$) über $110$ ($\texttt{sim\_th}=0{.}6$) auf $189$
+($\texttt{sim\_th}=0{.}7$). Zwischen $\texttt{sim\_th}=0{.}7$ und $0{.}8$ springt die
+Anzahl auf $623$, zwischen $0{.}8$ und $0{.}9$ auf
+$1\,829$. Oberhalb von $\texttt{sim\_th} \approx 0{,}7$
 erzeugt damit bereits eine geringfügige syntaktische Variation einer
 Lognachricht einen eigenen Ast im Parse-Baum, was zu katastrophaler
 Übersegmentierung führt.
 
 \paragraph{Wahl von \texttt{sim\_th} und \texttt{depth}.}
 Je \texttt{depth}-Wert liegt das Minimum der Differenz zur
-Ground-Truth-Klassenzahl der Stichprobe ($42$) bei: \texttt{depth=3} --
-\texttt{sim\_th} $=0{,}2$ ($44$ Cluster, $\Delta = 2$); \texttt{depth=4} und
-\texttt{depth=5} -- \texttt{sim\_th} $=0{,}1$ ($39$ Cluster, $\Delta = 3$).
+Ground-Truth-Klassenzahl der Stichprobe ($38$) bei: \texttt{depth=3} --
+\texttt{sim\_th} $=0{,}2$ ($46$ Cluster, $\Delta = 2$); \texttt{depth=4} und
+\texttt{depth=5} -- \texttt{sim\_th} $=0{,}1$ ($35$ Cluster, $\Delta = 8$).
 Über alle $27$ Kombinationen ist \texttt{depth} $=3$ mit \texttt{sim\_th}
 $=0{,}2$ damit die insgesamt beste Kombination und wird für Implementierung
 und Evaluation übernommen. Der Abstand zur zweitbesten Kombination beträgt
@@ -283,7 +281,7 @@ zusätzlich unabhängig vom konkreten Stichprobenergebnis:
 
 \begin{enumerate}
     \item \emph{Sicherheitsabstand zur Übersegmentierungszone.} Bei
-    \texttt{sim\_th} $= 0{,}2$ liegt die Cluster-Anzahl mit $44$ bis $50$ eine
+    \texttt{sim\_th} $= 0{,}2$ liegt die Cluster-Anzahl mit $46$ eine
     volle Größenordnung unter den Werten ab \texttt{sim\_th} $\geq 0{,}8$, ab
     denen die Übersegmentierung gemäß Beobachtung~2 sprunghaft einsetzt.
     \item \emph{Größenordnung passend zum Gesamtdatensatz.} Der gemischte
