@@ -11,12 +11,14 @@ Darstellung wird dem verteilten Vorgehen vorgezogen, weil die Vergleichbarkeit
 der Verfahren maßgeblich davon abhängt, dass alle Konfigurationen nach einer
 einheitlichen methodischen Linie ermittelt wurden.
 
-Die Parameterwahl erfolgt für alle Verfahren \emph{datengetrieben} und
-\emph{ohne Verwendung der Ground Truth}. Dieser Verzicht ist eine direkte
+Die Parameterwahl erfolgt für alle Verfahren datengetrieben und
+ohne Verwendung des vollständigen Ground Truth Datensatzes. Dieser Verzicht ist eine direkte
 Folge der Aufgabenstellung: Im kontinuierlichen Log-Clustering steht im
-Produktivbetrieb keine Label-Information zur Verfügung; ein auf der
-Ground-Truth optimierter Parameter wäre dort nicht reproduzierbar. Stattdessen
-kommen verfahrensspezifische, unsupervised Heuristiken zum Einsatz, die
+Produktivbetrieb keine Label-Information zur Verfügung; ein auf dem kompletten
+Ground-Truth optimierter Parameter wäre dort nicht reproduzierbar. 
+Für Drain, Brain und das Clustern mit pg\_vector wird nur eine Teilmenge des 
+Ground Truth Datensatzes genutzt, und aus dieser Menge werden die zugeordneten Cluster zum Vergleich herangezogen. Bei den übrigen Verfahren
+kommen unsupervised Heuristiken zum Einsatz, die
 ausschließlich auf den Eingangsvektoren bzw.\ -nachrichten operieren --
 beispielsweise die Elbow-Methode und der Silhouette-Score für K-Means oder
 der $k$-Distanz-Plot für DBSCAN. Der Silhouette-Score bewertet dabei die
@@ -26,8 +28,8 @@ Distanz zum nächstgelegenen fremden Cluster vergleicht und daraus einen
 Wert im Bereich $[-1, 1]$
 ableitet, wobei ein Wert nahe $1$ für ein perfektes Clustering spricht und nahe -1 für ein schlechtes Clustering \cite{GeeksforGeeksSilhouette}.
 Die Ground-Truth-basierten Metriken ARI und
-V-Measure dienen somit ausschließlich der \emph{Evaluation}, nicht dem
-\emph{Tuning}; eine Doppelnutzung würde zu Information Leakage und damit zu
+V-Measure dienen somit ausschließlich der Evaluation, nicht dem
+Tuning; eine Doppelnutzung würde zu einer Verzerrung und damit zu
 systematisch überschätzten Ergebnissen führen.
 
 % ----------------------------------------------------------------
@@ -35,7 +37,7 @@ systematisch überschätzten Ergebnissen führen.
 \label{sec:eval:param:kmeans}
 
 K-Means erfordert die Anzahl der Cluster $k$ als Eingabeparameter. Die Wahl
-erfolgt nicht heuristisch, sondern datengetrieben über zwei, voneinander unabhängige Verfahren: die Elbow-Methode auf mit automatischer Knickerkennung sowie den Silhouette-Score.
+erfolgt nicht heuristisch, sondern datengetrieben über zwei, Verfahren: die Elbow-Methode auf mit automatischer Knickerkennung sowie den Silhouette-Score.
 
 \paragraph{Vorverarbeitung mittels Truncated SVD.}
 Die direkte Berechnung des Silhouette-Scores im hochdimensionalen, dünn
@@ -68,14 +70,14 @@ Endpunkte und der normierten Kurve. Dabei wird auf der Y-Ache der WCSS, auch ine
 \texttt{direction=\textquotesingle decreasing\textquotesingle}, entsprechend
 dem typischen Verlauf einer fallenden Elbow-Kurve. Dise Paramater wurde durch die von der Bibliothek bereitgestellten hilfsfunktion \texttt{find\_shape} automatisch ermittelt.
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.85\linewidth]{images/kmeans_elbow.png}
     \caption{Elbow-Kurve über $k \in [2, 39]$. Auf der Y-Achse ist die Within-Cluster Sum of Squares (\acs{WCSS}) aufgetragen. Die grüne gestrichelte Linie markiert den automatisch erkannten Knee bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
     \label{fig:kmeans-elbow}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[H]
     \centering
     \includegraphics[width=0.85\linewidth]{images/kmeans_silhouette.png}
     \caption{Silhouette-Score über $k \in [2, 39]$. Das globale Maximum liegt bei $k = 13$; die rote gestrichelte Linie zeigt den gewählten Implementierungswert.}
