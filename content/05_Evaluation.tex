@@ -195,13 +195,13 @@ $\varepsilon = 0{,}4$ verwendet.
 
 Drain3 wird durch zwei zentrale Hyperparameter gesteuert: den
 Ähnlichkeitsschwellenwert \texttt{drain\_sim\_th} und die Baumtiefe
-\texttt{drain\_depth}. Beide Parameter werden über einen 2D-Sweep gemeinsam
-untersucht. \texttt{drain\_sim\_th} bestimmt, ab welchem Grad an Übereinstimmung
+\texttt{drain\_depth}. Beide Parameter werden über einen 2D-Parameterdurchlauf
+gemeinsam untersucht. \texttt{drain\_sim\_th} bestimmt, ab welchem Grad an Übereinstimmung
 zweier Lognachrichten diese demselben Template zugeordnet werden;
 \texttt{drain\_depth} legt die maximale Tiefe des Parse-Baums fest und damit
 indirekt die strukturelle Granularität der erzeugten Templates.
 
-\paragraph{Sweep-Aufbau.}
+\paragraph{Aufbau des Parameterdurchlaufs.}
 Für \texttt{drain\_sim\_th} wird der Bereich
 $\{0{,}1, 0{,}2, \dots, 0{,}9\}$ vollständig durchlaufen, für
 \texttt{drain\_depth} die Werte $\{3, 4, 5\}$. Pro Kombination wird ein
@@ -241,7 +241,7 @@ Baum, was zu einer katastrophalen Übersegmentierung führt.
 \paragraph{Wahl von \texttt{sim\_th}.}
 Innerhalb der sicheren Zone $\texttt{sim\_th} \leq 0{,}7$ wächst die Kurve
 monoton ohne klares Plateau; ein eindeutiges Optimum lässt sich aus dem
-Sweep allein nicht ableiten. Methodisch wird daher der konservativ niedrige
+Parameterdurchlauf allein nicht ableiten. Methodisch wird daher der konservativ niedrige
 Wert \texttt{sim\_th} $= 0{,}2$ verwendet. Drei Argumente stützen diese
 Wahl:
 
@@ -314,12 +314,12 @@ deutlich zu machen.
 
 Das pgvector-Verfahren wird durch einen einzigen Cosinus-Schwellenwert
 gesteuert: \texttt{PGVECTOR\_COSINE\_DISTANCE} (im Folgenden
-\texttt{THRESHOLD}). Der Parameter wird über einen 1D-Sweep untersucht.
+\texttt{THRESHOLD}). Der Parameter wird über einen Parameterdurchlauf untersucht.
 
-\paragraph{Sweep-Aufbau.}
+\paragraph{Aufbau des Parameterdurchlaufs.}
 Für \texttt{THRESHOLD} wird der Bereich
 $\{0{,}1, 0{,}2, 0{,}3, 0{,}4, 0{,}5, 0{,}6, 0{,}7\}$ durchlaufen. Um ein
-realistisches Szenario nachzubilden, wird der Sweep auf einer Stichprobe von
+realistisches Szenario nachzubilden, wird der Durchlauf auf einer Stichprobe von
 $n = 2\,000$ Lognachrichten begrenzt, da im produktiven Einsatz nicht alle
 Logs zur Parameterbestimmung zur Verfügung stehen. Die Embeddings werden
 einmal vorberechnet und für jeden Schwellenwert wiederverwendet; pro

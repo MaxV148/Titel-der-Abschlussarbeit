@@ -1,0 +1,158 @@
+\chapter{Kommerzielle Systeme zum Log-Clustering}
+\label{chap:kommerziell}
+
+Neben den in Kapitel~\ref{chap:ml} und Kapitel~\ref{chap:vek} untersuchten algorithmischen und vektorbasierten Verfahren existiert eine Reihe kommerzieller \ac{SaaS}-Plattformen aus dem Bereich \ac{APM} und Observability, die automatisierte Log-Clustering- bzw. Log-Pattern-Funktionen als Produktfeature anbieten. Dieses Kapitel verschafft einen Überblick über den industriellen Stand der Technik, ordnet die zugrunde liegenden Ansätze -- soweit öffentlich dokumentiert -- in den in dieser Arbeit verwendeten methodischen Rahmen ein und grenzt die vorliegende Untersuchung gegenüber diesen Systemen ab.
+
+\section{Motivation und Vorgehen}
+\label{sec:kommerziell_motivation}
+
+Die in Abschnitt~\ref{forschungs_frage} formulierte Forschungsfrage zielt auf den methodischen Vergleich von Verfahren zur kontinuierlichen Log-Gruppierung ab. Kommerzielle Observability-Plattformen lösen ein eng verwandtes Problem bereits produktiv: Sie gruppieren kontinuierlich eintreffende Lognachrichten zu Mustern, um Anwender bei der manuellen Sichtung großer Logmengen zu unterstützen (vgl. die in Abschnitt~\ref{chap:einf} beschriebene Ausgangsproblematik). Ein Überblick über diese Systeme ordnet die in Kapitel~\ref{chap:ml} und Kapitel~\ref{chap:vek} behandelten Verfahren in den industriellen Kontext ein und zeigt, an welchen Stellen die akademisch etablierten Algorithmen -- insbesondere Drain -- bereits production-grade eingesetzt werden.
+
+\paragraph{Methodisches Vorgehen.}
+Die Darstellung in diesem Kapitel beruht ausschließlich auf einer systematischen Auswertung öffentlich zugänglicher Dokumentation, Hersteller-Blogs und technischer Referenzseiten der jeweiligen Anbieter. Eine eigene Nachimplementierung oder ein quantitativer Benchmark der kommerziellen Systeme analog zu Abschnitt~\ref{Vorgensweise} findet nicht statt, da die zugrunde liegenden Algorithmen bei den meisten Anbietern nicht offengelegt sind und die Systeme überwiegend ausschließlich als Cloud-Dienst nutzbar sind (vgl. die Abgrenzung in Abschnitt~\ref{chap:einf}). \cite{TODO:ergänze_weitere_quellen_falls_im_verlauf_der_arbeit_gefunden}
+
+\paragraph{Auswahlkriterien.}
+Die betrachteten Systeme wurden nach folgenden Kriterien ausgewählt:
+\begin{enumerate}
+    \item Marktrelevanz und Verbreitung im Bereich Log-Management und \ac{APM}.
+    \item Vorhandensein einer dedizierten, produktseitig beworbenen Funktion zur automatischen Gruppierung bzw. Mustererkennung von Lognachrichten.
+    \item Diversität der zugrunde liegenden technischen Ansätze, um die Breite des kommerziellen Lösungsraums abzubilden.
+\end{enumerate}
+Auf dieser Grundlage werden in Abschnitt~\ref{sec:kommerziell_marktueberblick} fünf Systeme vertieft betrachtet (Datadog, Elastic, Grafana Loki, Sumo Logic, Splunk); Abschnitt~\ref{sec:kommerziell_weitere} fasst drei weitere Systeme (Dynatrace, AWS CloudWatch Logs Insights, New Relic) knapper zusammen.
+
+\section{Log-Pattern-Erkennung in kommerziellen Observability-Plattformen}
+\label{sec:kommerziell_marktueberblick}
+
+Die folgenden Abschnitte beschreiben jeweils Funktionsweise, technische Eigenschaften und Limitierungen der betrachteten Systeme und stellen, soweit möglich, einen Bezug zu den in Kapitel~\ref{chap:ml} und Kapitel~\ref{chap:vek} behandelten Verfahren her.
+
+\subsection{Datadog: Log Patterns und Pattern Inspector}
+\label{sec:datadog}
+
+Datadog bietet im Log Explorer die Funktion \glqq Log Patterns\grqq{} an, die Lognachrichten automatisch zu Mustern gruppiert \cite{datadogBlogLogPatterns2018}. Standardmäßig erfolgt die Gruppierung anhand des Nachrichtenfeldes, ergänzt um eine Aufschlüsselung nach Status und Service; alternative Felder lassen sich für die Gruppierung auswählen \cite{datadogLogPatternsDocs}. Variable Bestandteile innerhalb einer Nachricht -- etwa Zeitstempel, \ac{IP}-Adressen oder Zahlenwerte -- erkennt der Algorithmus automatisch und ersetzt sie durch Platzhalterzeichen, sodass eine Bereichsangabe wie \texttt{192.168.0.XXX} entsteht \cite{datadogBlogLogPatterns2018}. Die ergänzende Funktion \glqq Pattern Inspector\grqq{} stellt zusätzlich die Wertverteilung der erkannten variablen Anteile dar \cite{datadogBlogPatternInspector2022}.
+
+Wendet man dieses Prinzip auf die in Kapitel~\ref{chap:einf} eingeführten Beispiel-Lognachrichten an, ergäbe sich vereinfacht das folgende gemeinsame Muster:
+
+\begin{logbox}{Beispiel: Generalisiertes Pattern nach Maskierung variabler Anteile}
+\begin{lstlisting}
+<TIMESTAMP> servername sshd[<PID>]: Failed password for invalid user <USER> from <IP> port <PORT> ssh2
+\end{lstlisting}
+\end{logbox}
+
+\paragraph{Technische Eigenschaften.}
+Die Mustererkennung arbeitet laut Dokumentation in Echtzeit über den Log Explorer und basiert auf einer Stichprobe von 10.000 Lognachrichten \cite{datadogLogPatternsDocs}. % TODO: prüfen, ob neuere Doku-Version diesen Wert noch nennt
+Der konkrete Clustering-Algorithmus wird von Datadog nicht öffentlich benannt.
+
+\paragraph{Limitierungen.}
+Da sich die Mustererkennung nur auf eine Stichprobe von 10.000 Nachrichten stützt, basieren Patterns bei sehr großen, gefilterten Treffermengen nicht auf der Gesamtmenge \cite{datadogLogPatternsDocs}. Schwellwerte oder andere Steuerungsparameter des Algorithmus sind nicht konfigurierbar; das Verfahren bleibt für Anwender eine Black Box.
+
+\paragraph{Fazit.}
+Datadog realisiert mit Log Patterns einen vollständig automatisierten, aber algorithmisch nicht transparenten Ansatz zur Lognachrichten-Gruppierung. Der hier eingesetzte Mechanismus der Maskierung variabler Tokens entspricht konzeptionell dem Templating-Prinzip von Drain bzw.\ Brain (vgl. Abschnitt~\ref{sec:drain3} und Abschnitt~\ref{sec:brain}), ohne dass eine Übereinstimmung mit diesen Algorithmen dokumentiert wäre.
+
+\subsection{Elastic / Elasticsearch: \texttt{categorize\_text}-Aggregation}
+\label{sec:elastic_categorize}
+
+Elasticsearch stellt mit der Aggregation \texttt{categorize\_text} sowie den zugehörigen Kategorisierungs-Jobs der \ac{ML}-Anomalieerkennung ein Verfahren zur automatischen Kategorisierung von Logtext bereit \cite{elasticCategorizeTextAgg}. Dabei wird das Textfeld zunächst mit einem eigens für maschinell erzeugten Text optimierten Tokenizer erneut analysiert; die resultierenden Tokens werden anschließend zu Kategorien ähnlich formatierter Texte zusammengefasst \cite{elasticCategorizeTextAgg}.
+
+\paragraph{Technische Eigenschaften.}
+Für die Tokenisierung stehen zwei Varianten zur Verfügung: der seit Version~8.3.0 grundlegend überarbeitete Standard-Tokenizer \texttt{ml\_standard} sowie der aus Kompatibilitätsgründen weiterhin verfügbare Legacy-Tokenizer \texttt{ml\_classic} \cite{elasticCategorizeTextAgg}. Über den Parameter \texttt{similarity\_threshold} (Standardwert~70, Wertebereich 1--100) lässt sich die Trennschärfe der entstehenden Kategorien steuern -- ein höherer Wert erzeugt engere, eine größere Zahl von Kategorien \cite{elasticCategorizeTextAgg}. Im Gegensatz zu den meisten übrigen hier betrachteten Systemen ist Elasticsearch quelloffen und sowohl On-Premises als auch als Cloud-Dienst betreibbar.
+
+\paragraph{Limitierungen.}
+Die Kategorisierung berücksichtigt laut Dokumentation nur die ersten 100 analysierten Tokens einer Nachricht und ist primär auf englischsprachige, maschinell erzeugte Logs optimiert; für natürlichsprachlichen Text liefert sie ausdrücklich schlechte Ergebnisse \cite{elasticMlConfiguringCategories}. Die erneute Analyse großer Ergebnismengen ist zudem mit nicht unerheblichem Zeit- und Speicheraufwand verbunden \cite{elasticCategorizeTextAgg}.
+
+\paragraph{Fazit.}
+Der Tokenisierungs- und Kategorisierungsansatz von Elasticsearch ähnelt konzeptionell der in Abschnitt~\ref{chap:ml} beschriebenen Überführung von Logtext in eine numerische bzw. strukturierte Repräsentation vor dem eigentlichen Gruppierungsschritt, ohne dass Elastic den konkreten Kategorisierungsalgorithmus seit Version~8.3.0 im Detail offenlegt \cite{elasticCategorizeTextAgg}.
+
+\subsection{Grafana Loki: Pattern Ingester und Adaptive Logs}
+\label{sec:loki_pattern}
+
+Grafana Loki erkennt über eine optionale Komponente, den sogenannten Pattern Ingester, automatisch wiederkehrende Strukturen in eingehenden Lognachrichten und stellt diese über eine eigene \ac{API} sowie eine Oberfläche (\glqq Patterns\grqq) zur Verfügung \cite{grafanaLogPatternsDoc}. Darauf aufbauend nutzt die Funktion \glqq Adaptive Logs\grqq{} die erkannten Muster, um anhand des Abfrageverhaltens der letzten 15~Tage Empfehlungen zur Reduktion von Ingest-Kosten abzuleiten \cite{grafanaAdaptiveLogsHowItWorks}.
+
+\paragraph{Technische Eigenschaften.}
+Anders als die übrigen in diesem Kapitel betrachteten Systeme benennt Grafana Labs den verwendeten Algorithmus explizit: Die Pattern-Erkennung basiert nach Angaben der Entwickler auf dem Drain-Algorithmus \cite{grafanaLokiPatternIssue} -- demselben Verfahren, das in Abschnitt~\ref{sec:drain3} dieser Arbeit über die Bibliothek \texttt{drain3} theoretisch hergeleitet und in Abschnitt~\ref{sec:real:drain3} praktisch implementiert wird. Loki ist quelloffen (AGPLv3) und sowohl On-Premises als auch als Bestandteil von Grafana Cloud nutzbar.
+
+\paragraph{Limitierungen.}
+Der Pattern Ingester ist standardmäßig deaktiviert und muss explizit aktiviert werden. Mit der im Mai~2025 eingeführten Funktion \glqq Early Detection Patterns\grqq{} reagierte Grafana Labs auf die Einschränkung, dass neue Muster zuvor erst nach einer Beobachtungsphase sichtbar wurden -- ein Hinweis auf eine ursprünglich eingeschränkte Echtzeitfähigkeit der ersten Implementierung \cite{grafanaAdaptiveLogsHowItWorks}. % TODO: weitere Limitierungen ergänzen, sobald Detailmessungen zur Pattern-Persistenz vorliegen
+
+\paragraph{Fazit.}
+Grafana Loki ist das einzige in diesem Kapitel untersuchte System, das seinen Pattern-Algorithmus explizit als Drain-Variante benennt \cite{grafanaLokiPatternIssue}. Damit lässt sich unmittelbar an die theoretische Herleitung in Abschnitt~\ref{sec:drain3} sowie an die Implementierung in Abschnitt~\ref{sec:real:drain3} anknüpfen: Loki demonstriert, dass der in dieser Arbeit akademisch untersuchte Drain-Algorithmus auch produktiv in einer weit verbreiteten Open-Source-Logging-Plattform im großen Maßstab eingesetzt wird.
+
+\subsection{Sumo Logic: LogReduce}
+\label{sec:sumologic_logreduce}
+
+Sumo Logic bietet mit \glqq LogReduce\grqq{} eine der am längsten etablierten kommerziellen Funktionen zur automatischen Gruppierung von Lognachrichten zu sogenannten Signaturen \cite{sumologicLogReduceDetectPatterns}. Variable Anteile einer Signatur werden durch Wildcards bzw. durch benannte Platzhalter wie \texttt{\$DATE} oder \texttt{\$URL} ersetzt; nicht zuordenbare Nachrichten werden in einer separaten \glqq Others\grqq-Signatur gesammelt, die rekursiv weiter unterteilt werden kann \cite{sumologicLogReduceDetectPatterns}.
+
+\paragraph{Technische Eigenschaften.}
+Der zugrunde liegende Algorithmus wird von Sumo Logic als Verfahren auf Basis von \glqq fuzzy logic\grqq{} und \glqq soft matching\grqq{} beschrieben, ohne weitere algorithmische Details offenzulegen \cite{sumologicLogReduceDetectPatterns}. Signaturen lassen sich interaktiv anpassen (\glqq promoted\grqq/\glqq demoted\grqq, Splitting), was einen Human-in-the-Loop-Feedbackmechanismus etabliert, der in keinem der übrigen hier betrachteten Systeme in dieser Form dokumentiert ist.
+
+\paragraph{Limitierungen.}
+LogReduce lässt sich laut Dokumentation nicht mit Gruppierungsfunktionen wie \texttt{count by} kombinieren \cite{sumologicLogReduceDetectPatterns}. Sumo Logic weist außerdem ausdrücklich darauf hin, dass eine Signatur nicht als repräsentatives Beispiel der darunter gruppierten Logs zu verstehen ist, sondern eine algorithmische Annäherung darstellt \cite{sumologicLogReduceDetectPatterns}. Sumo Logic ist ausschließlich als Cloud-Dienst verfügbar.
+
+\paragraph{Fazit.}
+LogReduce zeigt, dass kommerzielle Anbieter bereits seit Längerem auf Templating-ähnliche Verfahren zur Lognachrichten-Gruppierung setzen, deren algorithmische Grundlage jedoch -- anders als bei Grafana Loki -- nicht offengelegt wird.
+
+\subsection{Splunk: Machine Learning Toolkit}
+\label{sec:splunk_mltk}
+
+Im Unterschied zu den vier zuvor beschriebenen Systemen besitzt Splunk \emph{kein} fertiges, automatisches Log-Pattern-Feature. Das \ac{MLTK} stellt stattdessen generische, auf scikit-learn basierende Clustering-Algorithmen bereit -- unter anderem K-Means und \ac{DBSCAN} --, die Anwender manuell über die Search Processing Language konfigurieren und auf eigene Daten anwenden müssen \cite{splunkMltkAlgorithms}.
+
+\paragraph{Technische Eigenschaften.}
+Vor der Anwendung eines Clustering-Befehls muss der Logtext durch den Anwender selbst vektorisiert werden, etwa mittels des im MLTK enthaltenen \ac{TFIDF}-Algorithmus oder eines Hashing-Vectorizers \cite{splunkMltkAlgorithms}. Parameter wie die Cluster-Anzahl~$k$ bei K-Means oder $\varepsilon$ und \textit{min\_samples} bei \ac{DBSCAN} sind frei wählbar und entsprechen damit unmittelbar den in Abschnitt~\ref{sec:kmeans} bzw.\ Abschnitt~\ref{sec:dbscan} theoretisch beschriebenen Parametern.
+
+\paragraph{Limitierungen.}
+Es existiert keine log-spezifische Vorverarbeitung -- etwa eine automatische Maskierung von Zeitstempeln oder \ac{IP}-Adressen --, wie sie bei Datadog, Sumo Logic oder New Relic Bestandteil des Produkts ist; diese müsste der Anwender selbst über zusätzliche Suchbefehle ergänzen. Der gesamte Aufwand für Feature Engineering, Vektorisierung und Parameterwahl liegt beim Anwender.
+
+\paragraph{Fazit.}
+Splunk markiert im Vergleich der hier betrachteten Systeme den Gegenpol zu vollautomatisierten Lösungen wie Datadog oder Sumo Logic: Es liefert dieselben methodischen Bausteine (TF-IDF, K-Means, DBSCAN), die auch in Kapitel~\ref{chap:ml} dieser Arbeit theoretisch hergeleitet und praktisch evaluiert werden, jedoch ohne vorkonfigurierte Pipeline für Lognachrichten. Dies unterstreicht, dass die in dieser Arbeit untersuchten klassischen Algorithmen keineswegs nur akademischen Charakter besitzen, sondern Teil produktiver ML-Werkzeuge sind.
+
+\section{Weitere Systeme im Überblick}
+\label{sec:kommerziell_weitere}
+
+Die folgenden drei Systeme ergänzen das Bild, werden jedoch aufgrund eines geringeren Detaillierungsgrads der öffentlichen Dokumentation knapper behandelt.
+
+\paragraph{Dynatrace.}
+Dynatrace bietet im Rahmen seiner KI-Plattform eine Funktion zur Musteranalyse von Logs an, die auf einem proprietären, nicht weiter spezifizierten \glqq Log Pattern Model\grqq{} basiert \cite{dynatraceAnalyzeLogPatterns}. Dokumentiert sind unter anderem eine automatische Stichprobenziehung ab 50.000 Datensätzen bzw.\ 100\,MB Datenvolumen sowie eine maximale Eingabelänge von 1.500 Zeichen pro Logzeile \cite{dynatraceAnalyzeLogPatterns}. Der konkrete Algorithmus bleibt vollständig unveröffentlicht; Dynatrace ist damit das deutlichste Beispiel eines reinen Black-Box-Ansatzes unter den betrachteten Systemen.
+
+\paragraph{AWS CloudWatch Logs Insights.}
+Der Befehl \texttt{pattern} der Abfragesprache von CloudWatch Logs Insights gruppiert Lognachrichten mittels \glqq machine learning algorithms\grqq{} zu wiederkehrenden Strukturen, ebenfalls ohne Offenlegung des konkreten Verfahrens \cite{awsCloudwatchPatternAnalysis}. Ohne explizite Verwendung des Befehls basiert die Mustererkennung nur auf den ersten 1.000 zurückgegebenen Log-Events; mit dem Befehl wird zwar die gesamte Treffermenge berücksichtigt, dafür werden im Ergebnis keine Rohlogs mehr zurückgegeben \cite{awsCloudwatchPatternAnalysis}.
+
+\paragraph{New Relic.}
+New Relic setzt für seine Log-Pattern-Funktion explizit einen zweistufigen Ansatz ein: Variable Bestandteile (etwa Datum/Zeit, \ac{IP}-Adressen, URLs, \ac{UUID}s) werden zunächst durch maskierte Attribute ersetzt, bevor ein als \glqq advanced clustering algorithm\grqq{} bezeichnetes, nicht näher benanntes Verfahren die eigentliche Gruppierung übernimmt \cite{newrelicLogPatterns}. Das zugehörige ML-Modell benötigt nach Aktivierung der Funktion bis zu 24~Stunden Vorlaufzeit, bevor erste Patterns angezeigt werden \cite{newrelicLogPatterns}.
+
+\section{Vergleichende Gegenüberstellung}
+\label{sec:kommerziell_vergleich}
+
+Tabelle~\ref{tab:kommerzielle_systeme} fasst die untersuchten Systeme anhand zentraler Kriterien zusammen. % TODO: Tabelle nach Bedarf um weitere Kriterien (z. B. Sprachabhängigkeit) ergänzen
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{lccccc}
+        \hline
+        \textbf{System} & \textbf{Algorithmus} & \textbf{Open} & \textbf{On-} & \textbf{GT-Eval.} \\
+         & \textbf{offengelegt} & \textbf{Source} & \textbf{Premises} & \textbf{veröffentlicht} \\
+        \hline
+        Datadog (Log Patterns)        & $\times$        & $\times$ & $\times$ & $\times$ \\
+        Elastic (\texttt{categorize\_text}) & teilweise & \checkmark & \checkmark & $\times$ \\
+        Grafana Loki (Pattern Ingester) & \checkmark (Drain) & \checkmark & \checkmark & $\times$ \\
+        Sumo Logic (LogReduce)        & teilweise        & $\times$ & $\times$ & $\times$ \\
+        Splunk (MLTK)                 & \checkmark (generisch) & $\times$ & \checkmark & $\times$ \\
+        Dynatrace                     & $\times$        & $\times$ & teilweise & $\times$ \\
+        AWS CloudWatch Logs Insights  & $\times$        & $\times$ & $\times$ & $\times$ \\
+        New Relic                     & teilweise        & $\times$ & $\times$ & $\times$ \\
+        \hline
+    \end{tabular}
+    \caption{Vergleich der untersuchten kommerziellen Systeme zum Log-Clustering. \glqq Teilweise\grqq{} bezeichnet Fälle, in denen einzelne Mechanismen (z.\,B. Maskierung, Tokenisierung) dokumentiert sind, der eigentliche Gruppierungsalgorithmus jedoch nicht.}
+    \label{tab:kommerzielle_systeme}
+\end{table}
+
+\section{Einordnung und Abgrenzung zu dieser Arbeit}
+\label{sec:kommerziell_einordnung}
+
+\paragraph{Fehlende quantitative Ground-Truth-Evaluation.}
+Keines der untersuchten Systeme veröffentlicht eine quantitative Bewertung der Cluster-Qualität gegenüber einer Ground Truth, etwa anhand des \ac{ARI}-Werts oder des V-Measure wie in Abschnitt~\ref{Vorgensweise} dieser Arbeit definiert. Die Anbieterdokumentation beschreibt durchgängig Funktionsweise und Bedienung, nicht jedoch die algorithmische Güte im Vergleich zu einer bekannten Klasseneinteilung.
+
+\paragraph{Transparenz und Reproduzierbarkeit.}
+Mit Ausnahme von Grafana Loki (Drain) und, mit Einschränkungen, Splunk MLTK (generische, aber benannte Algorithmen) bleibt die konkrete algorithmische Grundlage der betrachteten Systeme unveröffentlicht. Eine Reproduktion der Ergebnisse oder ein direkter, methodisch fundierter Vergleich mit den in Kapitel~\ref{chap:ml} und Kapitel~\ref{chap:vek} evaluierten Verfahren ist daher nicht möglich; dies bestätigt die in Abschnitt~\ref{chap:einf} formulierte Abgrenzung, wonach diese Arbeit auf bestehende, offen zugängliche und damit nachvollziehbare Algorithmen setzt.
+
+\paragraph{Fazit.}
+Der Marktüberblick zeigt, dass die in dieser Arbeit behandelten Verfahren -- insbesondere Drain (Abschnitt~\ref{sec:drain3}) sowie TF-IDF in Kombination mit klassischen Clustering-Algorithmen (Abschnitt~\ref{sec:kmeans}, Abschnitt~\ref{sec:dbscan}) -- bereits Grundlage produktiver, kommerzieller Systeme sind. Die vorliegende Arbeit unterscheidet sich von diesen Systemen durch die transparente, reproduzierbare und metrikbasierte Evaluation der Verfahren anhand einer definierten Ground Truth (vgl. Abschnitt~\ref{Vorgensweise}) -- ein Vergleichsmaßstab, den keines der hier untersuchten kommerziellen Systeme öffentlich bereitstellt.
