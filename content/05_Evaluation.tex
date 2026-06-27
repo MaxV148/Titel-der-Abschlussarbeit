@@ -197,69 +197,100 @@ $\varepsilon = 0{,}4$ verwendet.
 
 Drain3 wird durch zwei zentrale Hyperparameter gesteuert: den
 Ähnlichkeitsschwellenwert \texttt{drain\_sim\_th} und die Baumtiefe
-\texttt{drain\_depth}. Beide Parameter werden über einen 2D-Parameterdurchlauf
-gemeinsam untersucht. \texttt{drain\_sim\_th} bestimmt, ab welchem Grad an Übereinstimmung
-zweier Lognachrichten diese demselben Template zugeordnet werden;
-\texttt{drain\_depth} legt die maximale Tiefe des Parse-Baums fest und damit
-indirekt die strukturelle Granularität der erzeugten Templates.
+\texttt{drain\_depth}. \texttt{drain\_sim\_th} bestimmt, ab welchem Grad an
+Übereinstimmung zweier Lognachrichten diese demselben Template zugeordnet
+werden; \texttt{drain\_depth} legt die maximale Tiefe des Parse-Baums fest und
+damit indirekt die strukturelle Granularität der erzeugten Templates. Anders
+als bei K-Means und DBSCAN, deren Parameterwahl ausschließlich unsupervised
+erfolgt, wird für Drain3 -- wie in Abschnitt~\ref{sec:eval:parameterwahl}
+begründet -- eine Teilmenge des Ground-Truth-Datensatzes herangezogen. Die
+Suche erfolgt primär als 1D-Sweep über \texttt{drain\_sim\_th};
+\texttt{drain\_depth} wird als Variante mitgeführt, um die Robustheit der
+gefundenen \texttt{sim\_th}-Wahl gegenüber der Baumtiefe zu prüfen.
 
 \paragraph{Aufbau des Parameterdurchlaufs.}
-Für \texttt{drain\_sim\_th} wird der Bereich
-$\{0{,}1, 0{,}2, \dots, 0{,}9\}$ vollständig durchlaufen, für
-\texttt{drain\_depth} die Werte $\{3, 4, 5\}$. Pro Kombination wird ein
-frischer \texttt{TemplateMiner} instanziiert, alle $10\,000$ Lognachrichten
-sequenziell verarbeitet und die Anzahl eindeutiger Cluster-IDs protokolliert.
-Als unsupervised Auswertungskriterium dient die Cluster-Anzahl als Funktion
-von \texttt{drain\_sim\_th}; der Übergang von kontrolliertem Wachstum zur
-exponentiellen Übersegmentierung wird automatisch mittels der
-\texttt{KneeLocator}-Bibliothek (\texttt{curve='convex'},
-\texttt{direction='increasing'}) lokalisiert. Die zugehörige Implementierung
-findet sich im Notebook \texttt{ML.ipynb} (Zelle~12).
+Aus den $10\,000$ Lognachrichten des gemischten Datensatzes wird mit festem
+Seed ($42$) eine reproduzierbare Stichprobe von $4\,000$ Nachrichten
+($40\,\%$) gezogen. Für diese Stichprobe wird die Anzahl der enthaltenen
+Ground-Truth-Klassen bestimmt; sie beträgt $42$ -- zwei der insgesamt $44$
+Klassen des Gesamtdatensatzes (vgl.\ Abschnitt~\ref{sec:eval:aufbau}) sind in
+der Stichprobe nicht vertreten. Für jede Kombination aus
+$\texttt{drain\_sim\_th} \in \{0{,}1, 0{,}2, \dots, 0{,}9\}$ und
+$\texttt{drain\_depth} \in \{3, 4, 5\}$ ($27$ Kombinationen) wird ein
+frischer \texttt{TemplateMiner} instanziiert, die Stichprobe sequenziell
+verarbeitet und die Anzahl eindeutiger Cluster-IDs protokolliert. Als
+Auswahlkriterium dient -- je \texttt{depth}-Wert -- die kleinste absolute
+Differenz zwischen resultierender Cluster-Anzahl und der
+Ground-Truth-Klassenzahl der Stichprobe ($42$); aus den drei
+depth-spezifischen Minima wird anschließend die insgesamt beste Kombination
+bestimmt. Da ausschließlich Cluster-\emph{Anzahlen} verglichen werden und
+weder ARI noch V-Measure in die Auswahl einfließen, bleibt die in
+Abschnitt~\ref{sec:eval:parameterwahl} geforderte Trennung von Tuning- und
+Evaluationsmetrik gewahrt. Die zugehörige Implementierung findet sich im
+Notebook \texttt{ML.ipynb} (Zelle~5).
 
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.9\linewidth]{images/drain3_sweep.png}
-    \caption{Drain3-Parametersuche: Cluster-Anzahl als Funktion von \texttt{drain\_sim\_th} für drei Werte von \texttt{drain\_depth} (logarithmische y-Achse). Der per \texttt{KneeLocator} bestimmte Knick liegt für alle drei \texttt{depth}-Werte bei \texttt{sim\_th} $= 0{,}7$ (grün gepunktet); der Implementierungswert \texttt{sim\_th} $= 0{,}2$ ist rot eingezeichnet.}
+    \caption{Drain3-Parametersuche: Cluster-Anzahl als Funktion von \texttt{drain\_sim\_th} für drei Werte von \texttt{drain\_depth} auf einer Stichprobe von $4\,000$ Lognachrichten (logarithmische y-Achse). Die blaue Strichpunktlinie markiert die $42$ Ground-Truth-Klassen der Stichprobe; die rote gestrichelte Linie zeigt die beste gefundene Kombination (\texttt{depth} $=3$, \texttt{sim\_th} $=0{,}2$, $44$ Cluster).}
     \label{fig:drain3-sweep}
 \end{figure}
 
-\paragraph{Beobachtung 1: \texttt{depth} hat vernachlässigbaren Einfluss.}
-Die drei Kurven für \texttt{depth} $\in \{3, 4, 5\}$ liegen in
-Abbildung~\ref{fig:drain3-sweep} nahezu deckungsgleich übereinander. Der
-Parameter beeinflusst die strukturelle Aufteilung im Parse-Baum, ändert die
-resultierende Cluster-Anzahl jedoch in dem hier untersuchten
-$\texttt{sim\_th}$-Bereich nur marginal. Für die Implementierung wird daher
-\texttt{depth} $= 4$ als sklearn-konformer Default beibehalten.
+\paragraph{Beobachtung 1: \texttt{depth=4} und \texttt{depth=5} identisch, \texttt{depth=3} weicht im unteren Bereich ab.}
+Die Kurven für \texttt{depth} $\in \{4, 5\}$ liegen in
+Abbildung~\ref{fig:drain3-sweep} exakt übereinander -- für keinen der neun
+untersuchten \texttt{sim\_th}-Werte unterscheidet sich die resultierende
+Cluster-Anzahl. \texttt{depth} $=3$ erzeugt dagegen im Bereich
+$\texttt{sim\_th} \in [0{,}1, 0{,}6]$ durchgehend weniger Cluster (ca.\
+$6\,\%$ bis $18\,\%$ unter den Werten von \texttt{depth} $\in \{4, 5\}$),
+nähert sich bei $\texttt{sim\_th} = 0{,}7$ an (Differenz $\approx 1\,\%$) und
+ist ab $\texttt{sim\_th} \geq 0{,}8$ identisch zu den beiden anderen Tiefen.
+Eine Baumtiefe von $3$ reicht im niedrigen bis mittleren
+\texttt{sim\_th}-Bereich demnach nicht aus, um die strukturelle Vielfalt der
+Lognachrichten vollständig in unterschiedlichen Ästen abzubilden, sodass sich
+mehr Nachrichten einen Pfad und damit ein Template teilen. Mit steigendem
+\texttt{sim\_th} dominiert zunehmend der Ähnlichkeitsschwellenwert die
+Cluster-Bildung, wodurch der Effekt der Baumtiefe verschwindet. Ab
+\texttt{depth} $=4$ steht offenbar bereits ausreichend Verzweigungskapazität
+zur Verfügung, sodass eine weitere Erhöhung auf $5$ keinen messbaren Effekt
+mehr zeigt.
 
-\paragraph{Beobachtung 2: Knee bei \texttt{sim\_th} $= 0{,}7$.}
-Die Cluster-Anzahl wächst zwischen \texttt{sim\_th} $= 0{,}1$ und
-\texttt{sim\_th} $= 0{,}7$ moderat von $\approx 37$ auf $\approx 250$. Ab
-\texttt{sim\_th} $> 0{,}7$ steigt sie stark auf $\approx 1100$ (bei $0{,}8$)
-bzw. $\approx 3000$ (bei $0{,}9$). Der Knee markiert damit \emph{nicht} das
-Optimum, sondern eine \emph{obere Schranke}: Oberhalb dieses Werts erzeugt
-jede syntaktische Variation einer Lognachricht einen separaten Ast im
-Baum, was zu einer katastrophalen Übersegmentierung führt.
+\paragraph{Beobachtung 2: moderates Wachstum bis \texttt{sim\_th=0,7}, danach sprunghafte Übersegmentierung.}
+Für \texttt{depth} $\in \{4, 5\}$ wächst die Cluster-Anzahl von $39$
+($\texttt{sim\_th}=0{,}1$) über $116$ ($\texttt{sim\_th}=0{,}6$) auf $197$
+($\texttt{sim\_th}=0{,}7$) -- ein Faktor von rund $5$ über sechs
+Zehntelschritte. Zwischen $\texttt{sim\_th}=0{,}7$ und $0{,}8$ springt die
+Anzahl auf $722$ (Faktor $\approx 3{,}7$), zwischen $0{,}8$ und $0{,}9$ auf
+$2\,276$ (Faktor $\approx 3{,}2$). Oberhalb von $\texttt{sim\_th} \approx 0{,}7$
+erzeugt damit bereits eine geringfügige syntaktische Variation einer
+Lognachricht einen eigenen Ast im Parse-Baum, was zu katastrophaler
+Übersegmentierung führt.
 
-\paragraph{Wahl von \texttt{sim\_th}.}
-Innerhalb der sicheren Zone $\texttt{sim\_th} \leq 0{,}7$ wächst die Kurve
-monoton ohne klares Plateau; ein eindeutiges Optimum lässt sich aus dem
-Parameterdurchlauf allein nicht ableiten. Methodisch wird daher der konservativ niedrige
-Wert \texttt{sim\_th} $= 0{,}2$ verwendet. Drei Argumente stützen diese
-Wahl:
+\paragraph{Wahl von \texttt{sim\_th} und \texttt{depth}.}
+Je \texttt{depth}-Wert liegt das Minimum der Differenz zur
+Ground-Truth-Klassenzahl der Stichprobe ($42$) bei: \texttt{depth=3} --
+\texttt{sim\_th} $=0{,}2$ ($44$ Cluster, $\Delta = 2$); \texttt{depth=4} und
+\texttt{depth=5} -- \texttt{sim\_th} $=0{,}1$ ($39$ Cluster, $\Delta = 3$).
+Über alle $27$ Kombinationen ist \texttt{depth} $=3$ mit \texttt{sim\_th}
+$=0{,}2$ damit die insgesamt beste Kombination und wird für Implementierung
+und Evaluation übernommen. Der Abstand zur zweitbesten Kombination beträgt
+lediglich eine Klasse; angesichts des in Beobachtung~1 beschriebenen
+Sättigungseffekts ab \texttt{depth} $=4$ wird diese geringe Differenz nicht
+als Beleg für eine grundsätzliche Überlegenheit von \texttt{depth} $=3$
+gewertet, sondern als Ergebnis der konkreten Klassenzusammensetzung der
+gezogenen Stichprobe. Zwei Argumente stützen \texttt{sim\_th} $=0{,}2$
+zusätzlich unabhängig vom konkreten Stichprobenergebnis:
 
 \begin{enumerate}
-    \item \emph{Maximaler Sicherheitsabstand zum Übersegmentierungs-Knick.}
-    Bei \texttt{sim\_th} $= 0{,}2$ liegt die Cluster-Anzahl mit $\approx 50$
-    eine volle Größenordnung unter dem Wert am Knee ($\approx 250$).
-    \item \emph{Größenordnung passend zum Datensatz.} Der gemischte
+    \item \emph{Sicherheitsabstand zur Übersegmentierungszone.} Bei
+    \texttt{sim\_th} $= 0{,}2$ liegt die Cluster-Anzahl mit $44$ bis $50$ eine
+    volle Größenordnung unter den Werten ab \texttt{sim\_th} $\geq 0{,}8$, ab
+    denen die Übersegmentierung gemäß Beobachtung~2 sprunghaft einsetzt.
+    \item \emph{Größenordnung passend zum Gesamtdatensatz.} Der gemischte
     Loghub-Datensatz enthält $44$ Ground-Truth-Klassen
     (vgl.\ Abschnitt~\ref{sec:eval:aufbau}). Die bei \texttt{sim\_th} $= 0{,}2$
-    erzeugten $\approx 50$ Cluster liegen damit in der natürlichen
-    Größenordnung der Daten, ohne dass diese Information in die
-    Parameterwahl eingeflossen ist.
-    \item \emph{Reine Templates trotz niedrigem Schwellenwert.} Die
-    Parse-Baum-Struktur von Drain3 erzwingt durch positionsbasierte
-    Verzweigung auch bei niedrigem \texttt{sim\_th} hochspezifische Templates.
+    erzeugte Cluster-Anzahl liegt unabhängig von der Stichprobe in dieser
+    Größenordnung.
 \end{enumerate}
 
 % ----------------------------------------------------------------
