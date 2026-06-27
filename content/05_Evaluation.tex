@@ -294,6 +294,129 @@ zusätzlich unabhängig vom konkreten Stichprobenergebnis:
 \end{enumerate}
 
 % ----------------------------------------------------------------
+\subsection{Brain}
+\label{sec:eval:param:brain}
+
+Brain wird primär über den Schwellwert \texttt{BRAIN\_THRESHOLD} aus
+Schritt~4 der Knotenaktualisierung in der Kind-Richtung gesteuert (vgl.\
+Abschnitt~\ref{sec:brain}). Er legt fest, ab wie vielen unterschiedlichen
+Wörtern an einer Baumspalte diese als variable Position (Wildcard
+\texttt{<*>}) klassifiziert wird; liegt die Anzahl unterschiedlicher Wörter
+darunter, gelten die Tokens der Spalte als konstant, und die initiale Gruppe
+wird entsprechend in Untergruppen aufgeteilt. Ein niedriger Schwellwert
+erleichtert damit die Klassifikation als Variable und begünstigt die
+Aggregation strukturell ähnlicher Nachrichten zu gemeinsamen Templates; ein
+hoher Schwellwert erschwert sie und begünstigt eine feinere Aufspaltung in
+separate Templates. Wie bei Drain3 erfolgt die Wahl von
+\texttt{BRAIN\_THRESHOLD} über einen 1D-Sweep mit Auswahl anhand der
+Differenz zu einer Ground-Truth-Klassenzahl in einer Stichprobe (vgl.\
+Abschnitt~\ref{sec:eval:parameterwahl}). Daneben bestimmen die
+Vorverarbeitungsparameter \texttt{BRAIN\_REGEX} und \texttt{BRAIN\_DELIMITER}
+das Parsing-Ergebnis mit; sie werden -- anders als \texttt{BRAIN\_THRESHOLD}
+-- nicht gesweept, sondern wie im Folgenden beschrieben anhand der Struktur
+des Datensatzes festgelegt.
+
+\paragraph{Verzicht auf eine Datensatz-Voreinstellung.}
+Die Referenzimplementierung von Brain definiert für jede der von den Autoren
+evaluierten Loghub-2k-Quellen eine feste Kombination aus Regex-Filtern,
+Trennzeichen und Schwellwert (\textit{benchmark\_settings} in
+\texttt{evaluate.py})\footnote{\url{https://github.com/gaiusyu/Brain}}; der
+Parameter \texttt{BRAIN\_DATASET} wählt diese Voreinstellung aus und löst
+zusätzlich einige hartkodierte, datensatzspezifische Sonderbehandlungen aus
+(z.\,B. das Einfügen von Leerzeichen nach \texttt{=} und \texttt{:} für die
+Quelle \texttt{Linux}). Da der in dieser Arbeit verwendete
+Evaluationsdatensatz eine Mischung aus den drei Quellsystemen
+\texttt{Linux}, \texttt{Apache} und \texttt{OpenSSH} ist (vgl.\
+Abschnitt~\ref{sec:eval:aufbau}), passt keine der 13 vordefinierten
+Einzel-Voreinstellungen auf den Datensatz als Ganzes. \texttt{BRAIN\_DATASET}
+wird daher nicht mehr zur Auswahl einer Voreinstellung verwendet; Regex und
+Trennzeichen werden stattdessen manuell für den vorliegenden Datensatz
+definiert (s.\,u.).
+
+\paragraph{Wahl von Regex und Delimiter.}
+Als Regex-Filter, der variable Teilstrings vor der Tokenfrequenzzählung durch
+\texttt{<*>} ersetzt (vgl.\ Schritt~1 der Funktionsweise in
+Abschnitt~\ref{sec:brain}), wird verwendet:
+
+\begin{lstlisting}[caption={Regex-Filter und Trennzeichen für Brain}, label={lst:brain-regex}]
+BRAIN_REGEX = [
+    r'((\d+\.){3}\d+)(:\d+)?',  # IP (+ optionaler Port)
+    r'/\S+',                    # Pfad (bis Whitespace), trifft auch Zeilenende
+    r'\b\d+\b',                 # Zahlen nur als ganze Tokens
+]
+BRAIN_DELIMITER = [r'=', r':']
+\end{lstlisting}
+
+
+\paragraph{Aufbau des Parameterdurchlaufs.}
+Es wird dieselbe Stichprobe wie in Abschnitt~\ref{sec:eval:param:drain3}
+verwendet ($n = 4\,000$, Seed $42$); die Anzahl der enthaltenen
+Ground-Truth-Klassen beträgt entsprechend ebenfalls $42$. Die im
+vorangehenden Absatz festgelegte Regex- und Delimiter-Konfiguration wird für
+den gesamten Durchlauf konstant gehalten; ausschließlich
+\texttt{BRAIN\_THRESHOLD} wird über die elf Werte $\{1, 2, 3, 4, 5, 6, 7, 8,
+10, 15, 20\}$ variiert. Für jeden Wert wird \texttt{Brain.parse} auf der
+Stichprobe ausgeführt und die Anzahl eindeutiger \texttt{EventId}-Werte als
+Cluster-Anzahl protokolliert. Als Auswahlkriterium dient -- analog zu Drain3
+-- die kleinste absolute Differenz zwischen resultierender Cluster-Anzahl und
+der Ground-Truth-Klassenzahl der Stichprobe ($42$). Die zugehörige
+Implementierung findet sich im Notebook \texttt{ML.ipynb} (Zelle~6).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.9\linewidth]{images/brain_sweep.png}
+    \caption{Brain-Parametersuche: Cluster-Anzahl als Funktion von \texttt{BRAIN\_THRESHOLD} auf einer Stichprobe von $4\,000$ Lognachrichten mit der in Listing~\ref{lst:brain-regex} gezeigten Regex- und Delimiter-Konfiguration. Die blaue Strichpunktlinie markiert die $42$ Ground-Truth-Klassen der Stichprobe; die rote gestrichelte Linie zeigt den nächstgelegenen getesteten Wert (\texttt{threshold} $=1$, $72$ Cluster).}
+    \label{fig:brain-sweep}
+\end{figure}
+
+\paragraph{Beobachtung 1: monoton wachsende Treppenfunktion mit Plateaus an beiden Rändern.}
+Die Cluster-Anzahl steigt in Abbildung~\ref{fig:brain-sweep} monoton von $72$
+(\texttt{threshold} $\in \{1, 2\}$) auf $159$ (\texttt{threshold} $\in \{15,
+20\}$). An beiden Rändern des Suchraums bildet sich ein Plateau: Zwischen
+\texttt{threshold} $=1$ und $=2$ sowie zwischen \texttt{threshold} $=15$ und
+$=20$ ändert sich die Cluster-Anzahl nicht. Im mittleren Bereich
+($\texttt{threshold} \in [3, 10]$) wächst die Kurve uneinheitlich, mit dem
+stärksten Einzelschritt zwischen \texttt{threshold} $=2$ und $=3$ ($72 \to
+95$, $+31{,}9\,\%$), einem zweiten deutlichen Sprung zwischen
+\texttt{threshold} $=7$ und $=8$ ($118 \to 138$, $+16{,}9\,\%$) und einem
+weiteren Plateau zwischen \texttt{threshold} $=6$ und $=7$ ($118$ Cluster).
+Im Gegensatz zu Drain3, dessen \texttt{sim\_th} oberhalb von $0{,}7$ eine
+sprunghafte Explosion der Cluster-Anzahl auslöst, zeigt
+\texttt{BRAIN\_THRESHOLD} im untersuchten Bereich keinen vergleichbaren
+Knick, sondern einen durchgehend gedämpften, treppenförmigen Anstieg auf
+insgesamt das $2{,}2$-fache des Startwerts.
+
+\paragraph{Beobachtung 2: Das GT-Distanz-Kriterium liefert kein inneres Optimum.}
+Bereits der kleinste getestete Wert \texttt{threshold} $=1$ erzeugt mit $72$
+Clustern eine Abweichung von $\Delta = 30$ zur Ground-Truth-Klassenzahl der
+Stichprobe ($42$) -- das Fünfzehnfache der bei Drain3 erreichten
+Minimalabweichung ($\Delta = 2$). Da die Kurve über den gesamten
+Suchraum monoton steigt, liegt dieses Minimum auf dem Rand des
+Suchraums und nicht im Inneren: Ein noch kleinerer, nicht getesteter Wert
+würde die Differenz potenziell weiter verringern, doch sind Werte
+$< 1$ für \texttt{BRAIN\_THRESHOLD} als Anzahl unterschiedlicher Wörter
+nicht sinnvoll definierbar. Anders als bei Drain3 lässt sich aus dem
+Parameterdurchlauf für Brain auf dieser Stichprobe damit kein belastbarer,
+datengetriebener Optimalwert ableiten.
+
+\paragraph{Wahl von \texttt{BRAIN\_THRESHOLD}.}
+Da das GT-Distanz-Kriterium gemäß Beobachtung~2 keinen validen inneren
+Optimalwert liefert, wird für \texttt{BRAIN\_THRESHOLD} nicht der
+Sweep-Treffer (\texttt{threshold} $=1$) übernommen. Da -- wie zuvor begründet
+-- weder die Regex- noch die Trennzeichen-Konfiguration mehr unmittelbar
+einer Brain-Voreinstellung entsprechen, lässt sich \texttt{threshold} nicht
+mehr durch direkte Übernahme einer einzelnen \textit{benchmark\_settings}-Kombination
+begründen. Stattdessen wird auf die Schwellwerte zurückgegriffen, die die
+Brain-Autoren für die drei tatsächlichen Quellsysteme des Datensatzes
+hinterlegt haben\footnote{\url{https://github.com/gaiusyu/Brain}}:
+\texttt{Linux} ($\texttt{threshold}=4$), \texttt{Apache} ($\texttt{threshold}=4$)
+und \texttt{OpenSSH} ($\texttt{threshold}=6$) \cite{brain}. Diese drei Werte
+liegen trotz unterschiedlicher Logformate eng beieinander (Mittelwert
+$4{,}7$); \texttt{threshold} $=5$ liegt innerhalb dieser Spanne und wird als
+ein für alle drei Quellsysteme gemeinsam vertretbarer Kompromisswert
+übernommen, anstatt sich auf eines der drei Systeme einseitig festzulegen.
+
+% ----------------------------------------------------------------
 \subsection{MinHash LSH}
 \label{sec:eval:param:minhash}
 
