@@ -541,14 +541,14 @@ vergleichende Gesamtbewertung erfolgt in Abschnitt~\ref{sec:eval:vergleich}.
     \label{tab:eval:kmeans}
     \begin{tabular}{lrr}
         \toprule
-        Metrik & $\bar{x}$ & $\sigma$ \\
+        Metrik & $\bar{x}$ & $\sigma$  \\
         \midrule
         ARI            & $70{,}585\,\%$ & $\pm\,8{,}369\,\%$ \\
         V-Measure      & $84{,}913\,\%$ & $\pm\,2{,}644\,\%$ \\
         Homogenität    & $80{,}762\,\%$ & $\pm\,2{,}874\,\%$ \\
         Vollständigkeit& $89{,}524\,\%$ & $\pm\,2{,}446\,\%$ \\
         \midrule
-        Clusteranzahl  & $13$ & -- \\
+        Clusteranzahl  & $13$ & $0\,\%$ \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -623,7 +623,7 @@ Einzeldurchlaufs mit Seed $42$.
         Homogenität    & $7{,}201\,\%$ & $\pm\,0{,}000\,\%$ \\
         Vollständigkeit& $65{,}223\,\%$ & $\pm\,0{,}000\,\%$ \\
         \midrule
-        Clusteranzahl  & $13$ & -- \\
+        Clusteranzahl  & $13$ & $0\,\%$ \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -637,30 +637,11 @@ Durchläufe ist durch die Tatsache begründet, dass DBSCAN als
 Stapelverfahren auf der vollständigen TF-IDF-Matrix arbeitet und gegenüber
 der Eingangsreihenfolge unabhängig ist.
 
-Ursächlich für den niedrigen ARI ist eine massive Untersegmentierung: Von
-den $13$ gebildeten Clustern vereint ein einzelner Cluster $9\,527$ der
-$10\,000$ Lognachrichten ($95{,}3\,\%$) auf sich; die übrigen zwölf Cluster
-umfassen jeweils zwischen $6$ und $84$ Punkten und sind nahezu durchgehend
-rein (jeweils eine, in einem Fall zwei Ground-Truth-Klassen). Der
-Makrocluster enthält dagegen Vertreter aus $37$ der $44$
-Ground-Truth-Klassen, wodurch die Homogenität auf $7{,}201\,\%$ einbricht --
+Ursächlich für den niedrigen ARI ist eine massive Untersegmentierung. Die Homogenität auf $7{,}201\,\%$ einbricht --
 der mit Abstand niedrigste Wert aller untersuchten Verfahren. Die
 Vollständigkeit von $65{,}223\,\%$ fällt dagegen moderat aus: Die Mitglieder
 der meisten Klassen verbleiben gemeinsam im Makrocluster, was die
-Klassen-Kohäsion erhält, jedoch keine perfekte Vollständigkeit liefert, da
-die übrigen Klassen auf die zwölf kleineren Cluster aufgeteilt sind.
-
-Dieses Verhalten entspricht der Fehlfunktion eines zu groß gewählten
-$\varepsilon$, wie sie auch in der sklearn-Dokumentation beschrieben wird:
-Ein zu großer Radius führt dazu, dass benachbarte, eigentlich separate
-Cluster verschmelzen und im Extremfall der gesamte Datensatz als ein
-einziger Cluster zurückgegeben
-wird\footnote{Dokumentation zu \texttt{sklearn.cluster}
-\url{https://scikit-learn.org/stable/modules/clustering.html\#dbscan}}. Im
-Gegensatz zu einem zu klein gewählten $\varepsilon$ entstehen dabei keine
-Rauschpunkte: Bei $\varepsilon = 0{,}65$ findet praktisch jeder Punkt
-ausreichend viele Nachbarn, um als Kernpunkt zu gelten, sodass kein Punkt als
-Ausreißer (Label $-1$) klassifiziert wird. DBSCAN bleibt für den
+Klassen-Kohäsion erhält, jedoch keine perfekte Vollständigkeit liefert. DBSCAN bleibt für den
 kontinuierlichen Betrieb unabhängig von dieser Parametrisierung ungeeignet:
 Als Stapelverfahren erfordert es bei jeder neu hinzukommenden Lognachricht
 eine vollständige Neuberechnung der Nachbarschaftsstruktur.
@@ -703,7 +684,7 @@ Einzeldurchlaufs mit Seed $42$.
         Homogenität    & $91{,}851\,\%$ & $\pm\,0{,}448\,\%$ \\
         Vollständigkeit& $91{,}208\,\%$ & $\pm\,0{,}296\,\%$ \\
         \midrule
-        Clusteranzahl  & $46$ & -- \\
+        Clusteranzahl  & $46$ & $0{,}9\,\%$ \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -766,7 +747,7 @@ Einzeldurchlaufs mit Seed $42$.
         Homogenität    & $98{,}769\,\%$ & $\pm\,0{,}000\,\%$ \\
         Vollständigkeit& $79{,}533\,\%$ & $\pm\,0{,}002\,\%$ \\
         \midrule
-        Clusteranzahl  & $153$ & -- \\
+        Clusteranzahl  & $153$ & $0{,}5\,\%$ \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -900,7 +881,7 @@ Einzeldurchlaufs mit Seed $42$ und denselben Parametern wie der Mehrfachlauf
         Homogenität    & $83{,}865\,\%$ & $\pm\,3{,}233\,\%$ \\
         Vollständigkeit& $94{,}979\,\%$ & $\pm\,1{,}968\,\%$ \\
         \midrule
-        Clusteranzahl  & $68$ & -- \\
+        Clusteranzahl  & $68$ & $1{,}4\,\%$ \\
         \bottomrule
     \end{tabular}
 \end{table}
