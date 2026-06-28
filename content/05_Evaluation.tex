@@ -506,16 +506,35 @@ Information in die Parameterwahl eingeflossen ist.
 Die folgenden Abschnitte dokumentieren die Evaluationsergebnisse der fünf algorithmischen
 Verfahren. Alle angegebenen Werte sind Mittelwerte mit Standardabweichung über $N = 5$
 Permutationsdurchläufe, wie in Abschnitt~\ref{sec:eval:aufbau} beschrieben. Qualitative
-Beobachtungen beschränken sich auf das, was die Messwerte unmittelbar belegen; eine
+Beobachtungen beschränken sich auf das, was die Messwerte unmittelbar zeigen; eine
 vergleichende Gesamtbewertung erfolgt in Abschnitt~\ref{sec:eval:vergleich}.
 
 % ----------------------------------------------------------------
 \subsection{K-Means}
 \label{sec:eval:kmeans}
 
+
 \begin{table}[h]
     \centering
-    \caption{Evaluationsergebnisse K-Means ($k = 13$, $N = 5$ Durchläufe)}
+    \caption{Evaluationsergebnisse K-Means ($k = 10$, Einzeldurchlauf)}
+    \label{tab:eval:kmeans}
+    \begin{tabular}{lrr}
+        \toprule
+        Metrik & $\bar{x}$ \\
+        \midrule
+        ARI            & $69{,}9\,\%$ \\
+        V-Measure      & $86{,}2\,\%$ \\
+        Homogenität    & $81{,}2\,\%$ \\
+        Vollständigkeit& $91{,}8\,\%$ \\
+        \midrule
+        Clusteranzahl  & $13$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse K-Means ($k = 10$, $N = 5$ Durchläufe)}
     \label{tab:eval:kmeans}
     \begin{tabular}{lrr}
         \toprule
@@ -530,6 +549,7 @@ vergleichende Gesamtbewertung erfolgt in Abschnitt~\ref{sec:eval:vergleich}.
         \bottomrule
     \end{tabular}
 \end{table}
+
 
 Die Clusteranzahl $k = 13$ wurde, wie in Abschnitt~\ref{sec:eval:param:kmeans}
 beschrieben, datengetrieben über den Silhouette-Score auf der
