@@ -99,22 +99,20 @@ unterscheiden sich jedoch in der absoluten Häufigkeit dieser Wörter. Die
 Cosinus-Distanz normiert diesen Effekt heraus, indem sie ausschließlich den
 Winkel zwischen zwei Vektoren misst. Das macht sie zu einer passenden Distanzmetrik für die Textverarbeitung \cite{MetricGate2026}.
 
-\paragraph{Mindestanzahl an Nachbarn: \texttt{min\_samples = 2}.}
+\paragraph{Mindestanzahl an Nachbarn: \texttt{min\_samples = 5}.}
 Der Parameter \texttt{min\_samples} legt fest, wie viele Punkte sich
 mindestens im $\varepsilon$-Radius eines Punktes befinden müssen, damit dieser
-als Kernpunkt klassifiziert wird. Der Wert $2$ ist die kleinstmögliche
-sinnvolle Einstellung und bewirkt, dass bereits zwei sich gegenseitig als
-Nachbarn erkennende Lognachrichten einen Cluster bilden. Da der Datensatz pro
-Log-Template im Mittel lediglich 10\,000 Einträge
-enthält \ref{sec:eval:aufbau},
-sichert ein kleiner Wert ab, dass auch selten auftretende Templates nicht
-fälschlich als Rauschen klassifiziert werden.
+als Kernpunkt klassifiziert wird. Anstelle einer eigenständigen Herleitung
+wird der Standardwert $5$ der verwendeten
+Implementierung\footnote{Dokumentation zu \texttt{sklearn.cluster.DBSCAN}
+\url{https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html}}
+übernommen.
 
 \paragraph{Nachbarschaftsradius $\varepsilon$ via $k$-Distanz-Plot.}
 Für die Wahl von $\varepsilon$ wird das
 $k$-Distanz-Verfahren \cite{Mane2024} eingesetzt. Hierzu wird für jeden
 Punkt im Datensatz die Cosinus-Distanz zum $k$-ten Nachbarn berechnet
-(mit $k = $ \texttt{min\_samples} $= 2$), die resultierenden Werte werden
+(mit $k = $ \texttt{min\_samples} $= 5$), die resultierenden Werte werden
 aufsteigend sortiert und in Abbildung~\ref{fig:dbscan-kdist} dargestellt. Die Distanzen wurden mittels NearestNeighbors \footnote{ Dokumentation zur NearestNeighbors Suche von sklearn \url{https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html}} von skleann ermittelt und anschließend aufsteigend sortiert, wie es im Listing \ref{lst:dbscan_neighbors} zusehen ist. Anschließend werden mittels der \texttt{find\_shape} Funktion die Parameter (curve und direction) für \texttt{kneed} bestimmt.  
 \begin{lstlisting}[caption={NearestNeighbors für DBSCAN}, label={lst:dbscan_neighbors}]
 
@@ -155,24 +153,28 @@ mittels der Bibliothek \texttt{kneed} \cite{satopa2011kneedle}.
 \begin{figure}[h]
     \centering
     \includegraphics[width=0.85\linewidth]{images/dbscan_k_distance.png}
-    \caption{$k$-Distanz-Plot für DBSCAN mit Cosinus-Distanz und $k = 2$. Der per \texttt{KneeLocator} bestimmte Knick liegt bei $\varepsilon \approx 0{,}399$ (grün gestrichelt)}
+    \caption{$k$-Distanz-Plot für DBSCAN mit Cosinus-Distanz und $k = 5$. Der per \texttt{KneeLocator} bestimmte Knick liegt bei $\varepsilon \approx 0{,}654$ (grün gestrichelt)}
     \label{fig:dbscan-kdist}
 \end{figure}
 
-Die Kurve zeigt drei klar abgrenzbare Phasen. Für etwa $82\,\%$ der Punkte
-liegt die Distanz zum nächsten Nachbarn bei $\approx 0$ -- Folge der für
+Die Kurve zeigt drei klar abgrenzbare Phasen. Für etwa $35\,\%$ der Punkte
+liegt die Distanz zum fünften Nachbarn bei $\approx 0$ -- Folge der für
 Logdaten typischen hohen Anzahl identischer oder nahezu identischer
-Nachrichten. In der mittleren Phase (Punkte $\approx 8200$ bis $\approx 9900$)
-steigt die Distanz langsam auf $\approx 0{,}4$ an; in diesem Bereich liegen
-Lognachrichten mit semantisch verwandten, aber nicht identischen Nachbarn,
-typischerweise Logs desselben Templates mit abweichenden Parametern. Im
-letzten Prozent der Punkte erfolgt ein steiler Sprung auf bis zu $0{,}65$;
-diese Logs besitzen keinen wirklich nahen Nachbarn mehr und stellen Ausreißer
-im Sinne von DBSCAN dar.
+Nachrichten. In der sich anschließenden, deutlich
+ausgedehnteren mittleren Phase (Punkte $\approx 3\,500$ bis $\approx 9\,900$)
+steigt die Distanz langsam und nahezu kontinuierlich auf $\approx 0{,}40$ an;
+in diesem Bereich liegen Lognachrichten mit semantisch verwandten, aber nicht
+identischen Nachbarn, typischerweise Logs desselben Templates mit
+abweichenden Parametern. Im letzten Prozent der Punkte, insbesondere in den
+letzten Promille, erfolgt ein steiler Sprung auf den Maximalwert von
+$\approx 0{,}666$; diese Logs besitzen keinen wirklich nahen Nachbarn mehr und
+stellen Ausreißer im Sinne von DBSCAN dar.
 
 Der \texttt{KneeLocator} identifiziert den Übergang zwischen mittlerer und
-letzter Phase bei $\varepsilon = 0{,}399$. Gerundet wird daher
-$\varepsilon = 0{,}4$ verwendet. 
+letzter Phase bei $\varepsilon = 0{,}654$ -- ein Wert, der bereits sehr nahe
+am Maximum der Kurve liegt und damit nur den einzelnen extremsten Ausreißer
+der letzten Phase ausschließt. Gerundet wird daher $\varepsilon = 0{,}65$
+verwendet.
 
 % ----------------------------------------------------------------
 \subsection{Drain3}
