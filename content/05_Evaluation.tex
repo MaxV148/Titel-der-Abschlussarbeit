@@ -612,66 +612,76 @@ Einzeldurchlaufs mit Seed $42$.
 
 \begin{table}[h]
     \centering
-    \caption{Evaluationsergebnisse DBSCAN ($\varepsilon = 0{,}4$, \texttt{min\_samples} $= 2$, $N = 5$ Durchläufe)}
+    \caption{Evaluationsergebnisse DBSCAN ($\varepsilon = 0{,}65$, \texttt{min\_samples} $= 5$, $N = 5$ Durchläufe)}
     \label{tab:eval:dbscan}
     \begin{tabular}{lrr}
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $26{,}085\,\%$ & $\pm\,0{,}000\,\%$ \\
-        V-Measure      & $59{,}905\,\%$ & $\pm\,0{,}000\,\%$ \\
-        Homogenität    & $57{,}391\,\%$ & $\pm\,0{,}000\,\%$ \\
-        Vollständigkeit& $62{,}649\,\%$ & $\pm\,0{,}000\,\%$ \\
+        ARI            & $0{,}390\,\%$ & $\pm\,0{,}000\,\%$ \\
+        V-Measure      & $12{,}971\,\%$ & $\pm\,0{,}000\,\%$ \\
+        Homogenität    & $7{,}201\,\%$ & $\pm\,0{,}000\,\%$ \\
+        Vollständigkeit& $65{,}223\,\%$ & $\pm\,0{,}000\,\%$ \\
         \midrule
-        Clusteranzahl  & $124$ & -- \\
+        Clusteranzahl  & $13$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 Mit dem in Abschnitt~\ref{sec:eval:param:dbscan} datengetrieben ermittelten
-Nachbarschaftsradius $\varepsilon = 0{,}4$ erreicht DBSCAN einen ARI von
-$26{,}085\,\%$ und ein V-Measure von $59{,}905\,\%$ -- den niedrigsten ARI
-aller untersuchten Verfahren (vgl.\ Abschnitt~\ref{sec:eval:vergleich}). Die
-Nullabweichung über alle fünf Durchläufe ist begründet durch die Tatsache, dass DBSCAN
-als Stapelverfahren auf der vollständigen TF-IDF-Matrix arbeitet und 
-gegenüber der Eingangsreihenfolge unabhängig ist.
+Nachbarschaftsradius $\varepsilon = 0{,}65$ erreicht DBSCAN einen ARI von
+$0{,}390\,\%$ und ein V-Measure von $12{,}971\,\%$ -- mit deutlichem Abstand
+die schwächsten Werte aller untersuchten Verfahren (vgl.\
+Abschnitt~\ref{sec:eval:vergleich}). Die Nullabweichung über alle fünf
+Durchläufe ist durch die Tatsache begründet, dass DBSCAN als
+Stapelverfahren auf der vollständigen TF-IDF-Matrix arbeitet und gegenüber
+der Eingangsreihenfolge unabhängig ist.
 
-Die Homogenität von $57{,}391\,\%$ zeigt, dass die mit $\varepsilon = 0{,}4$
-gebildeten Cluster überwiegend intern sauber sind. Die Vollständigkeit von
-$62{,}649\,\%$ ist demgegenüber moderat; sie ist Folge der mit $124$
-Clustern deutlich höheren Cluster\-anzahl gegenüber den $44$
-Ground-Truth-Klassen. Einzelne Templates werden auf mehrere, jeweils reine
-DBSCAN-Cluster aufgeteilt -- ein klassischer Übersegmentierungseffekt, der
-jedoch das geringere Übel darstellt: reine Cluster lassen sich nachgelagert
-zusammenführen, gemischte Cluster nicht.
+Ursächlich für den niedrigen ARI ist eine massive Untersegmentierung: Von
+den $13$ gebildeten Clustern vereint ein einzelner Cluster $9\,527$ der
+$10\,000$ Lognachrichten ($95{,}3\,\%$) auf sich; die übrigen zwölf Cluster
+umfassen jeweils zwischen $6$ und $84$ Punkten und sind nahezu durchgehend
+rein (jeweils eine, in einem Fall zwei Ground-Truth-Klassen). Der
+Makrocluster enthält dagegen Vertreter aus $37$ der $44$
+Ground-Truth-Klassen, wodurch die Homogenität auf $7{,}201\,\%$ einbricht --
+der mit Abstand niedrigste Wert aller untersuchten Verfahren. Die
+Vollständigkeit von $65{,}223\,\%$ fällt dagegen moderat aus: Die Mitglieder
+der meisten Klassen verbleiben gemeinsam im Makrocluster, was die
+Klassen-Kohäsion erhält, jedoch keine perfekte Vollständigkeit liefert, da
+die übrigen Klassen auf die zwölf kleineren Cluster aufgeteilt sind.
 
-Wie in Abschnitt~\ref{sec:dbscan} beschrieben, reagiert DBSCAN empfindlich
-auf ungleichmäßige Dichtverteilungen. Der gemischte Loghub-Datensatz enthält
-Klassen sehr unterschiedlicher Häufigkeit; seltene Templates liefern im
-TF-IDF-Raum zu wenige Kernpunkte und werden als Rauschen
-klassifiziert. Diese Rauschpunkte entziehen sich der Evaluation und begrenzen
-die erzielbare Vollständigkeit. DBSCAN bleibt für den kontinuierlichen
-Betrieb aus denselben Gründen wie K-Means ungeeignet: Eine inkrementelle
-Erweiterung ist ohne vollständige Neuberechnung der
-Nachbarschaftsstruktur nicht möglich.
+Dieses Verhalten entspricht der Fehlfunktion eines zu groß gewählten
+$\varepsilon$, wie sie auch in der sklearn-Dokumentation beschrieben wird:
+Ein zu großer Radius führt dazu, dass benachbarte, eigentlich separate
+Cluster verschmelzen und im Extremfall der gesamte Datensatz als ein
+einziger Cluster zurückgegeben
+wird\footnote{Dokumentation zu \texttt{sklearn.cluster}
+\url{https://scikit-learn.org/stable/modules/clustering.html\#dbscan}}. Im
+Gegensatz zu einem zu klein gewählten $\varepsilon$ entstehen dabei keine
+Rauschpunkte: Bei $\varepsilon = 0{,}65$ findet praktisch jeder Punkt
+ausreichend viele Nachbarn, um als Kernpunkt zu gelten, sodass kein Punkt als
+Ausreißer (Label $-1$) klassifiziert wird. DBSCAN bleibt für den
+kontinuierlichen Betrieb unabhängig von dieser Parametrisierung ungeeignet:
+Als Stapelverfahren erfordert es bei jeder neu hinzukommenden Lognachricht
+eine vollständige Neuberechnung der Nachbarschaftsstruktur.
 
 Tabelle~\ref{tab:eval:dbscan:single} dokumentiert ergänzend das Ergebnis des
 Einzeldurchlaufs mit Seed $42$.
 
 \begin{table}[h]
     \centering
-    \caption{Evaluationsergebnisse DBSCAN im Einzeldurchlauf ($\varepsilon = 0{,}4$, \texttt{min\_samples} $= 2$, Seed $42$)}
+    \caption{Evaluationsergebnisse DBSCAN im Einzeldurchlauf ($\varepsilon = 0{,}65$, \texttt{min\_samples} $= 5$, Seed $42$)}
     \label{tab:eval:dbscan:single}
     \begin{tabular}{lr}
         \toprule
         Metrik & Wert \\
         \midrule
-        ARI             & $26{,}1\,\%$ \\
-        V-Measure       & $59{,}9\,\%$ \\
-        Homogenität     & $57{,}4\,\%$ \\
-        Vollständigkeit & $62{,}6\,\%$ \\
+        ARI             & $0{,}4\,\%$ \\
+        V-Measure       & $13{,}0\,\%$ \\
+        Homogenität     & $7{,}2\,\%$ \\
+        Vollständigkeit & $65{,}2\,\%$ \\
         \midrule
-        Clusteranzahl   & $124$ \\
+        Clusteranzahl   & $13$ \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -1019,11 +1029,11 @@ die Clusteranzahl entstammt dem Einzellauf mit Seed $42$.
             & $49{,}041 \pm 0{,}000$
             & $1\,809$ \\
         DBSCAN
-            & $26{,}085 \pm 0{,}000$
-            & $59{,}905 \pm 0{,}000$
-            & $57{,}391 \pm 0{,}000$
-            & $62{,}649 \pm 0{,}000$
-            & $124$ \\
+            & $0{,}390 \pm 0{,}000$
+            & $12{,}971 \pm 0{,}000$
+            & $7{,}201 \pm 0{,}000$
+            & $65{,}223 \pm 0{,}000$
+            & $13$ \\
         \midrule
         \multicolumn{5}{l}{\footnotesize Ground-Truth-Klassen im Datensatz: $44$} \\
         \bottomrule
