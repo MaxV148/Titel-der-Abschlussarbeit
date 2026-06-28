@@ -115,7 +115,58 @@ df_labeled.to_csv('./Mixed_10k_labeled.log', index=False)
 
 
 
-# In[3]:
+# In[ ]:
+
+
+# ==========================================
+# GLOBALE PARAMETER-KONFIGURATION
+# Zentrale Definition aller Algorithmen-Parameter.
+# Genutzt von: Parametersuche-Zellen, Einzellauf und Multi-Run.
+# ==========================================
+import os
+
+# Allgemein
+SAMPLE_SIZE = 3000  # Stichprobengroesse fuer Parameter-Sweeps
+
+# TF-IDF
+TFIDF_MAX_FEATURES = 1000
+TFIDF_MIN_DF       = 2
+TFIDF_MAX_DF       = 0.95
+
+# K-Means
+KMEANS_N_CLUSTERS   = 12
+KMEANS_RANDOM_STATE = 42
+
+# DBSCAN
+DBSCAN_EPS         = 0.65
+DBSCAN_MIN_SAMPLES = 5
+DBSCAN_METRIC      = 'cosine'
+
+# Drain3
+DRAIN_SIM_TH       = 0.2
+DRAIN_DEPTH        = 3
+DRAIN_MAX_CHILDREN = 100
+
+# pgvector
+PGVECTOR_COSINE_DISTANCE = 0.3
+PGVECTOR_EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
+PGVECTOR_DB_URL          = os.environ.get(
+    'PGVECTOR_DB_URL',
+    'postgresql+psycopg://postgres:postgres@localhost:5432/vectordb'
+)
+
+# Brain
+BRAIN_THRESHOLD = 5
+BRAIN_REGEX = [
+    r'((\d+\.){3}\d+)(:\d+)?',  # IP (+optionaler Port)
+    r'/\S+',                      # Pfad (bis Whitespace)
+    r'\b\d+\b',                   # Zahlen nur als ganze Tokens
+]
+BRAIN_DATASET   = ''
+BRAIN_DELIMITER = [r'=', r':']
+
+
+# In[4]:
 
 
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -125,12 +176,12 @@ with open('Mixed_10k.log', 'r', encoding='utf-8', errors='ignore') as f:
     log_lines = [line.strip() for line in f.readlines() if line.strip()]
 
 # TfidfVectorizer initialisieren und vektorisieren
-vectorizer = TfidfVectorizer(max_features=1000, min_df=2, max_df=0.95)
+vectorizer = TfidfVectorizer(max_features=TFIDF_MAX_FEATURES, min_df=TFIDF_MIN_DF, max_df=TFIDF_MAX_DF)
 X_tfidf = vectorizer.fit_transform(log_lines)
 
 # Dimensionsreduzierung mit TruncatedSVD
 n_components = 50  # Anzahl der Komponenten für die Dimensionsreduzierung
-svd = TruncatedSVD(n_components=n_components, random_state=42)
+svd = TruncatedSVD(n_components=n_components, random_state=KMEANS_RANDOM_STATE)
 X_reduced = svd.fit_transform(X_tfidf)
 
 print(f"Originale Dimension: {X_tfidf.shape}")
@@ -139,20 +190,13 @@ print(f"Erklärte Varianz: {svd.explained_variance_ratio_.sum():.4f}")
 print(f"Anzahl der Komponenten: {n_components}")
 
 
-
-# In[4]:
+# In[23]:
 
 
 # ==========================================
-# K-Means Parametersuche: Elbow (Knee) + Silhouette
-# Bestimmt k datengetrieben: Knee in der Inertia-Kurve + Silhouette-Maximum
+# K-Means Parametersuche: Silhouette
+# Bestimmt k datengetrieben: Silhouette-Maximum
 # ==========================================
-try:
-    from kneed import KneeLocator, find_shape
-except ImportError:
-    import subprocess, sys
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "kneed"])
-    from kneed import KneeLocator
 
 from sklearn.cluster import KMeans
 from sklearn.decomposition import TruncatedSVD
@@ -161,7 +205,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 K = range(2, 40)
-KMEANS_RANDOM_STATE = 42
 
 # Dimensionsreduktion (konsistent mit Implementierung in Zelle 9)
 svd = TruncatedSVD(n_components=100, random_state=KMEANS_RANDOM_STATE)
@@ -184,43 +227,17 @@ for k in K:
 k_list = list(K)
 
 
-detected_direction, detected_curve = find_shape(np.array(k_list), np.array(inertias))
-print(f"find_shape() erkennt: curve='{detected_curve}', direction='{detected_direction}'")
-
-# Knee in der Inertia(WCSS)-Kurve (Elbow)
-knee = KneeLocator(k_list, inertias, curve="convex", direction="decreasing")
-k_elbow = knee.knee
-
 # Optimales k aus Silhouette-Score
 k_silhouette = k_list[int(np.argmax(silhouette_scores))]
 
-print(f"Vorgeschlagenes k (Elbow/Knee):     {k_elbow}")
 print(f"Vorgeschlagenes k (Silhouette-Max): {k_silhouette}")
-print(f"Aktuell gewaehltes k:               10")
 
-# --- Plot 1: Elbow-Diagramm mit Knee ---
-fig, ax = plt.subplots(figsize=(8, 5))
-ax.plot(k_list, inertias, "bx-", label="WCSS")
-if k_elbow is not None:
-    ax.axvline(x=k_elbow, color="g", linestyle="--",
-               label=f"Knee: k = {k_elbow}")
-ax.axvline(x=10, color="r", linestyle="--",
-           label="Implementierung: k = 10")
-ax.set_xlabel("Anzahl Cluster (k)")
-ax.set_ylabel("Inertia")
-ax.set_title("K-Means Parametersuche: Elbow-Methode (Knee-Detektion)")
-ax.legend()
-plt.tight_layout()
-plt.savefig("results/k_means_ellenbow.png", dpi=100, bbox_inches="tight")
-plt.show()
 
 # --- Plot 2: Silhouette-Score ---
 fig, ax = plt.subplots(figsize=(8, 5))
 ax.plot(k_list, silhouette_scores, "bx-", label="Silhouette Score")
 ax.axvline(x=k_silhouette, color="g", linestyle="--",
            label=f"Maximum: k = {k_silhouette}")
-ax.axvline(x=10, color="r", linestyle="--",
-           label="Implementierung: k = 10")
 ax.set_xlabel("Anzahl Cluster (k)")
 ax.set_ylabel("Silhouette Score")
 ax.set_title("K-Means Parametersuche: Silhouette-Methode")
@@ -230,7 +247,7 @@ plt.savefig("results/k_means_silhouette.png", dpi=100, bbox_inches="tight")
 plt.show()
 
 
-# In[5]:
+# In[54]:
 
 
 # ==========================================
@@ -247,10 +264,6 @@ except ImportError:
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
 import matplotlib.pyplot as plt
-
-# Parameter analog zur DBSCAN-Implementierung
-DBSCAN_MIN_SAMPLES = 2
-DBSCAN_METRIC = 'cosine'
 
 # Nearest Neighbors auf TF-IDF mit Cosinus-Distanz
 nbrs = NearestNeighbors(
@@ -281,7 +294,7 @@ if eps_suggested is not None:
     print(f'Vorgeschlagener eps (Knee): {eps_suggested:.4f} (Index {knee.knee})')
 else:
     print('Kein eindeutiger Knick gefunden.')
-print(f'Aktuell gewaehlter eps:     0.60')
+print(f'Aktuell gewaehlter eps:     {DBSCAN_EPS}')
 
 # Plot
 plt.figure(figsize=(8, 5))
@@ -299,32 +312,38 @@ plt.savefig('results/dbscan_k_distance.png', dpi=100, bbox_inches='tight')
 plt.show()
 
 
-# In[6]:
+# In[22]:
 
 
 # ==========================================
 # Drain3 Parametersuche: 1D-Sweep ueber sim_th (mit Variante depth)
-# Bestimmt sim_th datengetrieben ueber Knee in der Cluster-Anzahl-Kurve
+# Bestimmt sim_th anhand der naechsten Cluster-Anzahl zur Ground-Truth
 # ==========================================
-try:
-    from kneed import KneeLocator
-except ImportError:
-    import subprocess, sys
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'kneed'])
-    from kneed import KneeLocator
-
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 from drain3 import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
-import numpy as np
-import matplotlib.pyplot as plt
 
-# Logs einlesen (selbststaendig, unabhaengig von vorherigen Zellen)
+# Logs laden
 with open('Mixed_10k.log', 'r', encoding='utf-8', errors='ignore') as f:
     drain_logs = [line.strip() for line in f if line.strip()]
-print(f'Geladen: {len(drain_logs)} Logs')
+
+rng = np.random.default_rng(42)
+if SAMPLE_SIZE < len(drain_logs):
+    idx = sorted(rng.choice(len(drain_logs), SAMPLE_SIZE, replace=False))
+    drain_logs = [drain_logs[i] for i in idx]
+else:
+    idx = list(range(len(drain_logs)))
+
+# Ground-Truth-Cluster im Sample zaehlen
+df_gt = pd.read_csv('Mixed_10k_labeled.log').iloc[idx]
+gt_cluster_count = df_gt['cluster_id'].nunique()
+print(f'Geladen: {len(drain_logs)} Logs, '
+      f'{gt_cluster_count} Ground-Truth-Klassen im Sample')
 
 # Sweep-Bereiche
-sim_th_values = [round(0.1 * i, 1) for i in range(1, 10)]   # 0.1 ... 0.9
+sim_th_values = [round(0.1 * i, 1) for i in range(1, 10)]  # 0.1 ... 0.9
 depth_values  = [3, 4, 5]
 
 # Ergebnis-Matrix: rows = depth, cols = sim_th
@@ -343,41 +362,59 @@ for i, depth in enumerate(depth_values):
         results[i, j] = len(cluster_ids)
         print(f'depth={depth}, sim_th={sim_th}: {results[i, j]} Cluster')
 
-# Plot: 1 Linie pro depth, x = sim_th, y = Cluster-Anzahl (log-Skala)
-plt.figure(figsize=(9, 5.5))
+# ---------- Beste Kombination (depth, sim_th) zur Ground-Truth bestimmen ----------
+best_diff, best_depth, best_sim_th, best_count = float('inf'), None, None, None
+for i, depth in enumerate(depth_values):
+    j = int(np.argmin([abs(c - gt_cluster_count) for c in results[i]]))
+    diff = abs(results[i, j] - gt_cluster_count)
+    if diff < best_diff:
+        best_diff, best_depth = diff, depth
+        best_sim_th, best_count = sim_th_values[j], results[i, j]
+print(f'Beste Kombination: depth={best_depth}, sim_th={best_sim_th}, '
+      f'Cluster={best_count} (GT: {gt_cluster_count})')
+
+# ---------- Diagramm ----------
+fig, ax = plt.subplots(figsize=(9, 5.5))
 colors = ['tab:blue', 'tab:orange', 'tab:green']
+markers = ['o', 's', '^']
+linestyles = ['-', '--', ':']
+# (x-Offset in Pt, y-Offset in Pt, va) – horizontal gestaffelt damit Labels nicht überlappen
+label_offsets = [(-12, 12, 'bottom'), (12, -16, 'top'), (0, 18, 'bottom')]
 
 for i, depth in enumerate(depth_values):
-    plt.plot(sim_th_values, results[i], 'o-', color=colors[i],
-             label=f'depth = {depth}')
-    try:
-        knee = KneeLocator(sim_th_values, results[i].tolist(),
-                           curve='convex', direction='increasing')
-        if knee.knee is not None:
-            idx = sim_th_values.index(knee.knee)
-            plt.axvline(x=knee.knee, color=colors[i], linestyle=':',
-                        alpha=0.6,
-                        label=f'Knee depth={depth}: sim_th = {knee.knee}')
-            print(f'depth={depth}: Knee bei sim_th = {knee.knee}, '
-                  f'Cluster = {results[i, idx]}')
-    except Exception as e:
-        print(f'depth={depth}: kein Knee ({e})')
+    ax.plot(sim_th_values, results[i], linestyle=linestyles[i],
+            marker=markers[i], color=colors[i], label=f'depth={depth}')
+    dx, dy, va = label_offsets[i]
+    for x, y in zip(sim_th_values, results[i]):
+        ax.annotate(
+            str(y),
+            xy=(x, y),
+            xytext=(dx, dy),
+            textcoords='offset points',
+            fontsize=7.5,
+            color=colors[i],
+            ha='center',
+            va=va,
+            fontweight='bold',
+        )
 
-# Referenzlinie fuer aktuelle Implementierung
-plt.axvline(x=0.2, color='red', linestyle='--', alpha=0.5,
-            label='Implementierung: sim_th = 0.2')
+ax.axhline(y=gt_cluster_count, color='blue', linestyle='-.', alpha=0.7,
+           label=f'Ground-Truth-Klassen im Sample: {gt_cluster_count}')
 
-plt.xlabel('sim_th')
-plt.ylabel('Anzahl Cluster (log-Skala)')
-plt.title('Drain3 Parametersuche: Cluster-Anzahl vs sim_th')
-plt.legend(loc='upper left', fontsize=8)
-plt.grid(True, alpha=0.3, which='both')
-plt.yscale('log')
+ax.axvline(x=best_sim_th, color='red', linestyle='--', alpha=0.8,
+           label=f'Naechster Wert: depth={best_depth}, sim_th={best_sim_th} ({best_count} Cluster)')
+
+ax.set_xlabel('sim_th')
+ax.set_ylabel('Anzahl Cluster (log-Skala)')
+ax.set_title(f'Drain3 Parametersuche: Cluster-Anzahl vs. sim_th (n={len(drain_logs)})')
+ax.legend(loc='upper left', fontsize=8)
+ax.grid(True, alpha=0.3, which='both')
+ax.set_yscale('log')
 plt.tight_layout()
 plt.savefig('results/drain3_sweep.png', dpi=100, bbox_inches='tight')
 plt.show()
 
-# Tabelle ausgeben
+# ---------- Ergebnis-Tabelle ----------
 print()
 print('=== Drain3 Cluster-Anzahl: depth x sim_th ===')
 header = f'{"depth":>6s} | ' + ' | '.join(f'{v:>5.1f}' for v in sim_th_values)
@@ -388,19 +425,113 @@ for i, depth in enumerate(depth_values):
     print(row)
 
 
-# In[12]:
+# In[26]:
+
+
+# ==========================================
+# Brain Parametersuche: 1D-Sweep ueber BRAIN_THRESHOLD
+# Bestimmt BRAIN_THRESHOLD anhand der naechsten Cluster-Anzahl zur Ground-Truth
+# ==========================================
+import sys
+import datetime as _dt
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+sys.path.insert(0, '/Users/max/Code/BA/Brain')
+from Brain import Brain
+
+# Logs laden
+with open('Mixed_10k.log', 'r', encoding='utf-8', errors='ignore') as f:
+    brain_logs = [line.strip() for line in f if line.strip()]
+
+rng = np.random.default_rng(42)
+if SAMPLE_SIZE < len(brain_logs):
+    idx = sorted(rng.choice(len(brain_logs), SAMPLE_SIZE, replace=False))
+    brain_logs = [brain_logs[i] for i in idx]
+else:
+    idx = list(range(len(brain_logs)))
+
+# Ground-Truth-Cluster im Sample zaehlen
+df_gt = pd.read_csv('Mixed_10k_labeled.log').iloc[idx]
+gt_cluster_count = df_gt['cluster_id'].nunique()
+print(f'Geladen: {len(brain_logs)} Logs, '
+      f'{gt_cluster_count} Ground-Truth-Klassen im Sample')
+
+# Sweep-Bereich
+THRESHOLD_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 10, 15, 20]
+
+cluster_counts = []
+
+for threshold in THRESHOLD_VALUES:
+    _st = _dt.datetime.now()
+    _df_in = pd.DataFrame(index=range(len(brain_logs)))
+    _df_out, _ = Brain.parse(
+        brain_logs, BRAIN_REGEX, BRAIN_DATASET, threshold,
+        BRAIN_DELIMITER, _st, efficiency=False, df_input=_df_in
+    )
+    n_cls = _df_out['EventId'].nunique()
+    cluster_counts.append(n_cls)
+    print(f'threshold={threshold:>3}: {n_cls:>4} Cluster')
+
+# ---------- Naechsten Threshold zur Ground-Truth bestimmen ----------
+best_idx = int(np.argmin([abs(c - gt_cluster_count) for c in cluster_counts]))
+best_threshold = THRESHOLD_VALUES[best_idx]
+best_count = cluster_counts[best_idx]
+print(f'\nNaechster Wert zur Ground-Truth ({gt_cluster_count} Klassen): '
+      f'threshold={best_threshold}, Cluster={best_count}')
+
+# ---------- Ergebnis-Tabelle ----------
+df_brain_sweep = pd.DataFrame({
+    'threshold':  THRESHOLD_VALUES,
+    'n_clusters': cluster_counts,
+})
+print('\n=== Brain Sweep-Ergebnis ===')
+print(df_brain_sweep.to_string(index=False))
+df_brain_sweep.to_csv('results/brain_sweep.csv', index=False)
+
+# ---------- Diagramm ----------
+fig, ax = plt.subplots(figsize=(9, 5))
+
+ax.plot(THRESHOLD_VALUES, cluster_counts, marker='o', color='tab:blue', label='Cluster-Anzahl')
+
+# Cluster-Anzahl an jedem Punkt beschriften
+for x, y in zip(THRESHOLD_VALUES, cluster_counts):
+    ax.annotate(
+        str(y),
+        xy=(x, y),
+        xytext=(0, 12),
+        textcoords='offset points',
+        fontsize=7.5,
+        color='tab:blue',
+        ha='center',
+        va='bottom',
+        fontweight='bold',
+    )
+
+ax.axhline(y=gt_cluster_count, color='blue', linestyle='-.', alpha=0.7,
+           label=f'Ground-Truth-Klassen im Sample: {gt_cluster_count}')
+
+ax.axvline(x=best_threshold, color='red', linestyle='--', alpha=0.8,
+           label=f'Nächster Wert: threshold={best_threshold} ({best_count} Cluster)')
+
+ax.set_xlabel('BRAIN_THRESHOLD')
+ax.set_ylabel('Anzahl Cluster')
+ax.set_title(f'Brain Parametersuche: Cluster-Anzahl vs. BRAIN_THRESHOLD (n={len(brain_logs)})')
+ax.legend(fontsize=9)
+ax.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.savefig('results/brain_sweep.png', dpi=100, bbox_inches='tight')
+plt.show()
+
+
+# In[9]:
 
 
 from sqlalchemy import create_engine, text
-import os
-
-PGVECTOR_DB_URL = os.environ.get(
-    'PGVECTOR_DB_URL',
-    'postgresql+psycopg://postgres:postgres@localhost:5432/vectordb'
-)
 
 # ==========================================
-# SQL Schema für PostgreSQL mit pgvector (Vereinfacht)
+# SQL Schema für PostgreSQL mit pgvector 
 # ==========================================
 
 sql_schema = """
@@ -432,59 +563,6 @@ CREATE INDEX IF NOT EXISTS idx_avg_embedding_hnsw ON avg_embedding
     USING hnsw (avg_embedding vector_cosine_ops);
 """
 
-# ==========================================
-# SQL für cluster_batch-Algorithmus
-# ==========================================
-# Konstante: COSINE_DISTANCE (einheitlicher Schwellwert)
-
-sql_cluster_batch = """
--- ============================================================
--- CLUSTER_BATCH ALGORITHMUS
--- ============================================================
--- Pseudocode:
--- 1. Lies aktuellen Cluster-Zaehler aus der DB (0 wenn leer)
--- 2. Füge alle Logs des Batches als unverarbeitet ein
--- 3. Für jeden unverarbeiteten Log:
---    a) Suche naechsten Zentroid in avg_embedding mit
---       cosine_distance <= COSINE_DISTANCE
---    b) Falls gefunden: weise Log diesem Cluster zu
---    c) Falls nicht: erstelle neuen Cluster (cluster_count + 1)
---    d) Aktualisiere avg_embedding des betroffenen Clusters sofort
---       (inkrementell, damit nachfolgende Logs davon profitieren)
--- ============================================================
-
--- Schritt 1: Aktuellen Cluster-Zaehler bestimmen
-SELECT COALESCE(MAX(log_cluster_id), 0) FROM log;
-
--- Schritt 2: Logs einfügen
-INSERT INTO log (message, embedding, processed)
-VALUES (:msg, :emb, FALSE);
-
--- Schritt 3a: Naechsten Zentroid suchen
-WITH target AS (SELECT embedding FROM log WHERE id = :id)
-SELECT ae.log_cluster_id
-FROM avg_embedding ae, target t
-WHERE (ae.avg_embedding <=> t.embedding) <= :threshold
-ORDER BY ae.avg_embedding <=> t.embedding
-LIMIT 1;
-
--- Schritt 3b/c: Log einem Cluster zuweisen
-UPDATE log
-SET log_cluster_id = :cid,
-    processed = TRUE
-WHERE id = :id;
-
--- Schritt 3d: avg_embedding inkrementell aktualisieren (UPSERT)
-INSERT INTO avg_embedding (log_cluster_id, avg_embedding)
-SELECT log_cluster_id, AVG(embedding)
-FROM log
-WHERE embedding IS NOT NULL
-  AND log_cluster_id = :cid
-GROUP BY log_cluster_id
-ON CONFLICT (log_cluster_id) DO UPDATE
-    SET avg_embedding = EXCLUDED.avg_embedding;
-"""
-
 engine = create_engine(PGVECTOR_DB_URL)
 
 with engine.connect() as conn:
@@ -492,10 +570,10 @@ with engine.connect() as conn:
     conn.execute(text(sql_schema))
     conn.commit()
 
-print('SQL Schema und Clustering-Statement erstellt!')
+print('SQL Schema erstellt!')
 
 
-# In[13]:
+# In[10]:
 
 
 # ==========================================
@@ -556,14 +634,13 @@ def cluster_batch(logs, embeddings, threshold, conn):
     return np.array([r[1] if r[1] is not None else -1 for r in rows])
 
 
-# In[14]:
+# In[29]:
 
 
 # ==========================================
 # pgvector Parametersuche: 1D-Sweep ueber COSINE_DISTANCE
 # Zwei Diagramme: Cluster-Anzahl und Silhouette-Score
 # ==========================================
-import os
 import time
 import numpy as np
 import pandas as pd
@@ -572,15 +649,12 @@ from sentence_transformers import SentenceTransformer
 from sqlalchemy import create_engine, text
 from sklearn.metrics import silhouette_score
 
-# ---------- Konfiguration ----------
-PGVECTOR_EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
-
 # Stichprobengroesse fuer den Sweep. 2000 = Loghub-2k Skala,
 # 10000 fuer den vollen Datensatz (Laufzeit ca. 30-60 min).
-SWEEP_SAMPLE_SIZE = 2000
+SWEEP_SAMPLE_SIZE = SAMPLE_SIZE
 
 # Sweep-Bereich
-THRESHOLD_VALUES = [0.1,0.2,0.3, 0.4, 0.5, 0.6, 0.7]
+THRESHOLD_VALUES = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
 
 # ---------- Logs laden ----------
 with open('Mixed_10k.log', 'r', encoding='utf-8', errors='ignore') as f:
@@ -649,16 +723,45 @@ df_results.to_csv('results/pgvector_sweep.csv', index=False)
 # ---------- Diagramme ----------
 fig, axes = plt.subplots(1, 2, figsize=(12, 4))
 
-axes[0].plot(THRESHOLD_VALUES, cluster_counts, marker='o')
+# --- Cluster-Anzahl ---
+axes[0].plot(THRESHOLD_VALUES, cluster_counts, marker='o', color='tab:blue')
+for x, y in zip(THRESHOLD_VALUES, cluster_counts):
+    axes[0].annotate(
+        str(y),
+        xy=(x, y),
+        xytext=(0, 12),
+        textcoords='offset points',
+        fontsize=7.5,
+        color='tab:blue',
+        ha='center',
+        va='bottom',
+        fontweight='bold',
+    )
 axes[0].set_xlabel('Cosine-Distanz-Schwelle')
 axes[0].set_ylabel('Anzahl Cluster')
 axes[0].set_title(f'pgvector: Cluster-Anzahl (n={n})')
+axes[0].margins(y=0.2)
 axes[0].grid(True)
 
+# --- Silhouette-Score ---
 axes[1].plot(THRESHOLD_VALUES, silhouette_scores, marker='o', color='tab:green')
+for x, y in zip(THRESHOLD_VALUES, silhouette_scores):
+    if not np.isnan(y):
+        axes[1].annotate(
+            f'{y:.3f}',
+            xy=(x, y),
+            xytext=(0, 12),
+            textcoords='offset points',
+            fontsize=7.5,
+            color='tab:green',
+            ha='center',
+            va='bottom',
+            fontweight='bold',
+        )
 axes[1].set_xlabel('Cosine-Distanz-Schwelle')
 axes[1].set_ylabel('Silhouette-Score (cosine)')
 axes[1].set_title(f'pgvector: Silhouette-Score (n={n})')
+axes[1].margins(y=0.2)
 axes[1].grid(True)
 
 plt.tight_layout()
@@ -670,47 +773,7 @@ plt.show()
 
 
 # ===== CLUSTERING VERGLEICH =====
-# Alle drei Algorithmen auf die Logs anwenden und Ergebnisse in df_labeled speichern
-
-# ===== PARAMETER KONFIGURATION =====
-
-# TF-IDF Parameter
-TFIDF_MAX_FEATURES = 1000
-TFIDF_MIN_DF = 2
-TFIDF_MAX_DF = 0.95
-
-# K-Means Parameter
-KMEANS_N_CLUSTERS = 13
-KMEANS_RANDOM_STATE = 42
-
-# DBSCAN Parameter
-DBSCAN_EPS = 0.4
-DBSCAN_MIN_SAMPLES = 2
-DBSCAN_METRIC = 'cosine'
-
-# Drain3 Parameter
-DRAIN_SIM_TH = 0.2
-DRAIN_DEPTH=4
-
-
-# pgvector Parameter
-import os
-PGVECTOR_COSINE_DISTANCE = 0.3
-PGVECTOR_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-# DB-URL aus Umgebungsvariable (Docker) oder Fallback auf localhost
-PGVECTOR_DB_URL = os.environ.get("PGVECTOR_DB_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/vectordb")
-
-# MinHash LSH Parameter
-MINHASH_NUM_PERM = 128
-MINHASH_THRESHOLD = 0.3
-MINHASH_NGRAM_SIZE = 2
-
-# Brain Parameter
-BRAIN_THRESHOLD = 5
-BRAIN_REGEX = [r'((\d+\.){3}\d+,?)+', r'/.+?\s ', r'\d+']
-BRAIN_DELIMITER = []
-BRAIN_DATASET = 'OpenStack'
-
+# Alle Algorithmen auf die Logs anwenden und Ergebnisse in df_labeled speichern
 
 import sys
 import datetime as _dt
@@ -722,7 +785,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.cluster import KMeans, DBSCAN
 from drain3 import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
-from datasketch import MinHash, MinHashLSH
 
 # ===== TF-IDF VEKTORISIERUNG =====
 # Logs aus df_labeled extrahieren (ohne Zeilenumbrüche)
@@ -754,6 +816,7 @@ df_labeled['dbscan_cluster_id'] = dbscan.fit_predict(X_tfidf)
 # ===== DRAIN3 CLUSTERING =====
 drain_config = TemplateMinerConfig()
 drain_config.drain_sim_th = DRAIN_SIM_TH
+drain_config.drain_depth = DRAIN_DEPTH
 
 template_miner = TemplateMiner(config=drain_config)
 
@@ -777,30 +840,8 @@ model = SentenceTransformer(PGVECTOR_EMBEDDING_MODEL)
 embeddings = model.encode(logs_clean, show_progress_bar=True)
 
 with engine.connect() as conn:
-    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    conn.commit()
-    conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS log (
-            id SERIAL PRIMARY KEY,
-            message TEXT NOT NULL,
-            embedding vector(384),
-            processed BOOLEAN DEFAULT FALSE,
-            log_cluster_id INTEGER
-        )
-    """))
-    conn.execute(text("""
-        CREATE TABLE IF NOT EXISTS avg_embedding (
-            id SERIAL PRIMARY KEY,
-            avg_embedding vector(384) NOT NULL,
-            log_cluster_id INTEGER NOT NULL UNIQUE
-        )
-    """))
-    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_log_embedding_hnsw ON log USING hnsw (embedding vector_cosine_ops)"))
-    conn.execute(text("CREATE INDEX IF NOT EXISTS idx_avg_embedding_hnsw ON avg_embedding USING hnsw (avg_embedding vector_cosine_ops)"))
-    conn.commit()
     conn.execute(text("TRUNCATE log, avg_embedding RESTART IDENTITY"))
     conn.commit()
-
 
 print("pgvector: Clustering...")
 with engine.connect() as conn:
@@ -808,59 +849,6 @@ with engine.connect() as conn:
 
 df_labeled['pgvector_cluster_id'] = labels
 print(f"pgvector: Fertig! {df_labeled['pgvector_cluster_id'].nunique()} Cluster erstellt")
-
-# ===== MINHASH LSH CLUSTERING =====
-def minhash_tokenize(log_line, n=MINHASH_NGRAM_SIZE):
-    words = log_line.split()
-    if len(words) < n:
-        return set(words) if words else {log_line}
-    return set(' '.join(words[i:i+n]) for i in range(len(words) - n + 1))
-
-print("MinHash LSH: Erzeuge MinHash-Signaturen...")
-minhashes = []
-for log in logs_clean:
-    m = MinHash(num_perm=MINHASH_NUM_PERM)
-    for shingle in minhash_tokenize(log):
-        m.update(shingle.encode('utf8'))
-    minhashes.append(m)
-
-print("MinHash LSH: Baue LSH-Index...")
-lsh_index = MinHashLSH(threshold=MINHASH_THRESHOLD, num_perm=MINHASH_NUM_PERM)
-for i, m in enumerate(minhashes):
-    lsh_index.insert(str(i), m)
-
-print("MinHash LSH: Clustering via Union-Find...")
-_parent = list(range(len(logs_clean)))
-
-def _uf_find(x):
-    while _parent[x] != x:
-        _parent[x] = _parent[_parent[x]]
-        x = _parent[x]
-    return x
-
-def _uf_union(a, b):
-    ra, rb = _uf_find(a), _uf_find(b)
-    if ra != rb:
-        _parent[ra] = rb
-
-for i, m in enumerate(minhashes):
-    neighbors = lsh_index.query(m)
-    for nb in neighbors:
-        _uf_union(i, int(nb))
-
-root_to_cluster = {}
-minhash_labels = []
-next_cluster_id = 0
-for i in range(len(logs_clean)):
-    root = _uf_find(i)
-    if root not in root_to_cluster:
-        root_to_cluster[root] = next_cluster_id
-        next_cluster_id += 1
-    minhash_labels.append(root_to_cluster[root])
-
-df_labeled['minhash_cluster_id'] = minhash_labels
-print(f"MinHash LSH: Fertig! {df_labeled['minhash_cluster_id'].nunique()} Cluster erstellt")
-
 
 # ===== BRAIN CLUSTERING =====
 print("Brain: Starte Parsing...")
@@ -877,20 +865,17 @@ df_labeled['brain_cluster_id'] = [_eid_map[eid] for eid in _event_ids]
 print(f"Brain: {df_labeled['brain_cluster_id'].nunique()} Cluster (threshold={BRAIN_THRESHOLD})")
 
 print("\n" + "="*50)
-# ===== ZUSAMMENFASSUNG =====
-print("\n" + "="*50)
 print("CLUSTERING ERGEBNISSE")
 print("="*50)
 print(f"K-Means:  {df_labeled['kmeans_cluster_id'].nunique()} Cluster (k={KMEANS_N_CLUSTERS})")
 print(f"DBSCAN:   {df_labeled['dbscan_cluster_id'].nunique()} Cluster (eps={DBSCAN_EPS}, min_samples={DBSCAN_MIN_SAMPLES})")
 print(f"Drain3:   {df_labeled['drain_cluster_id'].nunique()} Cluster (sim_th={DRAIN_SIM_TH}, depth={DRAIN_DEPTH})")
 print(f"pgvector: {df_labeled['pgvector_cluster_id'].nunique()} Cluster (threshold={PGVECTOR_COSINE_DISTANCE})")
-print(f"MinHash:  {df_labeled['minhash_cluster_id'].nunique()} Cluster (threshold={MINHASH_THRESHOLD}, num_perm={MINHASH_NUM_PERM}, ngram={MINHASH_NGRAM_SIZE})")
 print(f"Brain:    {df_labeled['brain_cluster_id'].nunique()} Cluster (threshold={BRAIN_THRESHOLD})")
 print("="*50)
 
 
-# In[25]:
+# In[ ]:
 
 
 # ===== CLUSTERING EVALUATION =====
@@ -905,7 +890,6 @@ algorithms = {
     'DBSCAN': 'dbscan_cluster_id',
     'Drain3': 'drain_cluster_id',
     'pgvector': 'pgvector_cluster_id',
-    'MinHash LSH': 'minhash_cluster_id',
     'Brain': 'brain_cluster_id'
 }
 
@@ -954,7 +938,40 @@ df_evaluation.to_csv('./results/clustering_evaluation_results.csv', index=False)
 df_evaluation
 
 
-# In[26]:
+# In[58]:
+
+
+# ===== CLUSTERING VISUALISIERUNG =====
+import matplotlib.pyplot as plt
+import numpy as np
+
+metrics_to_plot = ['ARI (%)', 'V-Measure (%)', 'Homogenität (%)', 'Vollständigkeit (%)']
+bar_colors      = ['#2196F3', '#4CAF50', '#FF9800', '#E91E63']
+x     = np.arange(len(df_evaluation))
+width = 0.20
+
+fig, ax = plt.subplots(figsize=(13, 5))
+for i, (metric, color) in enumerate(zip(metrics_to_plot, bar_colors)):
+    bars = ax.bar(x + (i - 1.5) * width, df_evaluation[metric],
+                  width, label=metric, color=color, alpha=0.85)
+    for bar in bars:
+        h = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width() / 2, h + 0.8,
+                f'{h:.0f}', ha='center', va='bottom', fontsize=7)
+
+ax.set_xticks(x)
+ax.set_xticklabels(df_evaluation['Algorithmus'], fontsize=10)
+ax.set_ylabel('Score (%)')
+ax.set_ylim(0, 115)
+ax.set_title('Clustering-Algorithmen im Vergleich: Evaluationsmetriken')
+ax.legend(loc='upper right', fontsize=9)
+ax.grid(axis='y', alpha=0.3)
+plt.tight_layout()
+plt.savefig('results/vergleich_metriken.png', dpi=150, bbox_inches='tight')
+plt.show()
+
+
+# In[ ]:
 
 
 import sys
@@ -976,41 +993,19 @@ from drain3 import TemplateMiner
 from drain3.template_miner_config import TemplateMinerConfig
 from sqlalchemy import create_engine, text
 from sentence_transformers import SentenceTransformer
-from datasketch import MinHash, MinHashLSH
 import random
 
 # ===== KONFIGURATION =====
 RANDOM_SEEDS = [42, 123, 456, 789, 1011]
 N_RUNS = len(RANDOM_SEEDS)
 
-# Parameter (aus Cell 9)
-TFIDF_MAX_FEATURES = 1000
-TFIDF_MIN_DF = 2
-TFIDF_MAX_DF = 0.95
-KMEANS_N_CLUSTERS = 13
-DBSCAN_EPS = 0.4
-DBSCAN_MIN_SAMPLES = 2
-DBSCAN_METRIC = 'cosine'
-DRAIN_SIM_TH = 0.2
-DRAIN_DEPTH = 3
-DRAIN_MAX_CHILDREN = 100
-PGVECTOR_INITIAL_COSINE_DISTANCE = 0.3
-PGVECTOR_RECLUSTER_COSINE_DISTANCE = 0.2
-PGVECTOR_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-# DB-URL aus Umgebungsvariable (Docker) oder Fallback auf localhost
-PGVECTOR_DB_URL = os.environ.get("PGVECTOR_DB_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/vectordb")
-PGVECTOR_INITIAL_RATIO = 0.5
-MINHASH_NUM_PERM = 128
-MINHASH_THRESHOLD = 0.5
-MINHASH_NGRAM_SIZE = 3
-
 # Ground-Truth Labels
 ground_truth = df_labeled['cluster_id'].values
 logs_original = df_labeled['log'].str.strip().tolist()
 
 # Ergebnis-Sammlung
-all_results = {alg: {'ari': [], 'v_measure': [], 'homogeneity': [], 'completeness': []} 
-               for alg in ['K-Means', 'DBSCAN', 'Drain3', 'pgvector', 'MinHash LSH', 'Brain']}
+all_results = {alg: {'ari': [], 'v_measure': [], 'homogeneity': [], 'completeness': [], 'n_clusters': []}
+               for alg in ['K-Means', 'DBSCAN', 'Drain3', 'pgvector', 'Brain']}
 
 # Sentence Transformer einmal laden
 print("Lade Sentence Transformer Modell...")
@@ -1042,20 +1037,20 @@ for run_idx, seed in enumerate(RANDOM_SEEDS):
     # ===== K-MEANS =====
     kmeans = KMeans(n_clusters=KMEANS_N_CLUSTERS, random_state=seed)
     kmeans_labels = kmeans.fit_predict(X_tfidf)
-
     all_results['K-Means']['ari'].append(adjusted_rand_score(ground_truth_shuffled, kmeans_labels))
     all_results['K-Means']['v_measure'].append(v_measure_score(ground_truth_shuffled, kmeans_labels))
     all_results['K-Means']['homogeneity'].append(homogeneity_score(ground_truth_shuffled, kmeans_labels))
     all_results['K-Means']['completeness'].append(completeness_score(ground_truth_shuffled, kmeans_labels))
+    all_results['K-Means']['n_clusters'].append(len(set(kmeans_labels)))
 
     # ===== DBSCAN =====
     dbscan = DBSCAN(eps=DBSCAN_EPS, min_samples=DBSCAN_MIN_SAMPLES, metric=DBSCAN_METRIC)
     dbscan_labels = dbscan.fit_predict(X_tfidf)
-
     all_results['DBSCAN']['ari'].append(adjusted_rand_score(ground_truth_shuffled, dbscan_labels))
     all_results['DBSCAN']['v_measure'].append(v_measure_score(ground_truth_shuffled, dbscan_labels))
     all_results['DBSCAN']['homogeneity'].append(homogeneity_score(ground_truth_shuffled, dbscan_labels))
     all_results['DBSCAN']['completeness'].append(completeness_score(ground_truth_shuffled, dbscan_labels))
+    all_results['DBSCAN']['n_clusters'].append(len(set(dbscan_labels)))
 
     # ===== DRAIN3 =====
     drain_config = TemplateMinerConfig()
@@ -1063,197 +1058,34 @@ for run_idx, seed in enumerate(RANDOM_SEEDS):
     drain_config.drain_depth = DRAIN_DEPTH
     drain_config.drain_max_children = DRAIN_MAX_CHILDREN
     template_miner = TemplateMiner(config=drain_config)
-
     drain_labels = []
     for log in logs_shuffled:
         result = template_miner.add_log_message(log)
         drain_labels.append(result.get("cluster_id"))
-
     all_results['Drain3']['ari'].append(adjusted_rand_score(ground_truth_shuffled, drain_labels))
     all_results['Drain3']['v_measure'].append(v_measure_score(ground_truth_shuffled, drain_labels))
     all_results['Drain3']['homogeneity'].append(homogeneity_score(ground_truth_shuffled, drain_labels))
     all_results['Drain3']['completeness'].append(completeness_score(ground_truth_shuffled, drain_labels))
+    all_results['Drain3']['n_clusters'].append(len(set(drain_labels)))
 
     # ===== PGVECTOR =====
-    # Embeddings generieren (in geshuffelter Reihenfolge)
     embeddings = model.encode(logs_shuffled, show_progress_bar=False)
-
-    # Datenbank vorbereiten
     with engine.connect() as conn:
         conn.execute(text("TRUNCATE log, avg_embedding RESTART IDENTITY"))
         conn.commit()
-
-        # Logs einfügen
-        for i, (msg, emb) in enumerate(zip(logs_shuffled, embeddings)):
-            embedding_str = "[" + ",".join(map(str, emb.tolist())) + "]"
-            conn.execute(text("""
-                INSERT INTO log (message, embedding, processed) 
-                VALUES (:msg, CAST(:emb AS vector), FALSE)
-            """), {"msg": msg, "emb": embedding_str})
-        conn.commit()
-
-    split_idx = int(len(logs_shuffled) * PGVECTOR_INITIAL_RATIO)
-
-    # Initial Clustering
-    with engine.connect() as conn:
-        conn.execute(text("UPDATE log SET processed = TRUE WHERE id > :split_idx"), {"split_idx": split_idx})
-        conn.commit()
-
-        candidates = conn.execute(text("""
-            SELECT id FROM log WHERE processed = FALSE AND embedding IS NOT NULL ORDER BY id
-        """)).fetchall()
-
-        for (log_id,) in candidates:
-            check = conn.execute(text("SELECT log_cluster_id FROM log WHERE id = :id"), {"id": log_id}).fetchone()
-            if check and check[0] is not None:
-                continue
-
-            similar = conn.execute(text("""
-                WITH target AS (SELECT embedding FROM log WHERE id = :id)
-                SELECT l.id FROM log l, target t
-                WHERE l.processed = FALSE AND l.embedding IS NOT NULL
-                  AND (l.embedding <=> t.embedding) < :threshold
-                ORDER BY l.embedding <=> t.embedding
-            """), {"id": log_id, "threshold": PGVECTOR_INITIAL_COSINE_DISTANCE}).fetchall()
-
-            if similar:
-                similar_ids = [s[0] for s in similar]
-                max_cluster = conn.execute(text("SELECT COALESCE(MAX(log_cluster_id), 0) FROM log")).fetchone()[0]
-                new_cluster_id = max_cluster + 1
-                conn.execute(text("""
-                    UPDATE log SET log_cluster_id = :cluster_id, processed = TRUE WHERE id = ANY(:ids)
-                """), {"cluster_id": new_cluster_id, "ids": similar_ids})
-        conn.commit()
-
-        # avg_embedding füllen
-        conn.execute(text("""
-            INSERT INTO avg_embedding (log_cluster_id, avg_embedding)
-            SELECT log_cluster_id, AVG(embedding) FROM log 
-            WHERE embedding IS NOT NULL AND log_cluster_id IS NOT NULL
-            GROUP BY log_cluster_id
-            ON CONFLICT (log_cluster_id) DO UPDATE SET avg_embedding = EXCLUDED.avg_embedding
-        """))
-        conn.commit()
-
-    # Re-Clustering
-    with engine.connect() as conn:
-        conn.execute(text("UPDATE log SET processed = FALSE WHERE id > :split_idx"), {"split_idx": split_idx})
-        conn.commit()
-
-        unprocessed = conn.execute(text("""
-            SELECT id FROM log WHERE processed = FALSE AND embedding IS NOT NULL ORDER BY id
-        """)).fetchall()
-
-        for (log_id,) in unprocessed:
-            similar_cluster = conn.execute(text("""
-                WITH target AS (SELECT embedding FROM log WHERE id = :id)
-                SELECT ae.log_cluster_id FROM avg_embedding ae, target t
-                WHERE ae.avg_embedding IS NOT NULL
-                  AND (ae.avg_embedding <=> t.embedding) <= :threshold
-                ORDER BY ae.avg_embedding <=> t.embedding LIMIT 1
-            """), {"id": log_id, "threshold": PGVECTOR_RECLUSTER_COSINE_DISTANCE}).fetchone()
-
-            if similar_cluster:
-                conn.execute(text("""
-                    UPDATE log SET log_cluster_id = :cluster_id, processed = TRUE WHERE id = :id
-                """), {"cluster_id": similar_cluster[0], "id": log_id})
-            else:
-                similar_log = conn.execute(text("""
-                    WITH target AS (SELECT embedding FROM log WHERE id = :id)
-                    SELECT l.log_cluster_id FROM log l, target t
-                    WHERE l.processed = TRUE AND l.log_cluster_id IS NOT NULL
-                      AND l.embedding IS NOT NULL
-                      AND (l.embedding <=> t.embedding) < :threshold
-                    ORDER BY l.embedding <=> t.embedding LIMIT 1
-                """), {"id": log_id, "threshold": PGVECTOR_INITIAL_COSINE_DISTANCE}).fetchone()
-
-                if similar_log:
-                    conn.execute(text("""
-                        UPDATE log SET log_cluster_id = :cluster_id, processed = TRUE WHERE id = :id
-                    """), {"cluster_id": similar_log[0], "id": log_id})
-                else:
-                    max_cluster = conn.execute(text("SELECT COALESCE(MAX(log_cluster_id), 0) FROM log")).fetchone()[0]
-                    new_cluster_id = max_cluster + 1
-                    conn.execute(text("""
-                        UPDATE log SET log_cluster_id = :cluster_id, processed = TRUE WHERE id = :id
-                    """), {"cluster_id": new_cluster_id, "id": log_id})
-
-            conn.execute(text("""
-                INSERT INTO avg_embedding (log_cluster_id, avg_embedding)
-                SELECT log_cluster_id, AVG(embedding) FROM log 
-                WHERE embedding IS NOT NULL AND log_cluster_id = (SELECT log_cluster_id FROM log WHERE id = :id)
-                GROUP BY log_cluster_id
-                ON CONFLICT (log_cluster_id) DO UPDATE SET avg_embedding = EXCLUDED.avg_embedding
-            """), {"id": log_id})
-        conn.commit()
-
-        # Ergebnisse auslesen
-        result = conn.execute(text("SELECT id, log_cluster_id FROM log ORDER BY id")).fetchall()
-        pgvector_labels = [row[1] if row[1] is not None else -1 for row in result]
-
+        pgvector_labels = cluster_batch(logs_shuffled, embeddings, PGVECTOR_COSINE_DISTANCE, conn)
     all_results['pgvector']['ari'].append(adjusted_rand_score(ground_truth_shuffled, pgvector_labels))
     all_results['pgvector']['v_measure'].append(v_measure_score(ground_truth_shuffled, pgvector_labels))
     all_results['pgvector']['homogeneity'].append(homogeneity_score(ground_truth_shuffled, pgvector_labels))
     all_results['pgvector']['completeness'].append(completeness_score(ground_truth_shuffled, pgvector_labels))
-
-    # ===== MINHASH LSH =====
-    def _mh_tokenize(log_line, n=MINHASH_NGRAM_SIZE):
-        words = log_line.split()
-        if len(words) < n:
-            return set(words) if words else {log_line}
-        return set(' '.join(words[i:i+n]) for i in range(len(words) - n + 1))
-
-    run_minhashes = []
-    for log in logs_shuffled:
-        m = MinHash(num_perm=MINHASH_NUM_PERM)
-        for shingle in _mh_tokenize(log):
-            m.update(shingle.encode('utf8'))
-        run_minhashes.append(m)
-
-    run_lsh = MinHashLSH(threshold=MINHASH_THRESHOLD, num_perm=MINHASH_NUM_PERM)
-    for i, m in enumerate(run_minhashes):
-        run_lsh.insert(str(i), m)
-
-    _par = list(range(len(logs_shuffled)))
-
-    def _find(x):
-        while _par[x] != x:
-            _par[x] = _par[_par[x]]
-            x = _par[x]
-        return x
-
-    def _union(a, b):
-        ra, rb = _find(a), _find(b)
-        if ra != rb:
-            _par[ra] = rb
-
-    for i, m in enumerate(run_minhashes):
-        for nb in run_lsh.query(m):
-            _union(i, int(nb))
-
-    r2c = {}
-    mh_labels = []
-    nxt = 0
-    for i in range(len(logs_shuffled)):
-        root = _find(i)
-        if root not in r2c:
-            r2c[root] = nxt
-            nxt += 1
-        mh_labels.append(r2c[root])
-
-    all_results['MinHash LSH']['ari'].append(adjusted_rand_score(ground_truth_shuffled, mh_labels))
-    all_results['MinHash LSH']['v_measure'].append(v_measure_score(ground_truth_shuffled, mh_labels))
-    all_results['MinHash LSH']['homogeneity'].append(homogeneity_score(ground_truth_shuffled, mh_labels))
-    all_results['MinHash LSH']['completeness'].append(completeness_score(ground_truth_shuffled, mh_labels))
-
+    all_results['pgvector']['n_clusters'].append(len(set(pgvector_labels)))
 
     # ===== BRAIN =====
     _brain_st = _dt.datetime.now()
     _brain_df_in = pd.DataFrame(index=range(len(logs_shuffled)))
     _brain_df_out, _ = Brain.parse(
-        logs_shuffled,
-        [r'((\d+\.){3}\d+,?)+', r'/.+?\s ', r'\d+'],
-        'OpenStack', 5, [], _brain_st, efficiency=False, df_input=_brain_df_in)
+        logs_shuffled, BRAIN_REGEX, BRAIN_DATASET, BRAIN_THRESHOLD,
+        BRAIN_DELIMITER, _brain_st, efficiency=False, df_input=_brain_df_in)
     _eids = _brain_df_out['EventId'].tolist()
     _eid_map = {eid: idx for idx, eid in enumerate(dict.fromkeys(_eids))}
     brain_labels = [_eid_map[eid] for eid in _eids]
@@ -1262,6 +1094,7 @@ for run_idx, seed in enumerate(RANDOM_SEEDS):
     all_results['Brain']['v_measure'].append(v_measure_score(ground_truth_shuffled, brain_labels))
     all_results['Brain']['homogeneity'].append(homogeneity_score(ground_truth_shuffled, brain_labels))
     all_results['Brain']['completeness'].append(completeness_score(ground_truth_shuffled, brain_labels))
+    all_results['Brain']['n_clusters'].append(len(set(brain_labels)))
 
     print(f"   ✅ Durchlauf {run_idx + 1} abgeschlossen")
 
@@ -1272,36 +1105,39 @@ print(f"{'='*70}\n")
 
 summary_data = []
 
-for alg in ['K-Means', 'DBSCAN', 'Drain3', 'pgvector', 'MinHash LSH', 'Brain']:
-    ari_mean = np.mean(all_results[alg]['ari']) * 100
-    ari_std = np.std(all_results[alg]['ari']) * 100
-    v_mean = np.mean(all_results[alg]['v_measure']) * 100
-    v_std = np.std(all_results[alg]['v_measure']) * 100
-    hom_mean = np.mean(all_results[alg]['homogeneity']) * 100
-    hom_std = np.std(all_results[alg]['homogeneity']) * 100
+for alg in ['K-Means', 'DBSCAN', 'Drain3', 'pgvector', 'Brain']:
+    ari_mean  = np.mean(all_results[alg]['ari']) * 100
+    ari_std   = np.std(all_results[alg]['ari']) * 100
+    v_mean    = np.mean(all_results[alg]['v_measure']) * 100
+    v_std     = np.std(all_results[alg]['v_measure']) * 100
+    hom_mean  = np.mean(all_results[alg]['homogeneity']) * 100
+    hom_std   = np.std(all_results[alg]['homogeneity']) * 100
     comp_mean = np.mean(all_results[alg]['completeness']) * 100
-    comp_std = np.std(all_results[alg]['completeness']) * 100
+    comp_std  = np.std(all_results[alg]['completeness']) * 100
+    cls_mean  = np.mean(all_results[alg]['n_clusters'])
+    cls_std   = np.std(all_results[alg]['n_clusters'])
 
     summary_data.append({
         'Algorithmus': alg,
         'ARI (%)': f"{ari_mean:.3f} ± {ari_std:.3f}",
         'V-Measure (%)': f"{v_mean:.3f} ± {v_std:.3f}",
         'Homogenität (%)': f"{hom_mean:.3f} ± {hom_std:.3f}",
-        'Vollständigkeit (%)': f"{comp_mean:.3f} ± {comp_std:.3f}"
+        'Vollständigkeit (%)': f"{comp_mean:.3f} ± {comp_std:.3f}",
+        'Anzahl Cluster': f"{cls_mean:.1f} ± {cls_std:.1f}",
     })
 
     print(f"📊 {alg}:")
-    print(f"   ARI:            {ari_mean:6.3f}% ± {ari_std:.3f}%")
-    print(f"   V-Measure:      {v_mean:6.3f}% ± {v_std:.3f}%")
-    print(f"   Homogenität:    {hom_mean:6.3f}% ± {hom_std:.3f}%")
-    print(f"   Vollständigkeit:{comp_mean:6.3f}% ± {comp_std:.3f}%")
+    print(f"   ARI:             {ari_mean:6.3f}% ± {ari_std:.3f}%")
+    print(f"   V-Measure:       {v_mean:6.3f}% ± {v_std:.3f}%")
+    print(f"   Homogenität:     {hom_mean:6.3f}% ± {hom_std:.3f}%")
+    print(f"   Vollständigkeit: {comp_mean:6.3f}% ± {comp_std:.3f}%")
+    print(f"   Anzahl Cluster:  {cls_mean:.1f} ± {cls_std:.1f}")
     print()
 
 print(f"{'='*70}")
 
-# Ergebnis-Tabelle
 df_summary = pd.DataFrame(summary_data)
 print("\n📋 Zusammenfassung als Tabelle:")
+df_summary.to_csv("./results/multirun_results.csv", index=False)
 df_summary
-df_summary.to_csv("./results/multirun_results.csv",index=False)
 

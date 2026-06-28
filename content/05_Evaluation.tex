@@ -53,7 +53,7 @@ ursprünglichen Repräsentation erhält und in dem distanzbasierte Maße wie die
 Silhouette zuverlässige Werte liefern. Auf dieser reduzierten Repräsentation
 wird $k$ über den Bereich $k \in \{2, 3, \dots, 39\}$ variiert; pro Wert
 wird der Silhouette-Score berechnet. Die zugehörige
-Implementierung findet sich in Zelle~10 des Notebooks \texttt{ML.ipynb}.
+Implementierung findet sich im Notebook \texttt{ML.ipynb}\ref{lst:ml.ipynb}.
 
 Die SVD-Reduktion dient ausschließlich der Parameterbestimmung; das
 eigentliche K-Means-Clustering im Implementierungsschritt
@@ -212,7 +212,7 @@ bestimmt. Da ausschließlich Cluster-\emph{Anzahlen} verglichen werden und
 weder ARI noch V-Measure in die Auswahl einfließen, bleibt die in
 Abschnitt~\ref{sec:eval:parameterwahl} geforderte Trennung von Tuning- und
 Evaluationsmetrik gewahrt. Die zugehörige Implementierung findet sich im
-Notebook \texttt{ML.ipynb} (Zelle~5).
+Notebook \texttt{ML.ipynb}\ref{lst:ml.ipynb}.
 
 \begin{figure}[h]
     \centering
@@ -343,7 +343,7 @@ Stichprobe ausgeführt und die Anzahl eindeutiger \texttt{EventId}-Werte als
 Cluster-Anzahl protokolliert. Als Auswahlkriterium dient -- analog zu Drain3
 -- die kleinste absolute Differenz zwischen resultierender Cluster-Anzahl und
 der Ground-Truth-Klassenzahl der Stichprobe ($38$). Die zugehörige
-Implementierung findet sich im Notebook \texttt{ML.ipynb} (Zelle~6).
+Implementierung findet sich im Notebook \texttt{ML.ipynb} \ref{lst:ml.ipynb}.
 
 \begin{figure}[h]
     \centering
@@ -422,7 +422,7 @@ Als unsupervised Auswertungskriterium dient der Silhouette-Score auf den
 Embeddings (Cosinus-Metrik, \texttt{sample\_size = 2000},
 \texttt{random\_state = 42}); zusätzlich wird die Cluster-Anzahl
 protokolliert. Die zugehörige Implementierung findet sich im Notebook
-\texttt{ML.ipynb} (Zelle~9).
+\texttt{ML.ipynb}\ref{lst:ml.ipynb}.
 
 \begin{figure}[h]
     \centering

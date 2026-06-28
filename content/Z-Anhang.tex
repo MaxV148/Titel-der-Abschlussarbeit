@@ -95,3 +95,20 @@ df_labeled.loc[df_labeled['log'].str.contains("combo rpcidmapd", case=False, na=
 df_labeled.loc[df_labeled['log'].str.contains("combo rc", case=False, na=False, regex=False), 'cluster_id'] = -19
 
 \end{lstlisting}
+
+
+\lstinputlisting[
+    language=Python,
+    caption={Code von ML.ipynb},
+    label={lst:ml.ipynb},
+    basicstyle=\ttfamily\footnotesize,
+    lineskip=-0.5pt,
+    columns=fullflexible,
+    keepspaces=true,
+    breaklines=true,
+    breakatwhitespace=true,
+    xleftmargin=1em,
+    frame=none,
+    showstringspaces=false,
+    numbers=none
+]{py_scripts/ML.py}
