@@ -564,6 +564,27 @@ periodische Wiederholung möglich. Hinzu kommt, dass K-Means als
 Stapelverfahren den gesamten Datensatz bei jeder Neuverarbeitung einlesen
 muss und damit nicht für den inkrementellen Betrieb geeignet ist.
 
+Tabelle~\ref{tab:eval:kmeans:single} dokumentiert ergänzend das Ergebnis des
+Einzeldurchlaufs mit Seed $42$.
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse K-Means im Einzeldurchlauf ($k = 13$, Seed $42$)}
+    \label{tab:eval:kmeans:single}
+    \begin{tabular}{lr}
+        \toprule
+        Metrik & Wert \\
+        \midrule
+        ARI             & $69{,}9\,\%$ \\
+        V-Measure       & $86{,}2\,\%$ \\
+        Homogenität     & $81{,}2\,\%$ \\
+        Vollständigkeit & $91{,}8\,\%$ \\
+        \midrule
+        Clusteranzahl   & $13$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 % ----------------------------------------------------------------
 \subsection{DBSCAN}
 \label{sec:eval:dbscan}
@@ -618,6 +639,27 @@ für den kontinuierlichen Betrieb aus denselben Gründen wie K-Means
 ungeeignet: Eine inkrementelle Erweiterung ist ohne vollständige
 Neuberechnung der Nachbarschaftsstruktur nicht möglich.
 
+Tabelle~\ref{tab:eval:dbscan:single} dokumentiert ergänzend das Ergebnis des
+Einzeldurchlaufs mit Seed $42$.
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse DBSCAN im Einzeldurchlauf ($\varepsilon = 0{,}4$, \texttt{min\_samples} $= 2$, Seed $42$)}
+    \label{tab:eval:dbscan:single}
+    \begin{tabular}{lr}
+        \toprule
+        Metrik & Wert \\
+        \midrule
+        ARI             & $26{,}1\,\%$ \\
+        V-Measure       & $59{,}9\,\%$ \\
+        Homogenität     & $57{,}4\,\%$ \\
+        Vollständigkeit & $62{,}6\,\%$ \\
+        \midrule
+        Clusteranzahl   & $124$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 % ----------------------------------------------------------------
 \subsection{Drain3}
 \label{sec:eval:drain3}
@@ -635,7 +677,7 @@ Neuberechnung der Nachbarschaftsstruktur nicht möglich.
         Homogenität    & $91{,}851\,\%$ & $\pm\,0{,}448\,\%$ \\
         Vollständigkeit& $91{,}208\,\%$ & $\pm\,0{,}296\,\%$ \\
         \midrule
-        Clusteranzahl  & $52$ & -- \\
+        Clusteranzahl  & $46$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -646,7 +688,7 @@ Homogenität von $91{,}851\,\%$ und einer Vollständigkeit von $91{,}208\,\%$
 liegt zugleich das ausgewogenste Metrikprofil vor: Die erzeugten
 Template-Cluster sind nahezu ausschließlich aus Lognachrichten einer
 einzigen Ground-Truth-Klasse zusammengesetzt und decken diese Klassen
-gleichzeitig nahezu vollständig ab. Die mit $52$ Clustern für $44$
+gleichzeitig nahezu vollständig ab. Die mit $46$ Clustern für $44$
 Ground-Truth-Klassen geringfügig erhöhte Partitionierung wirkt sich auf die
 Vollständigkeit nur marginal aus. Die nahezu verschwindende
 Standardabweichung ($\sigma \leq 0{,}5$ Prozentpunkte) belegt die hohe
@@ -660,6 +702,27 @@ Ast im Baum. Als Online-Parser verarbeitet Drain3 jede neue Lognachricht einzeln
 aktualisiert den Template-Baum inkrementell, ohne den gesamten Datensatz neu einlesen zu
 müssen – eine grundlegende Voraussetzung für den kontinuierlichen Betrieb.
 
+Tabelle~\ref{tab:eval:drain3:single} dokumentiert ergänzend das Ergebnis des
+Einzeldurchlaufs mit Seed $42$.
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse Drain3 im Einzeldurchlauf (\texttt{sim\_th} $= 0{,}2$, \texttt{depth} $= 4$, Seed $42$)}
+    \label{tab:eval:drain3:single}
+    \begin{tabular}{lr}
+        \toprule
+        Metrik & Wert \\
+        \midrule
+        ARI             & $91{,}0\,\%$ \\
+        V-Measure       & $91{,}2\,\%$ \\
+        Homogenität     & $91{,}5\,\%$ \\
+        Vollständigkeit & $90{,}9\,\%$ \\
+        \midrule
+        Clusteranzahl   & $46$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 % ----------------------------------------------------------------
 \subsection{Brain}
 \label{sec:eval:brain}
@@ -672,22 +735,22 @@ müssen – eine grundlegende Voraussetzung für den kontinuierlichen Betrieb.
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $73{,}280\,\%$ & $\pm\,0{,}000\,\%$ \\
-        V-Measure      & $88{,}102\,\%$ & $\pm\,0{,}001\,\%$ \\
-        Homogenität    & $98{,}731\,\%$ & $\pm\,0{,}000\,\%$ \\
-        Vollständigkeit& $79{,}540\,\%$ & $\pm\,0{,}002\,\%$ \\
+        ARI            & $73{,}281\,\%$ & $\pm\,0{,}000\,\%$ \\
+        V-Measure      & $88{,}114\,\%$ & $\pm\,0{,}001\,\%$ \\
+        Homogenität    & $98{,}769\,\%$ & $\pm\,0{,}000\,\%$ \\
+        Vollständigkeit& $79{,}533\,\%$ & $\pm\,0{,}002\,\%$ \\
         \midrule
-        Clusteranzahl  & $151$ & -- \\
+        Clusteranzahl  & $153$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Brain weist mit $98{,}731\,\%$ die höchste Homogenität aller untersuchten
+Brain weist mit $98{,}769\,\%$ die höchste Homogenität aller untersuchten
 Verfahren auf -- die gebildeten Cluster sind nahezu perfekt rein. Dem steht
-eine Vollständigkeit von $79{,}540\,\%$ gegenüber, was auf eine
-Überpartitionierung hindeutet: Im Einzellauf entstehen $151$ Cluster für
+eine Vollständigkeit von $79{,}533\,\%$ gegenüber, was auf eine
+Überpartitionierung hindeutet: Im Einzellauf entstehen $153$ Cluster für
 $44$ Ground-Truth-Klassen, also im Durchschnitt mehr als drei Cluster pro
-semantischer Klasse. Dieser Effekt drückt den ARI auf $73{,}280\,\%$ trotz
+semantischer Klasse. Dieser Effekt drückt den ARI auf $73{,}281\,\%$ trotz
 nahezu perfekter Clusterhomogenität. Die nahezu verschwindende Abweichung
 ($\sigma \leq 0{,}002$ Prozentpunkte) zeigt, dass Brain praktisch
 deterministisch und reihenfolgeunabhängig ist.
@@ -700,6 +763,27 @@ vorliegenden Datensatz zu niedrig, sodass zu viele Token als fest betrachtet und
 granulare Templates erzeugt werden. Eine Erhöhung des Schwellenwerts würde die Clusteranzahl
 reduzieren und die Vollständigkeit voraussichtlich verbessern, jedoch auf Kosten der
 Homogenität.
+
+Tabelle~\ref{tab:eval:brain:single} dokumentiert ergänzend das Ergebnis des
+Einzeldurchlaufs mit Seed $42$.
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse Brain im Einzeldurchlauf (\texttt{threshold} $= 5$, Seed $42$)}
+    \label{tab:eval:brain:single}
+    \begin{tabular}{lr}
+        \toprule
+        Metrik & Wert \\
+        \midrule
+        ARI             & $73{,}3\,\%$ \\
+        V-Measure       & $88{,}1\,\%$ \\
+        Homogenität     & $98{,}8\,\%$ \\
+        Vollständigkeit & $79{,}5\,\%$ \\
+        \midrule
+        Clusteranzahl   & $153$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 % ----------------------------------------------------------------
 \subsection{MinHash LSH}
@@ -717,6 +801,8 @@ Homogenität.
         V-Measure      & $64{,}890\,\%$ & $\pm\,0{,}000\,\%$ \\
         Homogenität    & $95{,}875\,\%$ & $\pm\,0{,}000\,\%$ \\
         Vollständigkeit& $49{,}041\,\%$ & $\pm\,0{,}000\,\%$ \\
+        \midrule
+        Clusteranzahl  & $1\,809$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
@@ -748,6 +834,28 @@ ergibt sich ein abweichendes Ergebnisprofil (ARI $20{,}9\,\%$, Homogenität $36{
 Vollständigkeit $88{,}6\,\%$). Für die vergleichende Bewertung werden die
 Mehrfachlauf-Parameter als Referenz verwendet.}
 
+Tabelle~\ref{tab:eval:minhash:single} dokumentiert ergänzend das Ergebnis des
+Einzeldurchlaufs mit Seed $42$ und denselben Parametern wie der Mehrfachlauf
+(\texttt{threshold} $= 0{,}5$, $n$-Gramm $= 3$).
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse MinHash LSH im Einzeldurchlauf (\texttt{threshold} $= 0{,}5$, $n$-Gramm $= 3$, Seed $42$)}
+    \label{tab:eval:minhash:single}
+    \begin{tabular}{lr}
+        \toprule
+        Metrik & Wert \\
+        \midrule
+        ARI             & $43{,}4\,\%$ \\
+        V-Measure       & $64{,}9\,\%$ \\
+        Homogenität     & $95{,}9\,\%$ \\
+        Vollständigkeit & $49{,}0\,\%$ \\
+        \midrule
+        Clusteranzahl   & $1\,809$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
 % ----------------------------------------------------------------
 \section{Ergebnisse des vektorbasierten Verfahrens}
 \label{sec:eval:vector}
@@ -762,27 +870,27 @@ Mehrfachlauf-Parameter als Referenz verwendet.}
         \toprule
         Metrik & $\bar{x}$ & $\sigma$ \\
         \midrule
-        ARI            & $79{,}273\,\%$ & $\pm\,5{,}293\,\%$ \\
-        V-Measure      & $88{,}451\,\%$ & $\pm\,1{,}876\,\%$ \\
-        Homogenität    & $83{,}998\,\%$ & $\pm\,2{,}638\,\%$ \\
-        Vollständigkeit& $93{,}433\,\%$ & $\pm\,1{,}201\,\%$ \\
+        ARI            & $80{,}103\,\%$ & $\pm\,5{,}639\,\%$ \\
+        V-Measure      & $89{,}066\,\%$ & $\pm\,2{,}626\,\%$ \\
+        Homogenität    & $83{,}865\,\%$ & $\pm\,3{,}233\,\%$ \\
+        Vollständigkeit& $94{,}979\,\%$ & $\pm\,1{,}968\,\%$ \\
         \midrule
-        Clusteranzahl  & $80$ & -- \\
+        Clusteranzahl  & $68$ & -- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
 Mit den in Abschnitt~\ref{sec:eval:param:pgvector} datengetrieben ermittelten
-Schwellenwerten erzielt der vektorbasierte Ansatz einen ARI von $79{,}273\,\%$
-und ein V-Measure von $88{,}451\,\%$ -- den zweithöchsten ARI und das
+Schwellenwerten erzielt der vektorbasierte Ansatz einen ARI von $80{,}103\,\%$
+und ein V-Measure von $89{,}066\,\%$ -- den zweithöchsten ARI und das
 zweithöchste V-Measure aller untersuchten Verfahren nach Drain3 (vgl.\
-Abschnitt~\ref{sec:eval:vergleich}). Mit einer Homogenität von $83{,}998\,\%$
-und einer Vollständigkeit von $93{,}433\,\%$ liegen beide Teilmetriken
-deutlich oberhalb von $80\,\%$; die Vollständigkeit ist die zweithöchste
-aller Verfahren nach Drain3.
+Abschnitt~\ref{sec:eval:vergleich}). Mit einer Homogenität von $83{,}865\,\%$
+und einer Vollständigkeit von $94{,}979\,\%$ liegen beide Teilmetriken
+deutlich oberhalb von $80\,\%$; die Vollständigkeit ist sogar die höchste
+aller untersuchten Verfahren.
 
 \paragraph{Clusteranzahl im Verhältnis zur Ground Truth.}
-Im Einzellauf erzeugt das Verfahren $80$ Cluster für $44$ Ground-Truth-Klassen
+Im Einzellauf erzeugt das Verfahren $68$ Cluster für $44$ Ground-Truth-Klassen
 -- eine moderate Übersegmentierung. Diese ist eine direkte Folge des
 strengen \texttt{INITIAL}-Schwellenwerts $0{,}3$, der in Phase~1 nur sehr
 ähnliche Lognachrichten zu einem Cluster zusammenführt
@@ -790,14 +898,14 @@ strengen \texttt{INITIAL}-Schwellenwerts $0{,}3$, der in Phase~1 nur sehr
 weitere Cluster für Lognachrichten, die weder zu einem bestehenden
 Cluster-Schwerpunkt (Strategie~1) noch zu einem bereits verarbeiteten
 Einzellog (Strategie~2) ausreichend nah liegen. Die Homogenität von
-$83{,}998\,\%$ zeigt, dass die so entstehenden Cluster intern überwiegend
-sauber sind; gleichzeitig erreicht die Vollständigkeit mit $93{,}433\,\%$
+$83{,}865\,\%$ zeigt, dass die so entstehenden Cluster intern überwiegend
+sauber sind; gleichzeitig erreicht die Vollständigkeit mit $94{,}979\,\%$
 einen hohen Wert, da der semantische Vektorraum auch syntaktisch abweichende
 Vertreter derselben Ground-Truth-Klasse zuverlässig in dieselben Cluster
 führt.
 
 \paragraph{Reihenfolgeabhängigkeit.}
-Die Standardabweichung von $\pm\,5{,}293$ Prozentpunkten beim ARI gehört zu
+Die Standardabweichung von $\pm\,5{,}639$ Prozentpunkten beim ARI gehört zu
 den höchsten unter den getesteten Verfahren. Ursache ist der inkrementelle
 Charakter des zweistufigen Algorithmus: Die Eingangsreihenfolge beeinflusst,
 welche Lognachrichten als erste einen Cluster-Schwerpunkt definieren und
@@ -812,7 +920,7 @@ alternative Konfiguration mit \texttt{INITIAL} $= 0{,}5$ würde nur $\approx
 28$ Cluster erzeugen und einen höheren ARI ($\approx 72\,\%$), jedoch
 niedrigeren Silhouette-Score liefern. Die methodische Festlegung dieser
 Arbeit, ausschließlich unsupervised zu tunen, schließt eine ARI-getriebene
-Wahl jedoch aus -- der berichtete Wert von $79{,}273\,\%$ ist daher das
+Wahl jedoch aus -- der berichtete Wert von $80{,}103\,\%$ ist daher das
 Ergebnis einer prinzipientreuen, im Produktivbetrieb reproduzierbaren
 Parameterwahl, nicht die obere Schranke des Verfahrens.
 
@@ -829,6 +937,29 @@ Kombination aus semantischer Repräsentation und persistenter Vektordatenbank er
 die kontinuierliche Verarbeitung ohne Neuberechnung auf dem Gesamtdatensatz – eine
 Eigenschaft, die die algorithmischen Stapelverfahren K-Means und DBSCAN grundsätzlich
 nicht besitzen.
+
+Tabelle~\ref{tab:eval:pgvector:single} dokumentiert ergänzend das Ergebnis des
+Einzeldurchlaufs mit Seed $42$.
+
+\begin{table}[h]
+    \centering
+    \caption{Evaluationsergebnisse pgvector + Sentence-Transformer im Einzeldurchlauf
+             (\texttt{initial\_dist} $= 0{,}3$, \texttt{recluster\_dist} $= 0{,}2$,
+             \texttt{initial\_ratio} $= 0{,}5$, Seed $42$)}
+    \label{tab:eval:pgvector:single}
+    \begin{tabular}{lr}
+        \toprule
+        Metrik & Wert \\
+        \midrule
+        ARI             & $72{,}5\,\%$ \\
+        V-Measure       & $85{,}0\,\%$ \\
+        Homogenität     & $78{,}1\,\%$ \\
+        Vollständigkeit & $93{,}1\,\%$ \\
+        \midrule
+        Clusteranzahl   & $68$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 % ----------------------------------------------------------------
 \section{Gegenüberstellung}
@@ -858,29 +989,29 @@ die Clusteranzahl entstammt dem Einzellauf mit Seed $42$.
             & $91{,}208 \pm 0{,}296$
             & $52$ \\
         pgvector
-            & $79{,}273 \pm 5{,}293$
-            & $88{,}451 \pm 1{,}876$
-            & $83{,}998 \pm 2{,}638$
-            & $93{,}433 \pm 1{,}201$
-            & $80$ \\
+            & $80{,}103 \pm 5{,}639$
+            & $89{,}066 \pm 2{,}626$
+            & $83{,}865 \pm 3{,}233$
+            & $94{,}979 \pm 1{,}968$
+            & $68$ \\
         Brain
-            & $73{,}280 \pm 0{,}000$
-            & $88{,}102 \pm 0{,}001$
-            & $98{,}731 \pm 0{,}000$
-            & $79{,}540 \pm 0{,}002$
-            & $151$ \\
+            & $73{,}281 \pm 0{,}000$
+            & $88{,}114 \pm 0{,}001$
+            & $98{,}769 \pm 0{,}000$
+            & $79{,}533 \pm 0{,}002$
+            & $153$ \\
         K-Means
             & $70{,}585 \pm 8{,}369$
             & $84{,}913 \pm 2{,}644$
             & $80{,}762 \pm 2{,}874$
             & $89{,}524 \pm 2{,}446$
             & $13$ \\
-        MinHash LSH$^{*}$
+        MinHash LSH
             & $43{,}378 \pm 0{,}000$
             & $64{,}890 \pm 0{,}000$
             & $95{,}875 \pm 0{,}000$
             & $49{,}041 \pm 0{,}000$
-            & -- \\
+            & $1\,809$ \\
         DBSCAN
             & $26{,}085 \pm 0{,}000$
             & $59{,}905 \pm 0{,}000$
@@ -892,10 +1023,3 @@ die Clusteranzahl entstammt dem Einzellauf mit Seed $42$.
         \bottomrule
     \end{tabular}
 \end{table}
-
-{\footnotesize
-$^{*}$ Die Clusteranzahl des Mehrfachlaufs (\texttt{threshold} $= 0{,}5$, $n$-Gramm $= 3$)
-wurde nicht separat erfasst. Der Einzellauf verwendete abweichende Parameter
-(\texttt{threshold} $= 0{,}3$, $n$-Gramm $= 2$) und erzielte $31$ Cluster;
-vgl.\ Abschnitt~\ref{sec:eval:minhash}.
-}
