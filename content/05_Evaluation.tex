@@ -117,7 +117,8 @@ Punkt im Datensatz die Cosinus-Distanz zum $k$-ten Nachbarn berechnet
 (mit $k = $ \texttt{min\_samples} $= 2$), die resultierenden Werte werden
 aufsteigend sortiert und in Abbildung~\ref{fig:dbscan-kdist} dargestellt. Die Distanzen wurden mittels NearestNeighbors \footnote{ Dokumentation zur NearestNeighbors Suche von sklearn \url{https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.NearestNeighbors.html}} von skleann ermittelt und anschließend aufsteigend sortiert, wie es im Listing \ref{lst:dbscan_neighbors} zusehen ist. Anschließend werden mittels der \texttt{find\_shape} Funktion die Parameter (curve und direction) für \texttt{kneed} bestimmt.  
 \begin{lstlisting}[caption={NearestNeighbors für DBSCAN}, label={lst:dbscan_neighbors}]
-DBSCAN_MIN_SAMPLES = 2
+
+DBSCAN_MIN_SAMPLES = 5
 DBSCAN_METRIC = 'cosine'
 
 # Nearest Neighbors auf TF-IDF mit Cosinus-Distanz
@@ -574,9 +575,7 @@ Vollständigkeitswert erklärt.
 Die Standardabweichung von $\pm\,8{,}369$ Prozentpunkten beim ARI ist die
 höchste aller untersuchten Verfahren. Ursache ist die stochastische
 Zentroid-Initialisierung in Verbindung mit dem niedrigen Silhouette-Niveau im
-TF-IDF-Raum (vgl.\ Abb.~\ref{fig:kmeans-silhouette}): Die Cluster liegen
-geometrisch nahe beieinander, sodass unterschiedliche Startbedingungen zu
-deutlich abweichenden Endzuständen führen. Wie in
+TF-IDF-Raum (vgl.\ Abb.~\ref{fig:kmeans-silhouette}). Wie in
 Abschnitt~\ref{sec:kmeans} dargelegt, muss $k$ vor der Ausführung festgelegt
 werden; die hier verwendete datengetriebene Bestimmung ist im
 kontinuierlichen Betrieb mit veränderlicher Datengrundlage nur durch
@@ -631,9 +630,9 @@ Mit dem in Abschnitt~\ref{sec:eval:param:dbscan} datengetrieben ermittelten
 Nachbarschaftsradius $\varepsilon = 0{,}4$ erreicht DBSCAN einen ARI von
 $26{,}085\,\%$ und ein V-Measure von $59{,}905\,\%$ -- den niedrigsten ARI
 aller untersuchten Verfahren (vgl.\ Abschnitt~\ref{sec:eval:vergleich}). Die
-Nullabweichung über alle fünf Durchläufe ist erwartungskonform: DBSCAN
-operiert als Stapelverfahren auf der vollständigen TF-IDF-Matrix und ist
-gegenüber der Eingangsreihenfolge invariant.
+Nullabweichung über alle fünf Durchläufe ist begründet durch die Tatsache, dass DBSCAN
+als Stapelverfahren auf der vollständigen TF-IDF-Matrix arbeitet und 
+gegenüber der Eingangsreihenfolge unabhängig ist.
 
 Die Homogenität von $57{,}391\,\%$ liegt deutlich über dem Wert
 ($14{,}5\,\%$), der mit dem ursprünglich theoretisch motivierten
@@ -652,7 +651,7 @@ zusammenführen, gemischte Cluster nicht.
 Wie in Abschnitt~\ref{sec:dbscan} beschrieben, reagiert DBSCAN empfindlich
 auf ungleichmäßige Dichtverteilungen. Der gemischte Loghub-Datensatz enthält
 Klassen sehr unterschiedlicher Häufigkeit; seltene Templates liefern im
-TF-IDF-Raum zu wenige Kernpunkte und werden als Rauschen (Label $-1$)
+TF-IDF-Raum zu wenige Kernpunkte und werden als Rauschen
 klassifiziert. Diese Rauschpunkte entziehen sich der Evaluation und begrenzen
 die erzielbare Vollständigkeit. Trotz der starken Verbesserung bleibt DBSCAN
 für den kontinuierlichen Betrieb aus denselben Gründen wie K-Means
@@ -912,7 +911,7 @@ aller untersuchten Verfahren.
 \paragraph{Clusteranzahl im Verhältnis zur Ground Truth.}
 Im Einzellauf erzeugt das Verfahren $68$ Cluster für $44$ Ground-Truth-Klassen
 -- eine moderate Übersegmentierung. Diese ist eine direkte Folge des
-strengen \texttt{INITIAL}-Schwellenwerts $0{,}3$, der in Phase~1 nur sehr
+strengen \texttt{INITIAL}-Schwellenwerts $0{,}3$ der in Phase~1 nur sehr
 ähnliche Lognachrichten zu einem Cluster zusammenführt
 (Abschnitt~\ref{sec:real:pgvector}). Phase~2 ergänzt die Clusterbasis um
 weitere Cluster für Lognachrichten, die weder zu einem bestehenden
