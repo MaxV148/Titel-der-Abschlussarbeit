@@ -634,18 +634,13 @@ Nullabweichung über alle fünf Durchläufe ist begründet durch die Tatsache, d
 als Stapelverfahren auf der vollständigen TF-IDF-Matrix arbeitet und 
 gegenüber der Eingangsreihenfolge unabhängig ist.
 
-Die Homogenität von $57{,}391\,\%$ liegt deutlich über dem Wert
-($14{,}5\,\%$), der mit dem ursprünglich theoretisch motivierten
-$\varepsilon = 0{,}6$ erzielt wurde. Diese Verbesserung um rund $43$
-Prozentpunkte belegt unmittelbar die Wirkung der empirischen Parameterwahl:
-Der strengere Schwellenwert verhindert die im vorherigen Setup beobachtete
-Verschmelzung semantisch unverwandter Logs zu großen Mischclustern. Die
-Vollständigkeit von $62{,}649\,\%$ ist demgegenüber moderat; sie ist Folge
-der mit $124$ Clustern deutlich höheren Cluster\-anzahl gegenüber den $44$
+Die Homogenität von $57{,}391\,\%$ zeigt, dass die mit $\varepsilon = 0{,}4$
+gebildeten Cluster überwiegend intern sauber sind. Die Vollständigkeit von
+$62{,}649\,\%$ ist demgegenüber moderat; sie ist Folge der mit $124$
+Clustern deutlich höheren Cluster\-anzahl gegenüber den $44$
 Ground-Truth-Klassen. Einzelne Templates werden auf mehrere, jeweils reine
 DBSCAN-Cluster aufgeteilt -- ein klassischer Übersegmentierungseffekt, der
-gegenüber dem vorherigen, gegenteiligen Fehlerbild jedoch das deutlich
-geringere Übel darstellt: reine Cluster lassen sich nachgelagert
+jedoch das geringere Übel darstellt: reine Cluster lassen sich nachgelagert
 zusammenführen, gemischte Cluster nicht.
 
 Wie in Abschnitt~\ref{sec:dbscan} beschrieben, reagiert DBSCAN empfindlich
@@ -653,10 +648,10 @@ auf ungleichmäßige Dichtverteilungen. Der gemischte Loghub-Datensatz enthält
 Klassen sehr unterschiedlicher Häufigkeit; seltene Templates liefern im
 TF-IDF-Raum zu wenige Kernpunkte und werden als Rauschen
 klassifiziert. Diese Rauschpunkte entziehen sich der Evaluation und begrenzen
-die erzielbare Vollständigkeit. Trotz der starken Verbesserung bleibt DBSCAN
-für den kontinuierlichen Betrieb aus denselben Gründen wie K-Means
-ungeeignet: Eine inkrementelle Erweiterung ist ohne vollständige
-Neuberechnung der Nachbarschaftsstruktur nicht möglich.
+die erzielbare Vollständigkeit. DBSCAN bleibt für den kontinuierlichen
+Betrieb aus denselben Gründen wie K-Means ungeeignet: Eine inkrementelle
+Erweiterung ist ohne vollständige Neuberechnung der
+Nachbarschaftsstruktur nicht möglich.
 
 Tabelle~\ref{tab:eval:dbscan:single} dokumentiert ergänzend das Ergebnis des
 Einzeldurchlaufs mit Seed $42$.
@@ -882,8 +877,7 @@ Einzeldurchlaufs mit Seed $42$ und denselben Parametern wie der Mehrfachlauf
 \begin{table}[h]
     \centering
     \caption{Evaluationsergebnisse pgvector + Sentence-Transformer
-             (\texttt{initial\_dist} $= 0{,}3$, \texttt{recluster\_dist} $= 0{,}2$,
-             \texttt{initial\_ratio} $= 0{,}5$, $N = 5$ Durchläufe)}
+             (\texttt{PGVECTOR\_COSINE\_DISTANCE} $= 0{,}3$, $N = 5$ Durchläufe)}
     \label{tab:eval:pgvector}
     \begin{tabular}{lrr}
         \toprule
@@ -899,8 +893,8 @@ Einzeldurchlaufs mit Seed $42$ und denselben Parametern wie der Mehrfachlauf
     \end{tabular}
 \end{table}
 
-Mit den in Abschnitt~\ref{sec:eval:param:pgvector} datengetrieben ermittelten
-Schwellenwerten erzielt der vektorbasierte Ansatz einen ARI von $80{,}103\,\%$
+Mit dem in Abschnitt~\ref{sec:eval:param:pgvector} datengetrieben ermittelten
+Schwellenwert erzielt der vektorbasierte Ansatz einen ARI von $80{,}103\,\%$
 und ein V-Measure von $89{,}066\,\%$ -- den zweithöchsten ARI und das
 zweithöchste V-Measure aller untersuchten Verfahren nach Drain3 (vgl.\
 Abschnitt~\ref{sec:eval:vergleich}). Mit einer Homogenität von $83{,}865\,\%$
@@ -911,37 +905,31 @@ aller untersuchten Verfahren.
 \paragraph{Clusteranzahl im Verhältnis zur Ground Truth.}
 Im Einzellauf erzeugt das Verfahren $68$ Cluster für $44$ Ground-Truth-Klassen
 -- eine moderate Übersegmentierung. Diese ist eine direkte Folge des
-strengen \texttt{INITIAL}-Schwellenwerts $0{,}3$ der in Phase~1 nur sehr
-ähnliche Lognachrichten zu einem Cluster zusammenführt
-(Abschnitt~\ref{sec:real:pgvector}). Phase~2 ergänzt die Clusterbasis um
-weitere Cluster für Lognachrichten, die weder zu einem bestehenden
-Cluster-Schwerpunkt (Strategie~1) noch zu einem bereits verarbeiteten
-Einzellog (Strategie~2) ausreichend nah liegen. Die Homogenität von
-$83{,}865\,\%$ zeigt, dass die so entstehenden Cluster intern überwiegend
-sauber sind; gleichzeitig erreicht die Vollständigkeit mit $94{,}979\,\%$
-einen hohen Wert, da der semantische Vektorraum auch syntaktisch abweichende
-Vertreter derselben Ground-Truth-Klasse zuverlässig in dieselben Cluster
-führt.
+strengen Schwellenwerts \texttt{PGVECTOR\_COSINE\_DISTANCE} $= 0{,}3$: Die
+Funktion \texttt{cluster\_batch} (Abschnitt~\ref{PG_Algorithmn},
+Abschnitt~\ref{sec:real:pgvector}) weist eine neue Lognachricht nur dann
+einem bestehenden Cluster zu, wenn dessen Schwerpunkt
+\texttt{avg\_embedding} die Kosinus-Distanz von $0{,}3$ unterschreitet;
+andernfalls entsteht durch denselben Mechanismus ein neuer Cluster. Bei
+diesem niedrigen Schwellenwert genügen bereits geringe semantische
+Abweichungen innerhalb einer Ground-Truth-Klasse, um mehrere
+Cluster-Schwerpunkte für dieselbe Klasse entstehen zu lassen. Die
+Homogenität von $83{,}865\,\%$ zeigt, dass die so entstehenden Cluster
+intern überwiegend sauber sind; gleichzeitig erreicht die Vollständigkeit
+mit $94{,}979\,\%$ einen hohen Wert, da der semantische Vektorraum auch
+syntaktisch abweichende Vertreter derselben Ground-Truth-Klasse
+zuverlässig in dieselben Cluster führt.
 
 \paragraph{Reihenfolgeabhängigkeit.}
 Die Standardabweichung von $\pm\,5{,}639$ Prozentpunkten beim ARI gehört zu
 den höchsten unter den getesteten Verfahren. Ursache ist der inkrementelle
-Charakter des zweistufigen Algorithmus: Die Eingangsreihenfolge beeinflusst,
-welche Lognachrichten als erste einen Cluster-Schwerpunkt definieren und
-damit nachfolgende Zuordnungen prägen. Dieser Effekt ist für Online-Verfahren
-typisch und in Abschnitt~\ref{PG_Algorithmn} als inhärentes Merkmal des
-iterativen Cluster-Aufbaus beschrieben.
+Charakter des iterativen Algorithmus (Abschnitt~\ref{PG_Algorithmn}): Die
+Eingangsreihenfolge beeinflusst, welche Lognachrichten als erste einen
+Cluster-Schwerpunkt definieren und damit nachfolgende Zuordnungen prägen.
+Dieser Effekt ist für Online-Verfahren typisch und in
+Abschnitt~\ref{PG_Algorithmn} als inhärentes Merkmal des iterativen
+Cluster-Aufbaus beschrieben.
 
-\paragraph{Trade-off zwischen Silhouette- und ARI-Optimum.}
-Die in Abschnitt~\ref{sec:eval:param:pgvector} angekündigte Diskrepanz
-zwischen Silhouette- und ARI-Optimum manifestiert sich hier konkret: Eine
-alternative Konfiguration mit \texttt{INITIAL} $= 0{,}5$ würde nur $\approx
-28$ Cluster erzeugen und einen höheren ARI ($\approx 72\,\%$), jedoch
-niedrigeren Silhouette-Score liefern. Die methodische Festlegung dieser
-Arbeit, ausschließlich unsupervised zu tunen, schließt eine ARI-getriebene
-Wahl jedoch aus -- der berichtete Wert von $80{,}103\,\%$ ist daher das
-Ergebnis einer prinzipientreuen, im Produktivbetrieb reproduzierbaren
-Parameterwahl, nicht die obere Schranke des Verfahrens.
 
 \paragraph{Einordnung in den semantischen Vektorraum.}
 Das Verfahren nutzt das Sentence-Transformer-Modell \texttt{all-MiniLM-L6-v2}, das jede
@@ -953,9 +941,7 @@ enthalten. Die Ähnlichkeitssuche erfolgt auf Basis der Cosinus-Distanz (vgl.\
 Abschnitt~\ref{cos}), die über den HNSW-Index effizient gegen die gespeicherten
 Cluster-Schwerpunkte in der \texttt{avg\_embedding}-Tabelle ausgewertet wird. Diese
 Kombination aus semantischer Repräsentation und persistenter Vektordatenbank ermöglicht
-die kontinuierliche Verarbeitung ohne Neuberechnung auf dem Gesamtdatensatz – eine
-Eigenschaft, die die algorithmischen Stapelverfahren K-Means und DBSCAN grundsätzlich
-nicht besitzen.
+die kontinuierliche Verarbeitung ohne Neuberechnung auf dem Gesamtdatensatz.
 
 Tabelle~\ref{tab:eval:pgvector:single} dokumentiert ergänzend das Ergebnis des
 Einzeldurchlaufs mit Seed $42$.
@@ -963,8 +949,7 @@ Einzeldurchlaufs mit Seed $42$.
 \begin{table}[h]
     \centering
     \caption{Evaluationsergebnisse pgvector + Sentence-Transformer im Einzeldurchlauf
-             (\texttt{initial\_dist} $= 0{,}3$, \texttt{recluster\_dist} $= 0{,}2$,
-             \texttt{initial\_ratio} $= 0{,}5$, Seed $42$)}
+             (\texttt{PGVECTOR\_COSINE\_DISTANCE} $= 0{,}3$, Seed $42$)}
     \label{tab:eval:pgvector:single}
     \begin{tabular}{lr}
         \toprule
