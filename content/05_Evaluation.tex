@@ -401,54 +401,6 @@ ein für alle drei Quellsysteme gemeinsam vertretbarer Kompromisswert
 übernommen, anstatt sich auf eines der drei Systeme einseitig festzulegen.
 
 % ----------------------------------------------------------------
-\subsection{MinHash LSH}
-\label{sec:eval:param:minhash}
-
-MinHash\,+\,LSH wird durch drei Hyperparameter gesteuert: \\ die N-Gramm-Größe
-\texttt{MINHASH\_NGRAM\_SIZE}, die Signaturlänge \texttt{MINHASH\_NUM\_PERM} und
-den Jaccard-Schwellenwert \texttt{MINHASH\_THRESHOLD}. Die Parameter entsprechen
-unmittelbar den in Abschnitt~\ref{sec:minhash_lsh} formal eingeführten Größen
-$k$ (Shingle-Länge), $p$ (Anzahl der Permutationen) und $s$ (Schwellwert auf der
-Jaccard-Skala). Die Implementierung erfolgt mit der Python-Bibliothek
-\texttt{datasketch} auf dem in Abschnitt~\ref{sec:eval:aufbau} beschriebenen
-gemischten Loghub-Datensatz. Die Signaturlänge wird konstant auf
-\texttt{MINHASH\_NUM\_PERM\;=\;128} gesetzt; untersucht werden ausschließlich \\
-\texttt{MINHASH\_NGRAM\_SIZE} und \texttt{MINHASH\_THRESHOLD}.
-
-\paragraph{Ausgangskonfiguration: Trigramme, Schwellenwert $0{,}5$.}
-Als Ausgangskonfiguration dienen eine wortbasierte Trigramm-Tokenisierung
-(\texttt{MINHASH\_NGRAM\_SIZE\;=\;3}) und ein Jaccard-Schwellenwert von $0{,}5$
-(\texttt{MINHASH\_THRESHOLD\;=\;0.5}). Diese Konfiguration erzeugt
-$1\,809$~Cluster -- eine massive Übersegmentierung gegenüber den
-$44$~Ground-Truth-Klassen. Die Ursache ist die in
-Abschnitt~\ref{sec:minhash_lsh} beschriebene Schwäche der Jaccard-Ähnlichkeit:
-Variable Token-Positionen (IP-Adressen, \acsp{UUID}, numerische Werte) reduzieren die
-Trigramm-Überschneidung strukturell identischer Logs so stark, dass der
-Schwellenwert von $0{,}5$ systematisch unterschritten wird.
-
-\paragraph{Gegenextrem: Unigramme, Schwellenwert $0{,}2$.}
-Zur Kompensation der Übersegmentierung wird der Schwellenwert auf $0{,}2$
-gesenkt und die Tokenisierung auf Unigramme
-(\texttt{MINHASH\_NGRAM\_SIZE\;=\;1}) vereinfacht. Diese Konfiguration führt
-zum entgegengesetzten Extrem: Sämtliche Logs werden in einem einzigen Cluster
-zusammengefasst, da die Bag-of-Words-Repräsentation über unterschiedliche
-Log-Templates hinweg zu viele gemeinsame Token aufweist und der niedrige
-Schwellenwert nahezu alle Paare als ähnlich einstuft.
-
-\paragraph{Wahl: Bigramme, Schwellenwert $0{,}3$.}
-Als Kompromiss werden \texttt{MINHASH\_THRESHOLD\;=\;0.3} und
-\texttt{MINHASH\_NGRAM\_SIZE\;=\;2} verwendet. Bigramme bieten gegenüber
-Unigrammen eine höhere Trennschärfe, ohne die bei Trigrammen auftretende
-Anfälligkeit gegenüber variablen Token vollständig zu übernehmen. Der
-Schwellenwert von $0{,}3$ erzeugt $31$~Cluster und liegt damit in der
-Größenordnung der übrigen Verfahren (K-Means: $13$, Drain3: $52$, pgvector:
-$80$). Für die in Abschnitt~\ref{sec:eval:minhash} berichtete vergleichende
-Bewertung kommt im Mehrfachlauf der höhere Schwellenwert
-\texttt{MINHASH\_THRESHOLD\;=\;0.5} mit Trigrammen als Referenzkonfiguration zum
-Einsatz, um die Sensitivität des Verfahrens gegenüber variablen Bestandteilen
-deutlich zu machen.
-
-% ----------------------------------------------------------------
 \subsection{pgvector}
 \label{sec:eval:param:pgvector}
 
@@ -506,7 +458,7 @@ Information in die Parameterwahl eingeflossen ist.
 \section{Ergebnisse der algorithmischen Verfahren}
 \label{sec:eval:algo}
 
-Die folgenden Abschnitte dokumentieren die Evaluationsergebnisse der fünf algorithmischen
+Die folgenden Abschnitte dokumentieren die Evaluationsergebnisse der vier algorithmischen
 Verfahren. Alle angegebenen Werte sind Mittelwerte mit Standardabweichung über $N = 5$
 Permutationsdurchläufe, wie in Abschnitt~\ref{sec:eval:aufbau} beschrieben. Qualitative
 Beobachtungen beschränken sich auf das, was die Messwerte unmittelbar zeigen; eine
@@ -793,77 +745,6 @@ Einzeldurchlaufs mit Seed $42$.
 \end{table}
 
 % ----------------------------------------------------------------
-\subsection{MinHash LSH}
-\label{sec:eval:minhash}
-
-\begin{table}[h]
-    \centering
-    \caption{Evaluationsergebnisse MinHash LSH (\texttt{threshold} $= 0{,}5$, $n$-Gramm $= 3$, $N = 5$ Durchläufe)}
-    \label{tab:eval:minhash}
-    \begin{tabular}{lrr}
-        \toprule
-        Metrik & $\bar{x}$ & $\sigma$ \\
-        \midrule
-        ARI            & $43{,}378\,\%$ & $\pm\,0{,}000\,\%$ \\
-        V-Measure      & $64{,}890\,\%$ & $\pm\,0{,}000\,\%$ \\
-        Homogenität    & $95{,}875\,\%$ & $\pm\,0{,}000\,\%$ \\
-        Vollständigkeit& $49{,}041\,\%$ & $\pm\,0{,}000\,\%$ \\
-        \midrule
-        Clusteranzahl  & $1\,809$ & -- \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-MinHash LSH zeigt im Mehrfachlauf ein ausgeprägtes Ungleichgewicht zwischen
-Homogenität und Vollständigkeit: Bei $95{,}875\,\%$ Homogenität liegt die
-Vollständigkeit bei nur $49{,}041\,\%$, was den ARI auf $43{,}378\,\%$ --
-den zweitniedrigsten Wert nach DBSCAN -- drückt. Die Nullabweichung ist darauf zurückzuführen, dass das
-Union-Find-basierte Clustering die Ähnlichkeitsrelationen im LSH-Index auswertet, die von
-der Eingangsreihenfolge unabhängig sind.
-
-Die sehr niedrige Vollständigkeit ist mit den Parametern des Mehrfachlaufs (\texttt{threshold}
-$= 0{,}5$, $n$-Gramm $= 3$) erklärbar. Ein Schwellenwert von $0{,}5$ verlangt, dass
-mindestens die Hälfte der Trigramme zweier Lognachrichten übereinstimmt, bevor sie
-zusammengeführt werden. Für Lognachrichten mit variablen Feldern – IP-Adressen, Zeitstempel,
-Nutzernamen – ist diese Anforderung im verwendeten Loghub-Datensatz zu streng: Strukturell
-identische Nachrichten unterscheiden sich durch variable Bestandteile stark in ihrer
-Trigramm-Menge und werden daher nicht als ähnlich erkannt, was zur Überpartitionierung
-führt. Diese Empfindlichkeit ist eine direkte empirische Bestätigung der in
-Abschnitt~\ref{sec:minhash_lsh} theoretisch beschriebenen Schwäche der Jaccard-Ähnlichkeit
-gegenüber syntaktischen Variationen. Die vollständige Parametersuche -- inklusive der
-gegenläufigen Extreme bei Bigramm- und Unigramm-Tokenisierung -- ist in
-Abschnitt~\ref{sec:eval:param:minhash} dokumentiert. Da weder ein
-persistierbarer Indexzustand noch eine gegenüber variablen Tokens robuste Ähnlichkeitsmetrik
-bereitsteht, ist MinHash\,+\,LSH im Rahmen des verwendeten Loghub-Datensatzes nicht als
-eigenständiger Clustering-Ansatz für den kontinuierlichen Betrieb geeignet.\footnote{%
-Im Einzellauf mit abweichenden Parametern (\texttt{threshold} $= 0{,}3$, $n$-Gramm $= 2$)
-ergibt sich ein abweichendes Ergebnisprofil (ARI $20{,}9\,\%$, Homogenität $36{,}5\,\%$,
-Vollständigkeit $88{,}6\,\%$). Für die vergleichende Bewertung werden die
-Mehrfachlauf-Parameter als Referenz verwendet.}
-
-Tabelle~\ref{tab:eval:minhash:single} dokumentiert ergänzend das Ergebnis des
-Einzeldurchlaufs mit Seed $42$ und denselben Parametern wie der Mehrfachlauf
-(\texttt{threshold} $= 0{,}5$, $n$-Gramm $= 3$).
-
-\begin{table}[h]
-    \centering
-    \caption{Evaluationsergebnisse MinHash LSH im Einzeldurchlauf (\texttt{threshold} $= 0{,}5$, $n$-Gramm $= 3$, Seed $42$)}
-    \label{tab:eval:minhash:single}
-    \begin{tabular}{lr}
-        \toprule
-        Metrik & Wert \\
-        \midrule
-        ARI             & $43{,}4\,\%$ \\
-        V-Measure       & $64{,}9\,\%$ \\
-        Homogenität     & $95{,}9\,\%$ \\
-        Vollständigkeit & $49{,}0\,\%$ \\
-        \midrule
-        Clusteranzahl   & $1\,809$ \\
-        \bottomrule
-    \end{tabular}
-\end{table}
-
-% ----------------------------------------------------------------
 \section{Ergebnisse des vektorbasierten Verfahrens}
 \label{sec:eval:vector}
 
@@ -962,7 +843,7 @@ Einzeldurchlaufs mit Seed $42$.
 \section{Gegenüberstellung}
 \label{sec:eval:vergleich}
 
-Tabelle~\ref{tab:eval:gesamt} fasst die Evaluationsergebnisse aller sechs Verfahren zusammen.
+Tabelle~\ref{tab:eval:gesamt} fasst die Evaluationsergebnisse aller fünf Verfahren zusammen.
 Die Werte sind Mittelwerte mit Standardabweichung über $N = 5$ Permutationsdurchläufe;
 die Clusteranzahl entstammt dem Einzellauf mit Seed $42$.
 
@@ -1003,12 +884,6 @@ die Clusteranzahl entstammt dem Einzellauf mit Seed $42$.
             & $80{,}762 \pm 2{,}874$
             & $89{,}524 \pm 2{,}446$
             & $13$ \\
-        MinHash LSH
-            & $43{,}378 \pm 0{,}000$
-            & $64{,}890 \pm 0{,}000$
-            & $95{,}875 \pm 0{,}000$
-            & $49{,}041 \pm 0{,}000$
-            & $1\,809$ \\
         DBSCAN
             & $0{,}390 \pm 0{,}000$
             & $12{,}971 \pm 0{,}000$

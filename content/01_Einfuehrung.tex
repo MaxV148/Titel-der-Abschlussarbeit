@@ -28,7 +28,7 @@ Die Beispiele veranschaulichen Log-Nachrichten, die ähnliche Ereignisse beschre
 
 \section{Zielsetzung: Vergleich von Verfahren für kontinuierliches Log-Clustering} \label{forschungs_frage}
 Ziel dieser Arbeit ist die Beantwortung der Frage, welches Verfahren sich für die automatisierte, kontinuierliche Gruppierung von Lognachrichten am besten eignet - hinsichtlich Cluster-Qualität, Reihenfolge-Stabilität und
-struktureller Eignung für den kontinuierlichen Betrieb. Dazu werden sechs Ansätze -- vier algorithmische Verfahren (K-Means, DBSCAN, Drain3, Brain), ein probabilistischer Ansatz (MinHash mit Locality-Sensitive Hashing) sowie ein vektorbasierter Ansatz auf Basis von Sentence-Embeddings und PostgreSQL mit \texttt{pgvector}-Erweiterung verglichen.
+struktureller Eignung für den kontinuierlichen Betrieb. Dazu werden fünf Ansätze -- vier algorithmische Verfahren (K-Means, DBSCAN, Drain3, Brain) sowie ein vektorbasierter Ansatz auf Basis von Sentence-Embeddings und PostgreSQL mit \texttt{pgvector}-Erweiterung verglichen.
 
 \section{Auswahl der untersuchten Verfahren}
 \label{sec:auswahl}
@@ -51,11 +51,9 @@ ausgewählt. Drain3 gilt in der Literatur als etablierter Online-Parser
 mit fester Baumtiefe, während Brain eine konzeptionelle Schwäche von 
 Drain -- die Abhängigkeit von der Token-Position -- explizit adressiert. 
 
-MinHash mit Locality-Sensitive Hashing repräsentiert das probabilistische 
-Paradigma und ermöglicht sublineare Ähnlichkeitssuche auf großen 
-Datenmengen. Der vektorbasierte Ansatz auf Basis von 
-Sentence-Embeddings und der PostgreSQL-Erweiterung \texttt{pgvector} 
-bildet schließlich den Übergang zu modernen, semantisch arbeitenden 
+Der vektorbasierte Ansatz auf Basis von
+Sentence-Embeddings und der PostgreSQL-Erweiterung \texttt{pgvector}
+bildet schließlich den Übergang zu modernen, semantisch arbeitenden
 Verfahren ab (Kapitel~\ref{chap:vek}).
 
 \section{Methodik: Evaluierung mittels ARI-Wert und V-Measure} \label{Vorgensweise}
