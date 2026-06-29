@@ -189,7 +189,7 @@ damit indirekt die strukturelle Granularität der erzeugten Templates. Anders
 als bei K-Means und DBSCAN, deren Parameterwahl ausschließlich unsupervised
 erfolgt, wird für Drain3 -- wie in Abschnitt~\ref{sec:eval:parameterwahl}
 begründet -- eine Teilmenge des Ground-Truth-Datensatzes herangezogen. Die
-Suche erfolgt primär als 1D-Sweep über \texttt{drain\_sim\_th};
+Suche erfolgt primär als 1D-Parameterdurchlauf über \texttt{drain\_sim\_th};
 \texttt{drain\_depth} wird als Variante mitgeführt, um die Robustheit der
 gefundenen \texttt{sim\_th}-Wahl gegenüber der Baumtiefe zu prüfen.
 
@@ -252,8 +252,8 @@ Lognachricht einen eigenen Ast im Parse-Baum, was zu katastrophaler
 \paragraph{Wahl von \texttt{sim\_th} und \texttt{depth}.}
 Je \texttt{depth}-Wert liegt das Minimum der Differenz zur
 Ground-Truth-Klassenzahl der Stichprobe ($38$) bei: \texttt{depth=3} --
-\texttt{sim\_th} $=0{,}2$ ($46$ Cluster, $\Delta = 2$); \texttt{depth=4} und
-\texttt{depth=5} -- \texttt{sim\_th} $=0{,}1$ ($35$ Cluster, $\Delta = 8$).
+\texttt{sim\_th} $=0{,}2$ ($46$ Cluster, $\Delta = 8$); \texttt{depth=4} und
+\texttt{depth=5} -- \texttt{sim\_th} $=0{,}1$ ($35$ Cluster, $\Delta = 3$).
 Über alle $27$ Kombinationen ist \texttt{depth} $=3$ mit \texttt{sim\_th}
 $=0{,}2$ damit die insgesamt beste Kombination und wird für Implementierung
 und Evaluation übernommen. Der Abstand zur zweitbesten Kombination beträgt
@@ -266,8 +266,7 @@ zusätzlich unabhängig vom konkreten Stichprobenergebnis:
 
 \begin{enumerate}
     \item \emph{Sicherheitsabstand zur Übersegmentierungszone.} Bei
-    \texttt{sim\_th} $= 0{,}2$ liegt die Cluster-Anzahl mit $46$ eine
-    volle Größenordnung unter den Werten ab \texttt{sim\_th} $\geq 0{,}8$, ab
+    \texttt{sim\_th} $= 0{,}2$ liegt die Cluster-Anzahl mit $46$ unter den Werten ab \texttt{sim\_th} $\geq 0{,}8$, ab
     denen die Übersegmentierung gemäß Beobachtung~2 sprunghaft einsetzt.
     \item \emph{Größenordnung passend zum Gesamtdatensatz.} Der gemischte
     Loghub-Datensatz enthält $44$ Ground-Truth-Klassen
@@ -291,12 +290,12 @@ erleichtert damit die Klassifikation als Variable und begünstigt die
 Aggregation strukturell ähnlicher Nachrichten zu gemeinsamen Templates; ein
 hoher Schwellwert erschwert sie und begünstigt eine feinere Aufspaltung in
 separate Templates. Wie bei Drain3 erfolgt die Wahl von
-\texttt{BRAIN\_THRESHOLD} über einen 1D-Sweep mit Auswahl anhand der
+\texttt{BRAIN\_THRESHOLD} über einen 1D-Parameterdurchlauf mit Auswahl anhand der
 Differenz zu einer Ground-Truth-Klassenzahl in einer Stichprobe (vgl.\
 Abschnitt~\ref{sec:eval:parameterwahl}). Daneben bestimmen die
 Vorverarbeitungsparameter \texttt{BRAIN\_REGEX} und \texttt{BRAIN\_DELIMITER}
 das Parsing-Ergebnis mit; sie werden -- anders als \texttt{BRAIN\_THRESHOLD}
--- nicht gesweept, sondern wie im Folgenden beschrieben anhand der Struktur
+-- nicht erfasst, sondern wie im Folgenden beschrieben anhand der Struktur
 des Datensatzes festgelegt.
 
 \paragraph{Verzicht auf eine Datensatz-Voreinstellung.}
@@ -386,7 +385,7 @@ datengetriebener Optimalwert ableiten.
 \paragraph{Wahl von \texttt{BRAIN\_THRESHOLD}.}
 Da das GT-Distanz-Kriterium gemäß Beobachtung~2 keinen validen inneren
 Optimalwert liefert, wird für \texttt{BRAIN\_THRESHOLD} nicht der
-Sweep-Treffer (\texttt{threshold} $=1$) übernommen. Da -- wie zuvor begründet
+Durchlauf-Treffer (\texttt{threshold} $=1$) übernommen. Da -- wie zuvor begründet
 -- weder die Regex- noch die Trennzeichen-Konfiguration mehr unmittelbar
 einer Brain-Voreinstellung entsprechen, lässt sich \texttt{threshold} nicht
 mehr durch direkte Übernahme einer einzelnen \textit{benchmark\_settings}-Kombination
@@ -419,7 +418,7 @@ Durchlauf werden die DB-Tabellen geleert, die Embeddings per Bulk-Insert
 eingespielt und die Funktion \texttt{cluster\_batch} aus
 Abschnitt~\ref{PG_Algorithmn} auf die vollständige Stichprobe angewendet.
 Als unsupervised Auswertungskriterium dient der Silhouette-Score auf den
-Embeddings (Cosinus-Metrik, \texttt{sample\_size = 2000},
+Embeddings (Cosinus-Metrik, \texttt{sample\_size = 3000},
 \texttt{random\_state = 42}); zusätzlich wird die Cluster-Anzahl
 protokolliert. Die zugehörige Implementierung findet sich im Notebook
 \texttt{ML.ipynb}\ref{lst:ml.ipynb}.
@@ -436,15 +435,15 @@ protokolliert. Die zugehörige Implementierung findet sich im Notebook
 
 \paragraph{Beobachtung: \texttt{THRESHOLD} steuert Cluster-Anzahl und Qualität.}
 Mit steigendem \texttt{THRESHOLD} sinkt die Cluster-Anzahl monoton: $138$
-($\texttt{THRESHOLD} = 0{.}1$), $73$ ($0{.}2$), $51$ ($0{.}3$), $27$
-($0{.}4$), $17$ ($0{.}5$), $9$ ($0{.}6$), $3$ ($0{.}7$). Der
+($\texttt{THRESHOLD} = 0{,}1$), $73$ ($0{,}2$), $51$ ($0{,}3$), $27$
+($0{,}4$), $17$ ($0{,}5$), $9$ ($0{,}6$), $3$ ($0{,}7$). Der
 Silhouette-Score erreicht bei \texttt{THRESHOLD} $= 0{.}3$ sein globales
 Maximum von $0{.}725$ und liegt für $0{.}1$ ($0{.}711$) und $0{.}2$
 ($0{.}716$) nur knapp darunter -- die feinere Aufteilung in mehr Cluster
-bleibt also intern kohärent. Ab \texttt{THRESHOLD} $= 0{.}4$ ($0{,}654$)
-fällt der Score und sinkt danach durchgehend weiter -- über $0{.}601$
-($0{.}5$) und $0{.}480$ ($0{.}6$) bis auf sein Minimum von $0{.}208$ bei
-\texttt{THRESHOLD} $= 0{.}7$. Anders als bei einem Zwischenminimum
+bleibt also intern kohärent. Ab \texttt{THRESHOLD} $= 0{,}4$ ($0{,}654$)
+fällt der Score und sinkt danach durchgehend weiter -- über $0{,}601$
+($0{,}5$) und $0{,}480$ ($0{.}6$) bis auf sein Minimum von $0{,}208$ bei
+\texttt{THRESHOLD} $= 0{,}7$. Anders als bei einem Zwischenminimum
 stabilisiert sich der Score am oberen Rand des Suchraums nicht, sondern
 fällt bis zum letzten getesteten Wert monoton weiter.
 
@@ -719,9 +718,7 @@ bidirektionalen Parallelbaum sowohl vorwärts als auch rückwärts und bildet da
 spezifische Templates. Der \texttt{threshold}-Parameter von $5$ legt fest, ab welcher
 Häufigkeit ein Token als variabler Platzhalter gilt; der gewählte Wert ist für den
 vorliegenden Datensatz zu niedrig, sodass zu viele Token als fest betrachtet und zu
-granulare Templates erzeugt werden. Eine Erhöhung des Schwellenwerts würde die Clusteranzahl
-reduzieren und die Vollständigkeit voraussichtlich verbessern, jedoch auf Kosten der
-Homogenität.
+granulare Templates erzeugt werden.
 
 Tabelle~\ref{tab:eval:brain:single} dokumentiert ergänzend das Ergebnis des
 Einzeldurchlaufs mit Seed $42$.

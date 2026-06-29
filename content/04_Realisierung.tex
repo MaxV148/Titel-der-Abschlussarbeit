@@ -347,7 +347,7 @@ Parsing-Ergebnisse ergänzt und als \texttt{brain\_df\_output} zurückgegeben
 wird. Anders als K-Means, DBSCAN und Drain3, die Cluster-IDs direkt als
 Integer liefern, enthält die für die Zuordnung relevante Ausgabespalte
 \texttt{EventId} eine String-Kennung des zugeordneten Templates (z.\,B.
-\texttt{"E0"}, \texttt{"E1"}, \ldots). Da die nachfolgende Evaluation
+\texttt{E0}, \texttt{E1}, \ldots). Da die nachfolgende Evaluation
 numerische Cluster-IDs voraussetzt, werden die EventIds über das Dictionary
 \texttt{eid\_map} unter Erhalt ihrer ersten Auftretensreihenfolge auf
 fortlaufende Integer abgebildet und als neue Spalte
@@ -451,9 +451,7 @@ ohne alle Einzelvektoren durchsuchen zu müssen.
 Auf beiden Tabellen wird ein HNSW-Index (\textit{Hierarchical Navigable Small World})
 mit dem Operator \texttt{vector\_cosine\_ops} angelegt. HNSW baut einen
 mehrschichtigen Graphen über die Vektoren auf, in dem jeder Knoten mit einer
-begrenzten Anzahl von Nachbarknoten verbunden ist. Eine Suchanfrage traversiert
-diesen Graphen von groben zu feinen Schichten und findet so in nahezu konstanter
-Zeit die nächsten Nachbarn eines Abfragevektors. Im Vergleich zur alternativen
+begrenzten Anzahl von Nachbarknoten verbunden ist. Im Vergleich zur alternativen
 Indexstruktur IVFFlat bietet HNSW einen besseren Speed-Recall-Tradeoff, benötigt
 jedoch mehr Speicher und eine längere Aufbauzeit
 \cite{githubGitHubPgvectorpgvector}. Da die Datenmenge in diesem Szenario
