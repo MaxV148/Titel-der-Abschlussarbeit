@@ -116,7 +116,7 @@ des Vektors angibt, und erlaubt die Suche nach allen Vektoren innerhalb eines
 Schwellwertes. Da pg\_vector lediglich einen neuen Datentyp einführt, lassen sich 
 die Metadaten zu den Vektoren einfach zusammen mit diesen in einer Tabelle 
 speichern. Das folgende \ac{SQL}-Statement zeigt, wie sich alle Vektoren mit einer
-Kosinus-Ähnlichkeit von unter 0,5 abfragen lassen:\\
+Kosinus-Ähnlichkeit(<\#>) von unter 0,5 abfragen lassen:\\
 \lstinline{SELECT * FROM items WHERE embedding <#> '[3,1,2]' < 0.5;}
 
 \paragraph{Technische Eigenschaften}

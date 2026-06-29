@@ -1,7 +1,7 @@
 \chapter{Praktische Realisierung der Testumgebung und Verfahren}
 \label{chap:real}
 
-Der folgende Abschnitt beschreibt die Testumgebung für den Vergleich der Clustering-Algorithmen. Ziel ist eine realitätsnahe Umgebung, um Leistungsfähigkeit und Effizienz der Algorithmen unter kontrollierten Bedingungen zu bewerten. Die Testumgebung umfasst die eingesetzte Software, die Konfiguration der Vektordatenbank sowie die Vorbereitung der Logdaten. Die Versuche finden in fünf Durchläufen statt, wobei eine zufällige Neuanordnung der Logdaten in den Proben erfolgt. Dies stellt sicher, dass die Tests die Algorithmen nicht nur punktuell, sondern auch im kontinuierlichen Betrieb unter realen Bedingungen prüfen.
+Der folgende Abschnitt beschreibt die Testumgebung für den Vergleich der Clustering-Algorithmen. Ziel ist eine realitätsnahe Umgebung, um Leistungsfähigkeit und Effizienz der Algorithmen unter kontrollierten Bedingungen zu bewerten. Die Testumgebung umfasst die eingesetzte Software, die Konfiguration der Vektordatenbank sowie die Vorbereitung der Logdaten. Die Versuche finden in fünf Durchläufen statt, wobei eine zufällige Neuanordnung der Logdaten in den Proben erfolgt. Dies stellt sicher, dass die Tests die Algorithmen nicht nur punktuell, sondern auch im kontinuierlichen Betrieb unter realitätsnahen Bedingungen prüfen.
 Diese umfassende Testumgebung bildet die Grundlage für einen fundierten und nachvollziehbaren Vergleich der unterschiedlichen Clustering-Ansätze.
 
 \section{Jupyter Notebooks: Interaktive Validierung der Clustering-Ansätze}
@@ -103,7 +103,7 @@ Ergebnisse in den nachfolgenden Abschnitten.
 Als Datengrundlage dienen drei Quellen des Loghub-2k-Benchmarks~\cite{zhu2023loghublargecollectionlog}: die
 Systemlog-Datensätze \texttt{Linux}, \texttt{Apache} und \texttt{OpenSSH}, die jeweils
 $2\,000$ Lognachrichten umfassen. Die drei Quellen werden zeilenweise zu einem gemeinsamen
-Pool von $6\,000$ Lognachrichten zusammengefügt. Da die Zielgröße des Datensatzes bei $10\,000$ Einträgen liegt, werden die
+Pool von $6\,000$ Lognachrichten zusammengefügt \ref{lst:ml.ipynb}[Zelle 1]. Da die Zielgröße des Datensatzes bei $10\,000$ Einträgen liegt, werden die
 fehlenden $4\,000$ Einträge durch zufälliges Duplizieren bereits vorhandener Lognachrichten
 ergänzt: Mittels \texttt{random.choices} werden $4\,000$ Zeilen mit Zurücklegen aus dem Pool
 gezogen und an diesen angefügt. Anschließend wird der resultierende Datensatz aus
@@ -191,7 +191,7 @@ Im Anschluss an die Vektorisierung erfolgt die semantische Gruppierung der Logda
 
 \begin{lstlisting}[caption={Clustern mit k-Means}, label={lst:k-means-cluster}]
 # K-Means Parameter (Begruendung siehe Abschnitt \ref{sec:eval:param:kmeans})
-KMEANS_N_CLUSTERS  = 13
+KMEANS_N_CLUSTERS  = 10
 KMEANS_RANDOM_STATE = 42
 # ===== K-MEANS CLUSTERING =====
 kmeans = KMeans(
@@ -281,8 +281,8 @@ hinzugefügt.
 
 \begin{lstlisting}[caption={Clustern mit Drain3}, label={lst:drain3}]
 # Drain3 Parameter (Begruendung siehe Abschnitt \ref{sec:eval:param:drain3})
-DRAIN_SIM_TH = 0.2
-DRAIN_DEPTH  = 4
+DRAIN_SIM_TH = 0.3
+DRAIN_DEPTH  = 3
 
 # ===== DRAIN3 CLUSTERING =====
 drain_config = TemplateMinerConfig()
