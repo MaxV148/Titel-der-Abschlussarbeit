@@ -137,6 +137,54 @@ For reasons of better readability, the generic masculine is used in this work. F
 }
 }
 
+\newcommand*\printEidesstattlicheErklaerung{%
+\ifthenelse{\equal{\lang}{ngerman}}%
+{%
+\section*{Eidesstattliche Erklärung}
+\thispagestyle{empty}
+Hiermit versichere ich, die vorliegende Arbeit selbstständig und unter ausschließlicher
+Verwendung der angegebenen Literatur und Hilfsmittel erstellt zu haben.
+
+Die Arbeit wurde bisher in gleicher oder ähnlicher Form keiner anderen Prüfungsbehörde
+vorgelegt und auch nicht veröffentlicht.
+
+\vspace{4\baselineskip}
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\hrulefill\\
+Ort, Datum
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\hrulefill\\
+Unterschrift
+\end{minipage}
+}
+{%
+\section*{Affidavit}
+\thispagestyle{empty}
+I hereby declare that I have prepared the present work independently and using
+exclusively the literature and resources stated.
+
+The work has not previously been submitted in the same or similar form to any
+other examination authority and has not been published.
+
+\vspace{4\baselineskip}
+
+\noindent
+\begin{minipage}[t]{0.45\textwidth}
+\hrulefill\\
+Place, Date
+\end{minipage}%
+\hfill
+\begin{minipage}[t]{0.45\textwidth}
+\hrulefill\\
+Signature
+\end{minipage}
+}
+}
+
 \newcommand*\printDeclarationOfIndependence{%
 \ifthenelse{\equal{\lang}{ngerman}}%
 {%
