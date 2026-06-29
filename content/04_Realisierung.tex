@@ -299,6 +299,60 @@ for log in df_labeled['log']:
 df_labeled['drain_cluster_id'] = drain_cluster_ids
 \end{lstlisting}
 
+\section{Brain: Templatebildung durch Wortfrequenzanalyse}
+\label{sec:real:brain}
+
+Die praktische Umsetzung des Clustering-Verfahrens mittels Brain ist in
+Listing~\ref{lst:brain-cluster} dargestellt. Die Konfiguration erfolgt über
+vier Parameter: den Schwellwert \texttt{BRAIN\_THRESHOLD} sowie die
+Vorverarbeitungsparameter \texttt{BRAIN\_REGEX}, \texttt{BRAIN\_DELIMITER} und
+\texttt{BRAIN\_DATASET}. Die Wahl der konkreten Werte wird zentral in
+Abschnitt~\ref{sec:eval:param:brain} im Rahmen der Parameterwahl aller
+untersuchten Verfahren begründet; an dieser Stelle wird ausschließlich die
+Implementierung beschrieben.
+
+\begin{lstlisting}[caption={Clustern mit Brain}, label={lst:brain-cluster}]
+# Brain Parameter (Begruendung siehe Abschnitt \ref{sec:eval:param:brain})
+BRAIN_THRESHOLD = 5
+BRAIN_REGEX = [
+    r'((\d+\.){3}\d+)(:\d+)?',  # IP (+ optionaler Port)
+    r'/\S+',                    # Pfad (bis Whitespace)
+    r'\b\d+\b',                 # Zahlen nur als ganze Tokens
+]
+BRAIN_DATASET   = ''
+BRAIN_DELIMITER = [r'=', r':']
+
+# ===== BRAIN CLUSTERING =====
+brain_starttime = datetime.now()
+brain_df_input  = pd.DataFrame(index=range(len(logs_clean)))
+brain_df_output, _ = Brain.parse(
+    logs_clean, BRAIN_REGEX, BRAIN_DATASET, BRAIN_THRESHOLD,
+    BRAIN_DELIMITER, brain_starttime, efficiency=False, df_input=brain_df_input
+)
+
+event_ids = brain_df_output['EventId'].tolist()
+eid_map = {eid: i for i, eid in enumerate(dict.fromkeys(event_ids))}
+df_labeled['brain_cluster_id'] = [eid_map[eid] for eid in event_ids]
+\end{lstlisting}
+
+Angewendet wird das Verfahren über die Funktion \texttt{Brain.parse} der
+Referenzimplementierung\footnote{\url{https://github.com/gaiusyu/Brain}},
+welche die bereinigten Lognachrichten \texttt{logs\_clean} entgegennimmt und
+intern die in Abschnitt~\ref{sec:brain} beschriebenen fünf
+Verarbeitungsschritte ausführt. Der Parameter \texttt{brain\_starttime} dient
+ausschließlich der optionalen Effizienzmessung, die über
+\texttt{efficiency=False} deaktiviert wird; \texttt{df\_input} übergibt ein
+leeres, lediglich indiziertes Dataframe, das von der Funktion um die
+Parsing-Ergebnisse ergänzt und als \texttt{brain\_df\_output} zurückgegeben
+wird. Anders als K-Means, DBSCAN und Drain3, die Cluster-IDs direkt als
+Integer liefern, enthält die für die Zuordnung relevante Ausgabespalte
+\texttt{EventId} eine String-Kennung des zugeordneten Templates (z.\,B.
+\texttt{"E0"}, \texttt{"E1"}, \ldots). Da die nachfolgende Evaluation
+numerische Cluster-IDs voraussetzt, werden die EventIds über das Dictionary
+\texttt{eid\_map} unter Erhalt ihrer ersten Auftretensreihenfolge auf
+fortlaufende Integer abgebildet und als neue Spalte
+\texttt{brain\_cluster\_id} im Dataframe \texttt{df\_labeled} gespeichert.
+
 \section{pgvector: Embedding-basiertes Clustering}
 \label{sec:real:pgvector}
 
